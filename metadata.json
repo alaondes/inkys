@@ -1,0 +1,8 @@
+{
+  "name": "Inkys - Catálogo",
+  "description": "Catálogo de produtos com carrinho de compras e checkout pelo WhatsApp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
