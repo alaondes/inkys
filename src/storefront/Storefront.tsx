@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { formatPrice, Product } from '../data/products';
 import { generateWhatsAppLink, CheckoutData } from '../utils/whatsapp';
 import { ProductCard } from '../components/ProductCard';
+import { ProductCarousel } from '../components/ProductCarousel';
 import { CartPage } from '../components/CartPage';
 import { CheckoutPage } from '../components/CheckoutPage';
 import { ProductDetails } from './ProductDetails';
@@ -277,11 +278,7 @@ export function Storefront() {
             <div className="space-y-16 max-w-[1200px] mx-auto px-4 bg-[#f9fafb]">
               <section id="category-all">
                 <h2 className="text-[#783884] text-3xl font-bold text-center mb-10">Todos os Produtos</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {products.map(product => (
-                    <ProductCard key={product.id} product={product} onAddToCart={() => openProduct(product)} />
-                  ))}
-                </div>
+                <ProductCarousel products={products} onAddToCart={openProduct} />
               </section>
 
               {categories.map(category => {
@@ -290,11 +287,7 @@ export function Storefront() {
                 return (
                   <section key={category} id={`category-${category}`}>
                     <h2 className="text-[#783884] text-3xl font-bold text-center mb-10">{category}</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                      {categoryProducts.map(product => (
-                        <ProductCard key={product.id} product={product} onAddToCart={() => openProduct(product)} />
-                      ))}
-                    </div>
+                    <ProductCarousel products={categoryProducts} onAddToCart={openProduct} />
                   </section>
                 );
               })}

@@ -102,7 +102,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         </div>
         
         <div className="mb-4 w-full">
-          <div className="text-3xl font-bold text-[#5ba324] leading-none mb-1">
+          <div className="text-3xl font-bold leading-none mb-1" style={{ color: settings.buyButtonColor }}>
             {formatPrice(pixPrice)} <span className="text-sm font-normal">no pix</span>
           </div>
           <div className="text-[11px] text-gray-500 mb-2">com 10% de desconto</div>
@@ -117,7 +117,8 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         <div className="flex flex-col gap-2 w-full mt-auto">
           <button 
             onClick={() => onAddToCart(product, selectedColor)}
-            className="w-full bg-[#5ba324] text-white py-2.5 rounded font-bold text-[15px] hover:bg-[#4d8b1f] transition-colors"
+            className="w-full text-white py-2.5 rounded font-bold text-[15px] hover:brightness-110 transition-all"
+            style={{ backgroundColor: settings.buyButtonColor }}
           >
             Comprar
           </button>

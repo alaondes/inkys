@@ -29,6 +29,7 @@ export interface AppSettings {
   promoBanner2ButtonText: string;
   promoBanner2ColorStart: string;
   promoBanner2ColorEnd: string;
+  buyButtonColor: string;
 }
 
 const defaultSettings: AppSettings = {
@@ -58,6 +59,7 @@ const defaultSettings: AppSettings = {
   promoBanner2ButtonText: 'COMPRAR',
   promoBanner2ColorStart: '#b861ff',
   promoBanner2ColorEnd: '#c37aff',
+  buyButtonColor: '#5ba324',
 };
 
 interface SettingsContextType {
@@ -67,17 +69,34 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
+const getInitialSettings = (): AppSettings => {
+  const cached = localStorage.getItem('inkys-settings');
+  if (cached) {
+    try {
+      return { ...defaultSettings, ...JSON.parse(cached) };
+    } catch (e) {
+      console.error('Failed to parse cached settings', e);
+    }
+  }
+  return defaultSettings;
+};
+
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const [settings, setSettings] = useState<AppSettings>(getInitialSettings);
+  const [isLoading, setIsLoading] = useState(!localStorage.getItem('inkys-settings'));
 
   useEffect(() => {
     const settingsRef = doc(db, 'config', 'settings');
     const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
       if (docSnap.exists()) {
-        setSettings({ ...defaultSettings, ...docSnap.data() as AppSettings });
+        const newSettings = { ...defaultSettings, ...docSnap.data() as AppSettings };
+        setSettings(newSettings);
+        localStorage.setItem('inkys-settings', JSON.stringify(newSettings));
+        setIsLoading(false);
       } else {
         // Initialize settings if they don't exist
         setDoc(settingsRef, defaultSettings).catch(console.error);
+        setIsLoading(false);
       }
     });
 
@@ -88,6 +107,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const settingsRef = doc(db, 'config', 'settings');
     setDoc(settingsRef, newSettings, { merge: true }).catch(console.error);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-gray-500 font-medium">Carregando...</p>
+      </div>
+    );
+  }
 
   return (
     <SettingsContext.Provider value={{ settings, updateSettings }}>

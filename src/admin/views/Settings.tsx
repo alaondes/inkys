@@ -34,10 +34,16 @@ export function AdminSettings() {
     promoBanner2SubtitleHtml: settings.promoBanner2SubtitleHtml || 'Modelos prontos com espaço<br/>para adicionar as fotos.',
     promoBanner2ButtonText: settings.promoBanner2ButtonText || 'COMPRAR',
     promoBanner2ColorStart: settings.promoBanner2ColorStart || '#b861ff',
-    promoBanner2ColorEnd: settings.promoBanner2ColorEnd || '#c37aff'
+    promoBanner2ColorEnd: settings.promoBanner2ColorEnd || '#c37aff',
+    buyButtonColor: settings.buyButtonColor || '#5ba324'
   });
   
-  const [storefrontMessage, setStorefrontMessage] = useState('');
+  const [toastMessage, setToastMessage] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToastMessage({ message, type });
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   useEffect(() => {
     setPrimaryColor(settings.primaryColor);
@@ -61,25 +67,26 @@ export function AdminSettings() {
       promoBanner2SubtitleHtml: settings.promoBanner2SubtitleHtml || 'Modelos prontos com espaço<br/>para adicionar as fotos.',
       promoBanner2ButtonText: settings.promoBanner2ButtonText || 'COMPRAR',
       promoBanner2ColorStart: settings.promoBanner2ColorStart || '#b861ff',
-      promoBanner2ColorEnd: settings.promoBanner2ColorEnd || '#c37aff'
+      promoBanner2ColorEnd: settings.promoBanner2ColorEnd || '#c37aff',
+      buyButtonColor: settings.buyButtonColor || '#5ba324'
     });
   }, [settings]);
 
   const handleSaveStorefront = () => {
     updateSettings(storefrontSettings);
-    alert('Aparência atualizada com sucesso!');
+    showToast('Aparência atualizada com sucesso!');
   };
 
   const handleSaveColor = () => {
     document.documentElement.style.setProperty('--admin-primary-color', primaryColor);
     updateSettings({ primaryColor });
-    alert('Tema atualizado com sucesso!');
+    showToast('Tema atualizado com sucesso!');
   };
 
   const handleSaveLogo = (e: React.FormEvent) => {
     e.preventDefault();
     updateSettings({ logoUrl });
-    alert('Logo atualizado com sucesso!');
+    showToast('Logo atualizado com sucesso!');
   };
   
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,23 +117,23 @@ export function AdminSettings() {
   const handleSavePassword = (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 6) {
-      alert('A nova senha deve ter no mínimo 6 caracteres.');
+      showToast('A nova senha deve ter no mínimo 6 caracteres.', 'error');
       return;
     }
     localStorage.setItem('inkys-admin-password', newPassword);
     setNewPassword('');
-    alert('Senha atualizada com sucesso!');
+    showToast('Senha atualizada com sucesso!');
   };
   
   const handleSaveWhatsapp = (e: React.FormEvent) => {
     e.preventDefault();
     if (!whatsappNumber) {
-      alert('Por favor, informe um número válido.');
+      showToast('Por favor, informe um número válido.', 'error');
       return;
     }
     const sanitized = whatsappNumber.replace(/\D/g, '');
     updateSettings({ whatsappNumber: sanitized });
-    alert('Número atualizado com sucesso!');
+    showToast('Número atualizado com sucesso!');
   };
 
   useEffect(() => {
@@ -331,6 +338,23 @@ export function AdminSettings() {
                 />
               </div>
             </div>
+            <div className="space-y-1 col-span-full">
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor do Botão Comprar</label>
+              <div className="flex items-center gap-3 w-1/2">
+                <input
+                  type="color"
+                  value={storefrontSettings.buyButtonColor}
+                  onChange={(e) => setStorefrontSettings({...storefrontSettings, buyButtonColor: e.target.value})}
+                  className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0"
+                />
+                <input
+                  type="text"
+                  value={storefrontSettings.buyButtonColor}
+                  onChange={(e) => setStorefrontSettings({...storefrontSettings, buyButtonColor: e.target.value})}
+                  className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="space-y-4 p-4 border border-gray-100 rounded-xl bg-gray-50">
@@ -528,6 +552,27 @@ export function AdminSettings() {
           </button>
         </form>
       </div>
+
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-lg border ${
+            toastMessage.type === 'success' 
+              ? 'bg-white border-green-100 text-green-800' 
+              : 'bg-white border-red-100 text-red-800'
+          }`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+              toastMessage.type === 'success' ? 'bg-green-100' : 'bg-red-100'
+            }`}>
+              {toastMessage.type === 'success' ? (
+                <Save size={16} className="text-green-600" />
+              ) : (
+                <div className="text-red-600 font-bold">!</div>
+              )}
+            </div>
+            <span className="font-medium">{toastMessage.message}</span>
+          </div>
+        </div>
+      )}
 
     </div>
   );

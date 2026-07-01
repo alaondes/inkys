@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Product, formatPrice } from '../data/products';
-import { Star, ChevronLeft, Share2, Heart, Video } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, Share2, Heart, Video } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
 
 interface ProductDetailsProps {
@@ -15,6 +15,14 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
   const images = rawImages.length > 0 ? rawImages : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop'];
   
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
 
   const rating = 5;
   const reviews = 5;
@@ -44,24 +52,29 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
         <div className="flex flex-col md:flex-row gap-12">
           {/* Gallery */}
           <div className="w-full md:w-[60%] flex gap-4">
-            {/* Thumbnails */}
-            <div className="w-20 flex flex-col gap-2">
-              {images.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCurrentImageIndex(i)}
-                  className={`w-20 h-20 border rounded-lg overflow-hidden ${i === currentImageIndex ? 'border-gray-400' : 'border-gray-200'}`}
-                >
-                  <img src={img} alt={`Thumb ${i}`} className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-            
             {/* Main Image */}
             <div className="flex-1 relative border border-gray-100 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
                <button className="absolute top-4 right-4 bg-white border border-gray-200 px-3 py-1 rounded text-sm text-gray-600 flex items-center gap-2 z-10 shadow-sm">
                  <Video size={16} className="text-red-600" /> Vídeo
                </button>
+               
+               {images.length > 1 && (
+                 <>
+                   <button 
+                     onClick={prevImage}
+                     className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-sm transition-colors z-10"
+                   >
+                     <ChevronLeft size={24} />
+                   </button>
+                   <button 
+                     onClick={nextImage}
+                     className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-sm transition-colors z-10"
+                   >
+                     <ChevronRight size={24} />
+                   </button>
+                 </>
+               )}
+
                <img src={images[currentImageIndex]} alt={product.name} className="w-full h-auto max-h-[600px] object-contain mix-blend-multiply" />
             </div>
           </div>
@@ -136,7 +149,8 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
             <div className="flex flex-col gap-3 w-full mb-6">
               <button 
                 onClick={() => onAddToCart(product)}
-                className="w-full bg-[#5ba324] text-white py-4 rounded font-bold text-xl hover:bg-[#4d8b1f] transition-colors"
+                className="w-full text-white py-4 rounded font-bold text-xl hover:brightness-110 transition-all"
+                style={{ backgroundColor: settings.buyButtonColor }}
               >
                 Comprar
               </button>
