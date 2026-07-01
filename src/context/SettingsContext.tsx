@@ -12,6 +12,23 @@ export interface AppSettings {
     debit: boolean;
     boleto: boolean;
   };
+  topBarColor: string;
+  headerColor: string;
+  heroBannerImage: string;
+  heroBannerTitleHtml: string;
+  heroBannerSubtitle: string;
+  heroBannerButtonText: string;
+  heroBannerButtonColor: string;
+  promoBanner1TitleHtml: string;
+  promoBanner1SubtitleHtml: string;
+  promoBanner1ButtonText: string;
+  promoBanner1ColorStart: string;
+  promoBanner1ColorEnd: string;
+  promoBanner2TitleHtml: string;
+  promoBanner2SubtitleHtml: string;
+  promoBanner2ButtonText: string;
+  promoBanner2ColorStart: string;
+  promoBanner2ColorEnd: string;
 }
 
 const defaultSettings: AppSettings = {
@@ -23,7 +40,24 @@ const defaultSettings: AppSettings = {
     credit: true,
     debit: true,
     boleto: true
-  }
+  },
+  topBarColor: '#d64c71',
+  headerColor: '#8b3887',
+  heroBannerImage: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&q=80',
+  heroBannerTitleHtml: 'Caneca com<br/><span class="text-5xl italic font-serif mt-2 block">Foto e Música</span>',
+  heroBannerSubtitle: 'O presente perfeito para transformar lembranças em emoção.',
+  heroBannerButtonText: 'Peça a sua agora ♥',
+  heroBannerButtonColor: '#b44e68',
+  promoBanner1TitleHtml: 'CANECAS COM SUA<br/>MÚSICA FAVORITA!',
+  promoBanner1SubtitleHtml: 'Modelos prontos com código<br/>de música para adicionar.',
+  promoBanner1ButtonText: 'COMPRAR',
+  promoBanner1ColorStart: '#4a8bf5',
+  promoBanner1ColorEnd: '#68abfa',
+  promoBanner2TitleHtml: 'CANECAS COM SUA<br/>FOTO PREFERIDA!',
+  promoBanner2SubtitleHtml: 'Modelos prontos com espaço<br/>para adicionar as fotos.',
+  promoBanner2ButtonText: 'COMPRAR',
+  promoBanner2ColorStart: '#b861ff',
+  promoBanner2ColorEnd: '#c37aff',
 };
 
 interface SettingsContextType {

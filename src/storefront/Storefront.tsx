@@ -61,7 +61,6 @@ export function Storefront() {
     if (cart.length === 0) return;
     const url = generateWhatsAppLink(cart, data, settings.whatsappNumber);
     window.open(url, '_blank');
-    setIsCheckoutOpen(false);
     setCart([]);
     setCurrentView('home');
     window.scrollTo(0, 0);
@@ -90,7 +89,7 @@ export function Storefront() {
   return (
     <div className="min-h-screen bg-white">
       {/* Top Header - Purple */}
-      <header className="bg-[#783884] text-white">
+      <header className="text-white" style={{ backgroundColor: settings.headerColor }}>
         <div className="max-w-[1400px] mx-auto px-4">
           <div className="flex items-center justify-between h-24 gap-8">
             {/* Logo */}
@@ -141,7 +140,7 @@ export function Storefront() {
                 className="flex items-center gap-2 relative hover:text-pink-200 transition-colors"
               >
                 <ShoppingCart size={28} />
-                <span className="bg-[#e84e70] text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full absolute -top-1 -right-2">
+                <span className="text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full absolute -top-1 -right-2" style={{ backgroundColor: settings.topBarColor }}>
                   {cartItemsCount}
                 </span>
               </button>
@@ -156,15 +155,15 @@ export function Storefront() {
       <nav className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
         <div className="max-w-[1400px] mx-auto px-4">
           <ul className="flex items-center justify-center gap-8 text-[15px] text-gray-600 font-medium">
-            <li className="flex items-center gap-2 py-4 hover:text-[#783884] cursor-pointer text-[#e84e70] font-bold">
+            <li className="flex items-center gap-2 py-4 cursor-pointer font-bold transition-colors" style={{ color: settings.topBarColor }}>
               <Menu size={18} /> Todas as categorias
             </li>
-            <li className="py-4 hover:text-[#783884] cursor-pointer">Coleção</li>
-            <li className="py-4 hover:text-[#783884] cursor-pointer">Caneca Mágica</li>
-            <li className="py-4 hover:text-[#783884] cursor-pointer">Canecas com Foto</li>
-            <li className="py-4 hover:text-[#783884] cursor-pointer">Presentes</li>
-            <li className="py-4 hover:text-[#783884] cursor-pointer">Personalize do seu Jeito</li>
-            <li className="py-4 px-6 bg-[#e84e70] text-white font-bold cursor-pointer hover:bg-[#d63b5e] transition-colors">
+            <li className="py-4 cursor-pointer transition-colors" style={{ color: settings.headerColor }}>Coleção</li>
+            <li className="py-4 cursor-pointer transition-colors" style={{ color: settings.headerColor }}>Caneca Mágica</li>
+            <li className="py-4 cursor-pointer transition-colors" style={{ color: settings.headerColor }}>Canecas com Foto</li>
+            <li className="py-4 cursor-pointer transition-colors" style={{ color: settings.headerColor }}>Presentes</li>
+            <li className="py-4 cursor-pointer transition-colors" style={{ color: settings.headerColor }}>Personalize do seu Jeito</li>
+            <li className="py-4 px-6 text-white font-bold cursor-pointer transition-colors hover:brightness-110" style={{ backgroundColor: settings.topBarColor }}>
               COPA DO MUNDO
             </li>
           </ul>
@@ -194,20 +193,19 @@ export function Storefront() {
           <>
             {/* Hero Banner */}
             <section className="w-full bg-[#f9e5e6]">
-              <div className="w-full h-[400px] bg-cover bg-center flex items-center justify-center relative" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1518199266791-5375a83190b7?q=80&w=2070&auto=format&fit=crop)'}}>
+              <div className="w-full h-[400px] bg-cover bg-center flex items-center justify-center relative" style={{ backgroundImage: `url(${settings.heroBannerImage})`}}>
                  <div className="absolute inset-0 bg-white/40" />
                  <div className="relative z-10 text-center flex flex-col items-center">
-                    <h2 className="text-[#592c60] text-3xl font-serif italic mb-2">Caneca com</h2>
-                    <h1 className="text-[#e84e70] text-6xl font-serif italic font-bold mb-4">Foto e Música</h1>
-                    <p className="text-[#592c60] text-xl font-medium max-w-lg mb-6">O presente perfeito para transformar lembranças em emoção.</p>
+                    <div dangerouslySetInnerHTML={{ __html: settings.heroBannerTitleHtml }} className="text-[#e84e70] font-bold mb-4" style={{ color: settings.topBarColor }} />
+                    <p className="text-[#592c60] text-xl font-medium max-w-lg mb-6">{settings.heroBannerSubtitle}</p>
                     
                     <div className="flex gap-6 mb-8 text-[#592c60] font-bold text-sm">
-                      <div className="flex items-center gap-2"><div className="w-10 h-10 rounded-full bg-[#e84e70] text-white flex items-center justify-center"><User size={20}/></div> Personalizada com sua foto</div>
-                      <div className="flex items-center gap-2"><div className="w-10 h-10 rounded-full bg-[#e84e70] text-white flex items-center justify-center"><MessageCircle size={20}/></div> Estampa com sua música</div>
+                      <div className="flex items-center gap-2"><div className="w-10 h-10 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: settings.topBarColor }}><User size={20}/></div> Personalizada com sua foto</div>
+                      <div className="flex items-center gap-2"><div className="w-10 h-10 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: settings.topBarColor }}><MessageCircle size={20}/></div> Estampa com sua música</div>
                     </div>
                     
-                    <button className="bg-[#b33951] text-white px-8 py-3 rounded-md font-bold text-lg hover:bg-[#902a3f] transition-colors shadow-lg">
-                      Peça a sua agora ♥
+                    <button className="text-white px-8 py-3 rounded-md font-bold text-lg hover:brightness-90 transition-colors shadow-lg" style={{ backgroundColor: settings.heroBannerButtonColor }}>
+                      {settings.heroBannerButtonText}
                     </button>
                  </div>
               </div>
@@ -220,28 +218,28 @@ export function Storefront() {
                   <div className="flex items-center justify-center gap-4 px-4">
                     <Truck size={32} className="text-gray-700" strokeWidth={1.5} />
                     <div>
-                      <h4 className="text-[#e84e70] font-bold leading-tight">Do Oiapoque ao Chuí</h4>
+                      <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>Do Oiapoque ao Chuí</h4>
                       <p className="text-gray-500 text-sm">Entregas em Todo Brasil</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-center gap-4 px-4">
                     <CreditCard size={32} className="text-gray-700" strokeWidth={1.5} />
                     <div>
-                      <h4 className="text-[#e84e70] font-bold leading-tight">Parcelamento</h4>
+                      <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>Parcelamento</h4>
                       <p className="text-gray-500 text-sm">Em até 6x sem juros</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-center gap-4 px-4">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700"><path d="M2 12l5.25 5 2.625-3 5.25 5 6.875-10"/></svg>
                     <div>
-                      <h4 className="text-[#e84e70] font-bold leading-tight">Ganhe Desconto</h4>
+                      <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>Ganhe Desconto</h4>
                       <p className="text-gray-500 text-sm">Pagando com PIX</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-center gap-4 px-4">
                     <ShieldCheck size={32} className="text-gray-700" strokeWidth={1.5} />
                     <div>
-                      <h4 className="text-[#e84e70] font-bold leading-tight">Segurança</h4>
+                      <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>Segurança</h4>
                       <p className="text-gray-500 text-sm">Loja com SSL de proteção</p>
                     </div>
                   </div>
@@ -252,24 +250,24 @@ export function Storefront() {
             {/* Promo Banners */}
             <section className="max-w-[1400px] mx-auto px-4 py-12 bg-[#f9fafb]">
                <div className="grid grid-cols-2 gap-6">
-                  <div className="bg-gradient-to-r from-blue-600 to-blue-400 rounded-3xl overflow-hidden relative h-[250px] flex items-center px-10 cursor-pointer group" onClick={() => {
+                  <div className="rounded-3xl overflow-hidden relative h-[250px] flex items-center px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner1ColorStart}, ${settings.promoBanner1ColorEnd})` }} onClick={() => {
                     const el = document.getElementById('category-Música');
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
                   }}>
                      <div className="z-10 text-white">
-                       <h3 className="text-3xl font-bold text-yellow-300 mb-2 drop-shadow-md">CANECAS COM SUA<br/>MÚSICA FAVORITA!</h3>
-                       <p className="mb-4 font-medium drop-shadow-sm">Modelos prontos com código<br/>de música para adicionar.</p>
-                       <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f]">COMPRAR</button>
+                       <h3 className="text-3xl font-bold text-yellow-300 mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner1TitleHtml }}></h3>
+                       <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner1SubtitleHtml }}></p>
+                       <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f]">{settings.promoBanner1ButtonText}</button>
                      </div>
                   </div>
-                  <div className="bg-gradient-to-r from-purple-500 to-purple-400 rounded-3xl overflow-hidden relative h-[250px] flex items-center px-10 cursor-pointer group" onClick={() => {
+                  <div className="rounded-3xl overflow-hidden relative h-[250px] flex items-center px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner2ColorStart}, ${settings.promoBanner2ColorEnd})` }} onClick={() => {
                     const el = document.getElementById('category-Canecas com Foto') || document.getElementById('category-Canecas');
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
                   }}>
                      <div className="z-10 text-white">
-                       <h3 className="text-3xl font-bold text-white mb-2 drop-shadow-md">CANECAS COM SUA<br/>FOTO PREFERIDA!</h3>
-                       <p className="mb-4 font-medium drop-shadow-sm">Modelos prontos com espaço<br/>para adicionar as fotos.</p>
-                       <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f]">COMPRAR</button>
+                       <h3 className="text-3xl font-bold text-white mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner2TitleHtml }}></h3>
+                       <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner2SubtitleHtml }}></p>
+                       <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f]">{settings.promoBanner2ButtonText}</button>
                      </div>
                   </div>
                </div>

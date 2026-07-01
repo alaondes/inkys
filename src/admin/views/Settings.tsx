@@ -17,12 +17,58 @@ export function AdminSettings() {
 
   const [paymentMethods, setPaymentMethods] = useState(settings.paymentMethods);
 
+  const [storefrontSettings, setStorefrontSettings] = useState({
+    topBarColor: settings.topBarColor || '#d64c71',
+    headerColor: settings.headerColor || '#8b3887',
+    heroBannerImage: settings.heroBannerImage || 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&q=80',
+    heroBannerTitleHtml: settings.heroBannerTitleHtml || 'Caneca com<br/><span class="text-5xl italic font-serif mt-2 block">Foto e Música</span>',
+    heroBannerSubtitle: settings.heroBannerSubtitle || 'O presente perfeito para transformar lembranças em emoção.',
+    heroBannerButtonText: settings.heroBannerButtonText || 'Peça a sua agora ♥',
+    heroBannerButtonColor: settings.heroBannerButtonColor || '#b44e68',
+    promoBanner1TitleHtml: settings.promoBanner1TitleHtml || 'CANECAS COM SUA<br/>MÚSICA FAVORITA!',
+    promoBanner1SubtitleHtml: settings.promoBanner1SubtitleHtml || 'Modelos prontos com código<br/>de música para adicionar.',
+    promoBanner1ButtonText: settings.promoBanner1ButtonText || 'COMPRAR',
+    promoBanner1ColorStart: settings.promoBanner1ColorStart || '#4a8bf5',
+    promoBanner1ColorEnd: settings.promoBanner1ColorEnd || '#68abfa',
+    promoBanner2TitleHtml: settings.promoBanner2TitleHtml || 'CANECAS COM SUA<br/>FOTO PREFERIDA!',
+    promoBanner2SubtitleHtml: settings.promoBanner2SubtitleHtml || 'Modelos prontos com espaço<br/>para adicionar as fotos.',
+    promoBanner2ButtonText: settings.promoBanner2ButtonText || 'COMPRAR',
+    promoBanner2ColorStart: settings.promoBanner2ColorStart || '#b861ff',
+    promoBanner2ColorEnd: settings.promoBanner2ColorEnd || '#c37aff'
+  });
+  
+  const [storefrontMessage, setStorefrontMessage] = useState('');
+
   useEffect(() => {
     setPrimaryColor(settings.primaryColor);
     setLogoUrl(settings.logoUrl);
     setWhatsappNumber(settings.whatsappNumber);
     setPaymentMethods(settings.paymentMethods);
+    setStorefrontSettings({
+      topBarColor: settings.topBarColor || '#d64c71',
+      headerColor: settings.headerColor || '#8b3887',
+      heroBannerImage: settings.heroBannerImage || 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&q=80',
+      heroBannerTitleHtml: settings.heroBannerTitleHtml || 'Caneca com<br/><span class="text-5xl italic font-serif mt-2 block">Foto e Música</span>',
+      heroBannerSubtitle: settings.heroBannerSubtitle || 'O presente perfeito para transformar lembranças em emoção.',
+      heroBannerButtonText: settings.heroBannerButtonText || 'Peça a sua agora ♥',
+      heroBannerButtonColor: settings.heroBannerButtonColor || '#b44e68',
+      promoBanner1TitleHtml: settings.promoBanner1TitleHtml || 'CANECAS COM SUA<br/>MÚSICA FAVORITA!',
+      promoBanner1SubtitleHtml: settings.promoBanner1SubtitleHtml || 'Modelos prontos com código<br/>de música para adicionar.',
+      promoBanner1ButtonText: settings.promoBanner1ButtonText || 'COMPRAR',
+      promoBanner1ColorStart: settings.promoBanner1ColorStart || '#4a8bf5',
+      promoBanner1ColorEnd: settings.promoBanner1ColorEnd || '#68abfa',
+      promoBanner2TitleHtml: settings.promoBanner2TitleHtml || 'CANECAS COM SUA<br/>FOTO PREFERIDA!',
+      promoBanner2SubtitleHtml: settings.promoBanner2SubtitleHtml || 'Modelos prontos com espaço<br/>para adicionar as fotos.',
+      promoBanner2ButtonText: settings.promoBanner2ButtonText || 'COMPRAR',
+      promoBanner2ColorStart: settings.promoBanner2ColorStart || '#b861ff',
+      promoBanner2ColorEnd: settings.promoBanner2ColorEnd || '#c37aff'
+    });
   }, [settings]);
+
+  const handleSaveStorefront = () => {
+    updateSettings(storefrontSettings);
+    alert('Aparência atualizada com sucesso!');
+  };
 
   const handleSaveColor = () => {
     document.documentElement.style.setProperty('--admin-primary-color', primaryColor);
@@ -33,8 +79,7 @@ export function AdminSettings() {
   const handleSaveLogo = (e: React.FormEvent) => {
     e.preventDefault();
     updateSettings({ logoUrl });
-    setLogoMessage('Logo atualizado com sucesso!');
-    setTimeout(() => setLogoMessage(''), 3000);
+    alert('Logo atualizado com sucesso!');
   };
   
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,28 +95,38 @@ export function AdminSettings() {
     }
   };
 
+  const handleHeroBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setStorefrontSettings({ ...storefrontSettings, heroBannerImage: result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSavePassword = (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 6) {
-      setPasswordMessage('A nova senha deve ter no mínimo 6 caracteres.');
+      alert('A nova senha deve ter no mínimo 6 caracteres.');
       return;
     }
     localStorage.setItem('inkys-admin-password', newPassword);
     setNewPassword('');
-    setPasswordMessage('Senha atualizada com sucesso!');
-    setTimeout(() => setPasswordMessage(''), 3000);
+    alert('Senha atualizada com sucesso!');
   };
   
   const handleSaveWhatsapp = (e: React.FormEvent) => {
     e.preventDefault();
     if (!whatsappNumber) {
-      setWhatsappMessage('Por favor, informe um número válido.');
+      alert('Por favor, informe um número válido.');
       return;
     }
     const sanitized = whatsappNumber.replace(/\D/g, '');
     updateSettings({ whatsappNumber: sanitized });
-    setWhatsappMessage('Número atualizado com sucesso!');
-    setTimeout(() => setWhatsappMessage(''), 3000);
+    alert('Número atualizado com sucesso!');
   };
 
   useEffect(() => {
@@ -103,11 +158,6 @@ export function AdminSettings() {
         </div>
 
         <form onSubmit={handleSaveLogo} className="space-y-4">
-          {logoMessage && (
-            <div className={`p-3 rounded-lg text-sm font-medium ${logoMessage.includes('sucesso') ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
-              {logoMessage}
-            </div>
-          )}
           
           <div className="flex flex-col sm:flex-row gap-6">
             <div className="flex-1 space-y-4">
@@ -236,6 +286,188 @@ export function AdminSettings() {
         </div>
       </div>
 
+      {/* Storefront Customization */}
+      <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm space-y-4">
+        <div>
+          <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wider mb-1">Aparência da Loja</h3>
+          <p className="text-gray-500 text-sm">Personalize cores e banners da página inicial da loja.</p>
+        </div>
+
+        <div className="space-y-6">
+          
+          <div className="grid sm:grid-cols-2 gap-6 p-4 border border-gray-100 rounded-xl bg-gray-50">
+            <h4 className="col-span-full text-sm font-bold uppercase tracking-widest text-gray-700">Cores Globais</h4>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor do Topo / Acentos</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={storefrontSettings.topBarColor}
+                  onChange={(e) => setStorefrontSettings({...storefrontSettings, topBarColor: e.target.value})}
+                  className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0"
+                />
+                <input
+                  type="text"
+                  value={storefrontSettings.topBarColor}
+                  onChange={(e) => setStorefrontSettings({...storefrontSettings, topBarColor: e.target.value})}
+                  className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor do Cabeçalho</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={storefrontSettings.headerColor}
+                  onChange={(e) => setStorefrontSettings({...storefrontSettings, headerColor: e.target.value})}
+                  className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0"
+                />
+                <input
+                  type="text"
+                  value={storefrontSettings.headerColor}
+                  onChange={(e) => setStorefrontSettings({...storefrontSettings, headerColor: e.target.value})}
+                  className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 p-4 border border-gray-100 rounded-xl bg-gray-50">
+            <h4 className="text-sm font-bold uppercase tracking-widest text-gray-700">Banner Principal</h4>
+            
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Imagem de Fundo (URL)</label>
+              <input
+                type="text"
+                value={storefrontSettings.heroBannerImage}
+                onChange={(e) => setStorefrontSettings({...storefrontSettings, heroBannerImage: e.target.value})}
+                className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+              />
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Ou faça upload da galeria</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleHeroBannerUpload}
+                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
+              />
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Título (suporta HTML)</label>
+              <input
+                type="text"
+                value={storefrontSettings.heroBannerTitleHtml}
+                onChange={(e) => setStorefrontSettings({...storefrontSettings, heroBannerTitleHtml: e.target.value})}
+                className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+              />
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Subtítulo</label>
+              <input
+                type="text"
+                value={storefrontSettings.heroBannerSubtitle}
+                onChange={(e) => setStorefrontSettings({...storefrontSettings, heroBannerSubtitle: e.target.value})}
+                className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+              />
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Texto do Botão</label>
+                <input
+                  type="text"
+                  value={storefrontSettings.heroBannerButtonText}
+                  onChange={(e) => setStorefrontSettings({...storefrontSettings, heroBannerButtonText: e.target.value})}
+                  className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor do Botão</label>
+                <input
+                  type="color"
+                  value={storefrontSettings.heroBannerButtonColor}
+                  onChange={(e) => setStorefrontSettings({...storefrontSettings, heroBannerButtonColor: e.target.value})}
+                  className="w-full h-12 rounded-lg cursor-pointer border-0 p-0"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-4 p-4 border border-gray-100 rounded-xl bg-gray-50">
+            <h4 className="text-sm font-bold uppercase tracking-widest text-gray-700">Banners Promocionais</h4>
+            
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Promo Banner 1 */}
+              <div className="space-y-4">
+                <h5 className="text-xs font-bold uppercase text-gray-600 border-b border-gray-200 pb-2">Banner Esquerdo</h5>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Título (HTML)</label>
+                  <input type="text" value={storefrontSettings.promoBanner1TitleHtml} onChange={e => setStorefrontSettings({...storefrontSettings, promoBanner1TitleHtml: e.target.value})} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Subtítulo (HTML)</label>
+                  <input type="text" value={storefrontSettings.promoBanner1SubtitleHtml} onChange={e => setStorefrontSettings({...storefrontSettings, promoBanner1SubtitleHtml: e.target.value})} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Botão</label>
+                  <input type="text" value={storefrontSettings.promoBanner1ButtonText} onChange={e => setStorefrontSettings({...storefrontSettings, promoBanner1ButtonText: e.target.value})} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor Início</label>
+                    <input type="color" value={storefrontSettings.promoBanner1ColorStart} onChange={e => setStorefrontSettings({...storefrontSettings, promoBanner1ColorStart: e.target.value})} className="w-full h-8 cursor-pointer border-0 p-0" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor Fim</label>
+                    <input type="color" value={storefrontSettings.promoBanner1ColorEnd} onChange={e => setStorefrontSettings({...storefrontSettings, promoBanner1ColorEnd: e.target.value})} className="w-full h-8 cursor-pointer border-0 p-0" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Promo Banner 2 */}
+              <div className="space-y-4">
+                <h5 className="text-xs font-bold uppercase text-gray-600 border-b border-gray-200 pb-2">Banner Direito</h5>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Título (HTML)</label>
+                  <input type="text" value={storefrontSettings.promoBanner2TitleHtml} onChange={e => setStorefrontSettings({...storefrontSettings, promoBanner2TitleHtml: e.target.value})} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Subtítulo (HTML)</label>
+                  <input type="text" value={storefrontSettings.promoBanner2SubtitleHtml} onChange={e => setStorefrontSettings({...storefrontSettings, promoBanner2SubtitleHtml: e.target.value})} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Botão</label>
+                  <input type="text" value={storefrontSettings.promoBanner2ButtonText} onChange={e => setStorefrontSettings({...storefrontSettings, promoBanner2ButtonText: e.target.value})} className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor Início</label>
+                    <input type="color" value={storefrontSettings.promoBanner2ColorStart} onChange={e => setStorefrontSettings({...storefrontSettings, promoBanner2ColorStart: e.target.value})} className="w-full h-8 cursor-pointer border-0 p-0" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor Fim</label>
+                    <input type="color" value={storefrontSettings.promoBanner2ColorEnd} onChange={e => setStorefrontSettings({...storefrontSettings, promoBanner2ColorEnd: e.target.value})} className="w-full h-8 cursor-pointer border-0 p-0" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button 
+            type="button"
+            onClick={handleSaveStorefront}
+            className="flex items-center justify-center gap-2 w-full sm:w-auto bg-[var(--color-primary)] text-white px-6 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all"
+          >
+            <Save size={18} /> Salvar Aparência
+          </button>
+        </div>
+      </div>
+
       {/* WhatsApp Configuration */}
       <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm space-y-4">
         <div>
@@ -244,11 +476,6 @@ export function AdminSettings() {
         </div>
 
         <form onSubmit={handleSaveWhatsapp} className="space-y-4 max-w-sm">
-          {whatsappMessage && (
-            <div className={`p-3 rounded-lg text-sm font-medium ${whatsappMessage.includes('sucesso') ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
-              {whatsappMessage}
-            </div>
-          )}
           <div className="space-y-1">
             <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Número do WhatsApp (com DDD)</label>
             <div className="relative">
@@ -282,11 +509,6 @@ export function AdminSettings() {
         </div>
 
         <form onSubmit={handleSavePassword} className="space-y-4 max-w-sm">
-          {passwordMessage && (
-            <div className={`p-3 rounded-lg text-sm font-medium ${passwordMessage.includes('sucesso') ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
-              {passwordMessage}
-            </div>
-          )}
           <div className="space-y-1">
             <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Nova Senha</label>
             <input

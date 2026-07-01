@@ -36,10 +36,27 @@ export function CheckoutPage({ cart, onComplete }: CheckoutPageProps) {
       return;
     }
     
+    // Obter tipo
+    const formElement = e.target as HTMLFormElement;
+    const tipo = ((formElement.elements.namedItem('tipo') as RadioNodeList)[0] as HTMLInputElement).checked ? 'Pessoa Física' : 'Pessoa Jurídica';
+    const genderSelect = formElement.querySelector('select');
+    const gender = genderSelect && genderSelect.value !== '- Selecione -' ? genderSelect.value : '';
+    const birthInput = formElement.querySelectorAll('input[type="text"]')[1] as HTMLInputElement;
+    const birthDate = birthInput ? birthInput.value : '';
+    const landlineInput = formElement.querySelectorAll('input[type="text"]')[3] as HTMLInputElement;
+    const landline = landlineInput ? landlineInput.value : '';
+
     onComplete({
+      email: formData.email,
+      type: tipo,
       name: formData.nome,
+      cpf: formData.cpf,
+      gender: gender,
+      birthDate: birthDate,
       phone: formData.celular,
-      address: `${formData.cep}`
+      landline: landline,
+      address: `${formData.rua ? formData.rua + ', ' : ''}${formData.numero ? formData.numero + ', ' : ''}${formData.cidade ? formData.cidade + ', ' : ''}${formData.cep}`,
+      paymentMethod: paymentMethod
     });
   };
 
