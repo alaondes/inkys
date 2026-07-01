@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft } from 'lucide-react';
 import { formatPrice, Product } from '../../data/products';
 import { useProducts } from '../../context/ProductContext';
 
@@ -11,6 +11,29 @@ export function Products() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertFormatting = (tagStart: string, tagEnd: string) => {
+    if (!descriptionRef.current) return;
+    const start = descriptionRef.current.selectionStart;
+    const end = descriptionRef.current.selectionEnd;
+    const text = formData.description || "";
+    const selectedText = text.substring(start, end);
+    const newText = text.substring(0, start) + tagStart + selectedText + tagEnd + text.substring(end);
+    setFormData({ ...formData, description: newText });
+    
+    // Focus back on the textarea and place cursor correctly
+    setTimeout(() => {
+      if (descriptionRef.current) {
+        descriptionRef.current.focus();
+        descriptionRef.current.setSelectionRange(
+          start + tagStart.length + selectedText.length, 
+          start + tagStart.length + selectedText.length
+        );
+      }
+    }, 0);
+  };
 
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -254,12 +277,12 @@ export function Products() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1 col-span-2">
                   <label className="text-[10px] uppercase font-bold text-gray-500">Nome do Produto</label>
-                  <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
+                  <input required type="text" value={formData.name || ""} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
                 </div>
                 
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-gray-500">Categoria</label>
-                  <input type="text" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
+                  <input type="text" value={formData.category || ""} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
                 </div>
 
                 <div className="space-y-1">
@@ -273,6 +296,84 @@ export function Products() {
                       const parsed = parseFloat(val);
                       setFormData({...formData, price: isNaN(parsed) ? (val === '' ? 0 : formData.price) : parsed});
                     }} 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Preço Original / Sem Desconto (R$)</label>
+                  <input 
+                    type="text" 
+                    value={formData.compareAtPrice?.toString().replace('.', ',') || ''} 
+                    onChange={e => {
+                      const val = e.target.value.replace(',', '.');
+                      const parsed = parseFloat(val);
+                      setFormData({...formData, compareAtPrice: isNaN(parsed) ? (val === '' ? undefined : formData.compareAtPrice) : parsed});
+                    }} 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
+                    placeholder="Opcional"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Desconto PIX (%)</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    max="100"
+                    value={formData.pixDiscount !== undefined ? Math.round(formData.pixDiscount * 100) : ''} 
+                    onChange={e => {
+                      const val = parseInt(e.target.value);
+                      setFormData({...formData, pixDiscount: isNaN(val) ? undefined : val / 100});
+                    }} 
+                    placeholder="Ex: 10"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Qtd. Parcelas (sem juros)</label>
+                  <input 
+                    type="number" 
+                    min="1"
+                    value={formData.installments || ''} 
+                    onChange={e => {
+                      const val = parseInt(e.target.value);
+                      setFormData({...formData, installments: isNaN(val) ? undefined : val});
+                    }} 
+                    placeholder="Ex: 2"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Avaliação (Estrelas)</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    max="5"
+                    step="0.5"
+                    value={formData.rating || ''} 
+                    onChange={e => {
+                      const val = parseFloat(e.target.value);
+                      setFormData({...formData, rating: isNaN(val) ? undefined : val});
+                    }} 
+                    placeholder="Ex: 5"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Qtd. Avaliações</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    value={formData.reviews || ''} 
+                    onChange={e => {
+                      const val = parseInt(e.target.value);
+                      setFormData({...formData, reviews: isNaN(val) ? undefined : val});
+                    }} 
+                    placeholder="Ex: 15"
                     className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
                   />
                 </div>
@@ -348,8 +449,22 @@ export function Products() {
                 </div>
 
                 <div className="space-y-1 col-span-2">
-                  <label className="text-[10px] uppercase font-bold text-gray-500">Descrição</label>
-                  <textarea rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none resize-none" />
+                  <div className="flex justify-between items-end mb-1">
+                    <label className="text-[10px] uppercase font-bold text-gray-500">Descrição</label>
+                    <div className="flex gap-1">
+                      <button type="button" onClick={() => insertFormatting('<strong>', '</strong>')} className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700" title="Negrito"><Bold size={14} /></button>
+                      <button type="button" onClick={() => insertFormatting('<em>', '</em>')} className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700" title="Itálico"><Italic size={14} /></button>
+                      <button type="button" onClick={() => insertFormatting('<p>', '</p>')} className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700" title="Parágrafo"><AlignLeft size={14} /></button>
+                      <button type="button" onClick={() => insertFormatting('<br/>', '')} className="p-1 px-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold" title="Quebra de Linha">BR</button>
+                    </div>
+                  </div>
+                  <textarea 
+                    ref={descriptionRef}
+                    rows={6} 
+                    value={formData.description || ""} 
+                    onChange={e => setFormData({...formData, description: e.target.value})} 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none resize-y" 
+                  />
                 </div>
 
                 <div className="col-span-2 space-y-3 pt-4 border-t border-gray-100">

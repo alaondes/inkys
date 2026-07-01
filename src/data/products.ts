@@ -4,9 +4,14 @@ export interface Product {
   category: string;
   description: string;
   price: number;
+  compareAtPrice?: number;
   image: string;
   gallery?: string[];
   colors?: { name: string; hex: string }[];
+  rating?: number;
+  reviews?: number;
+  pixDiscount?: number;
+  installments?: number;
 }
 
 export const INITIAL_PRODUCTS: Product[] = [
@@ -22,7 +27,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     id: '2',
     name: 'Caneca Personalizada do seu Jeito (100% Preta)',
     category: 'Canecas',
-    description: 'Caneca toda preta personalizada com sua estampa.',
+    description: '<p>Dê um toque de elegância e exclusividade ao seu presente com a <strong>caneca 100% preta personalizada com foto e música do Spotify.</strong></p><br><p>Com um visual sofisticado e moderno, ela permite estampar a imagem de sua escolha junto ao código da sua música favorita, criando um item único que une estilo e emoção.</p><br><p>Produzida em <strong>cerâmica de alta qualidade</strong>, essa caneca oferece resistência, durabilidade e um acabamento impecável que realça a estampa sobre o fundo preto intenso.</p><br><p>Com <strong>capacidade de 325ml</strong>, é perfeita para apreciar café, chá ou qualquer bebida preferida com muito mais personalidade.</p><br><p>Acompanha uma <strong>linda caixinha estampada para presente</strong>, pronta para encantar já no momento da entrega.</p><br><p>E para garantir ainda mais praticidade, é <strong>segura para uso no micro-ondas e na lava-louças</strong>, preservando cores e detalhes por muito mais tempo.</p><br><p>A <strong>foto e o nome da música</strong> para personalização podem ser enviados pelo <strong>WhatsApp (19) 99847-0035</strong> ou pelo <strong>e-mail falecom@amocanecas.com.br</strong>, garantindo que sua caneca seja feita exatamente do jeito que você imaginou.</p><br><p><strong>Sofisticação, personalização e música — tudo em uma única caneca que vai tocar o coração!</strong></p>',
     price: 44.90,
     image: 'https://images.unsplash.com/photo-1506456001222-19e07fb884b2?q=80&w=2000&auto=format&fit=crop',
   },

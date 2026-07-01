@@ -32,13 +32,12 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
     setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
-  // Mock a rating and reviews
-  const rating = 5;
-  const reviews = 10;
+  const rating = product.rating !== undefined ? product.rating : (settings.productRating || 5);
+  const reviews = product.reviews !== undefined ? product.reviews : (settings.productReviews || 5);
   
-  const pixDiscount = 0.10;
+  const pixDiscount = product.pixDiscount !== undefined ? product.pixDiscount : (settings.pixDiscount !== undefined ? settings.pixDiscount : 0.10);
   const pixPrice = product.price * (1 - pixDiscount);
-  const installments = 2;
+  const installments = product.installments !== undefined ? product.installments : (settings.installments || 2);
   const installmentPrice = product.price / installments;
 
   const handleWhatsapp = () => {
@@ -105,13 +104,22 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           <div className="text-3xl font-bold leading-none mb-1" style={{ color: settings.buyButtonColor }}>
             {formatPrice(pixPrice)} <span className="text-sm font-normal">no pix</span>
           </div>
-          <div className="text-[11px] text-gray-500 mb-2">com 10% de desconto</div>
+          <div className="text-[11px] text-gray-500 mb-2">com {Math.round(pixDiscount * 100)}% de desconto</div>
+          
+          {product.compareAtPrice && product.compareAtPrice > product.price && (
+            <div className="text-sm font-bold text-gray-800 line-through decoration-gray-400">
+              {formatPrice(product.compareAtPrice)}
+            </div>
+          )}
+          
           <div className="text-sm font-bold text-gray-800">
             {formatPrice(product.price)}
           </div>
-          <div className="text-[13px] text-gray-600">
-            até <span className="font-bold">{installments}x</span> de <span className="font-bold">{formatPrice(installmentPrice)}</span> sem juros
-          </div>
+          {settings.paymentMethods?.credit && (
+            <div className="text-[13px] text-gray-600">
+              até <span className="font-bold">{installments}x</span> de <span className="font-bold">{formatPrice(installmentPrice)}</span> sem juros
+            </div>
+          )}
         </div>
         
         <div className="flex flex-col gap-2 w-full mt-auto">

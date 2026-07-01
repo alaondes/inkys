@@ -35,7 +35,12 @@ export function AdminSettings() {
     promoBanner2ButtonText: settings.promoBanner2ButtonText || 'COMPRAR',
     promoBanner2ColorStart: settings.promoBanner2ColorStart || '#b861ff',
     promoBanner2ColorEnd: settings.promoBanner2ColorEnd || '#c37aff',
-    buyButtonColor: settings.buyButtonColor || '#5ba324'
+    buyButtonColor: settings.buyButtonColor || '#5ba324',
+    storeName: settings.storeName || 'Amo Canecas',
+    productRating: settings.productRating || 5,
+    productReviews: settings.productReviews || 5,
+    pixDiscount: settings.pixDiscount !== undefined ? settings.pixDiscount : 0.10,
+    installments: settings.installments || 2,
   });
   
   const [toastMessage, setToastMessage] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -68,7 +73,12 @@ export function AdminSettings() {
       promoBanner2ButtonText: settings.promoBanner2ButtonText || 'COMPRAR',
       promoBanner2ColorStart: settings.promoBanner2ColorStart || '#b861ff',
       promoBanner2ColorEnd: settings.promoBanner2ColorEnd || '#c37aff',
-      buyButtonColor: settings.buyButtonColor || '#5ba324'
+      buyButtonColor: settings.buyButtonColor || '#5ba324',
+      storeName: settings.storeName || 'Amo Canecas',
+      productRating: settings.productRating || 5,
+      productReviews: settings.productReviews || 5,
+      pixDiscount: settings.pixDiscount !== undefined ? settings.pixDiscount : 0.10,
+      installments: settings.installments || 2,
     });
   }, [settings]);
 
@@ -134,6 +144,11 @@ export function AdminSettings() {
     const sanitized = whatsappNumber.replace(/\D/g, '');
     updateSettings({ whatsappNumber: sanitized });
     showToast('Número atualizado com sucesso!');
+  };
+
+  const handleSavePaymentMethods = () => {
+    updateSettings({ paymentMethods });
+    showToast('Métodos de pagamento atualizados com sucesso!');
   };
 
   useEffect(() => {
@@ -284,12 +299,21 @@ export function AdminSettings() {
           />
         </div>
 
-        <div className="mt-8 p-4 rounded-xl border border-green-200 bg-green-50 flex items-center justify-between">
+        <div className="mt-8 p-4 rounded-xl border border-green-200 bg-green-50 flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
             <span className="text-sm font-medium text-green-900">Gateway de Pagamento Online</span>
           </div>
           <span className="text-[10px] uppercase font-bold text-green-700 bg-green-100 px-2 py-1 rounded">Ativo</span>
+        </div>
+
+        <div className="flex justify-end">
+          <button 
+            onClick={handleSavePaymentMethods}
+            className="flex items-center gap-2 bg-[var(--color-primary)] text-white px-6 py-2 rounded-lg font-bold text-sm hover:brightness-110 transition-all"
+          >
+            <Save size={16} /> Salvar Métodos
+          </button>
         </div>
       </div>
 
@@ -478,6 +502,67 @@ export function AdminSettings() {
                     <input type="color" value={storefrontSettings.promoBanner2ColorEnd} onChange={e => setStorefrontSettings({...storefrontSettings, promoBanner2ColorEnd: e.target.value})} className="w-full h-8 cursor-pointer border-0 p-0" />
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 p-4 border border-gray-100 rounded-xl bg-gray-50">
+            <h4 className="text-sm font-bold uppercase tracking-widest text-gray-700">Dados da Loja e Produtos</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Nome da Loja</label>
+                <input
+                  type="text"
+                  value={storefrontSettings.storeName || ""}
+                  onChange={(e) => setStorefrontSettings({...storefrontSettings, storeName: e.target.value})}
+                  className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Desconto no PIX (Decimal, ex: 0.10 para 10%)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="1"
+                  value={storefrontSettings.pixDiscount}
+                  onChange={(e) => setStorefrontSettings({...storefrontSettings, pixDiscount: parseFloat(e.target.value) || 0})}
+                  className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Número de Parcelas (Sem Juros)</label>
+                <input
+                  type="number"
+                  step="1"
+                  min="1"
+                  value={storefrontSettings.installments}
+                  onChange={(e) => setStorefrontSettings({...storefrontSettings, installments: parseInt(e.target.value) || 1})}
+                  className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Estrelas (Avaliação Mock)</label>
+                <input
+                  type="number"
+                  step="1"
+                  min="1"
+                  max="5"
+                  value={storefrontSettings.productRating}
+                  onChange={(e) => setStorefrontSettings({...storefrontSettings, productRating: parseInt(e.target.value) || 5})}
+                  className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Número de Avaliações (Mock)</label>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={storefrontSettings.productReviews}
+                  onChange={(e) => setStorefrontSettings({...storefrontSettings, productReviews: parseInt(e.target.value) || 0})}
+                  className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                />
               </div>
             </div>
           </div>

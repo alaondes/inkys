@@ -24,17 +24,61 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
     setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
-  const rating = 5;
-  const reviews = 5;
-  const pixDiscount = 0.10;
+  const rating = product.rating !== undefined ? product.rating : (settings.productRating || 5);
+  const reviews = product.reviews !== undefined ? product.reviews : (settings.productReviews || 5);
+  const pixDiscount = product.pixDiscount !== undefined ? product.pixDiscount : (settings.pixDiscount !== undefined ? settings.pixDiscount : 0.10);
   const pixPrice = product.price * (1 - pixDiscount);
-  const installments = 2;
+  const installments = product.installments !== undefined ? product.installments : (settings.installments || 2);
   const installmentPrice = product.price / installments;
 
   const handleWhatsapp = () => {
     const message = encodeURIComponent(`Olá! Gostaria de tirar uma dúvida sobre o produto ${product.name}.`);
     const number = settings.whatsappNumber;
     window.open(`https://wa.me/${number}?text=${message}`, '_blank');
+  };
+
+  const [isWishlisted, setIsWishlisted] = useState(false);
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: product.name,
+          text: `Confira ${product.name} na ${settings.storeName}!`,
+          url: window.location.href,
+        });
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        alert('Link copiado para a área de transferência!');
+      }
+    } catch (error) {
+      console.log('Error sharing', error);
+    }
+  };
+
+  const handleWishlist = () => {
+    setIsWishlisted(!isWishlisted);
+  };
+
+  const [cep, setCep] = useState('');
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [shippingOptions, setShippingOptions] = useState<{name: string, price: number, days: number}[] | null>(null);
+
+  const calculateShipping = () => {
+    if (!cep || cep.replace(/\D/g, '').length !== 8) {
+      alert("Por favor, insira um CEP válido com 8 dígitos.");
+      return;
+    }
+    
+    setShippingLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      setShippingOptions([
+        { name: 'PAC', price: 15.90, days: 7 },
+        { name: 'SEDEX', price: 28.50, days: 3 }
+      ]);
+      setShippingLoading(false);
+    }, 1000);
   };
 
   return (
@@ -54,34 +98,34 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
           <div className="w-full md:w-[60%] flex gap-4">
             {/* Main Image */}
             <div className="flex-1 relative border border-gray-100 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
-               <button className="absolute top-4 right-4 bg-white border border-gray-200 px-3 py-1 rounded text-sm text-gray-600 flex items-center gap-2 z-10 shadow-sm">
-                 <Video size={16} className="text-red-600" /> Vídeo
-               </button>
-               
-               {images.length > 1 && (
-                 <>
-                   <button 
-                     onClick={prevImage}
-                     className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-sm transition-colors z-10"
-                   >
-                     <ChevronLeft size={24} />
-                   </button>
-                   <button 
-                     onClick={nextImage}
-                     className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-sm transition-colors z-10"
-                   >
-                     <ChevronRight size={24} />
-                   </button>
-                 </>
-               )}
+                 <button className="absolute top-4 right-4 bg-white border border-gray-200 px-3 py-1 rounded text-sm text-gray-600 flex items-center gap-2 z-10 shadow-sm">
+                   <Video size={16} className="text-red-600" /> Vídeo
+                 </button>
+                 
+                 {images.length > 1 && (
+                   <>
+                     <button 
+                       onClick={prevImage}
+                       className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-sm transition-colors z-10"
+                     >
+                       <ChevronLeft size={24} />
+                     </button>
+                     <button 
+                       onClick={nextImage}
+                       className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-sm transition-colors z-10"
+                     >
+                       <ChevronRight size={24} />
+                     </button>
+                   </>
+                 )}
 
-               <img src={images[currentImageIndex]} alt={product.name} className="w-full h-auto max-h-[600px] object-contain mix-blend-multiply" />
+                 <img src={images[currentImageIndex]} alt={product.name} className="w-full h-auto max-h-[600px] object-contain mix-blend-multiply" />
             </div>
           </div>
           
           {/* Info */}
           <div className="w-full md:w-[40%]">
-            <div className="text-gray-500 text-sm mb-1">Amo Canecas</div>
+            <div className="text-gray-500 text-sm mb-1">{settings.storeName || 'Amo Canecas'}</div>
             <h1 className="text-2xl font-normal text-gray-800 mb-2">{product.name}</h1>
             
             <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
@@ -95,54 +139,68 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
             </div>
 
             <div className="mb-6">
-              <div className="text-4xl font-bold text-[#5ba324] leading-none mb-1">
+              <div className="text-4xl font-bold leading-none mb-1" style={{ color: settings.buyButtonColor }}>
                 {formatPrice(pixPrice)} <span className="text-sm font-normal">no pix</span>
               </div>
-              <div className="text-sm text-gray-500 mb-2">com 10% de desconto</div>
-              <div className="text-base font-bold text-gray-800 line-through decoration-gray-400">
-                {formatPrice(product.price + 5)}
-              </div>
+              <div className="text-sm text-gray-500 mb-2">com {Math.round(pixDiscount * 100)}% de desconto</div>
+              
+              {product.compareAtPrice && product.compareAtPrice > product.price && (
+                <div className="text-base font-bold text-gray-800 line-through decoration-gray-400">
+                  {formatPrice(product.compareAtPrice)}
+                </div>
+              )}
+              
               <div className="text-base font-bold text-gray-800">
                 {formatPrice(product.price)}
               </div>
-              <div className="text-sm text-gray-600">
-                até <span className="font-bold">{installments}x</span> de <span className="font-bold">{formatPrice(installmentPrice)}</span> sem juros
-              </div>
+              {settings.paymentMethods?.credit && (
+                <div className="text-sm text-gray-600">
+                  até <span className="font-bold">{installments}x</span> de <span className="font-bold">{formatPrice(installmentPrice)}</span> sem juros
+                </div>
+              )}
             </div>
             
             {/* Payment methods */}
             <div className="border border-gray-200 rounded-lg p-4 mb-6">
-               <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-2">
-                 <div className="flex gap-1">
-                    {/* Mock payment icons */}
-                    <div className="w-8 h-5 bg-blue-600 rounded text-white text-[8px] flex items-center justify-center font-bold">VISA</div>
-                    <div className="w-8 h-5 bg-orange-500 rounded text-white text-[8px] flex items-center justify-center font-bold">MASTER</div>
-                 </div>
-                 <button className="text-sm text-gray-600 flex items-center gap-1">Parcelas <span>v</span></button>
-               </div>
-               
-               <div className="space-y-2 text-sm text-gray-600 border-b border-gray-100 pb-4 mb-4">
-                  <div className="flex justify-between">
-                     <span><strong>1x</strong> de {formatPrice(product.price)} sem juros</span>
-                  </div>
-                  <div className="flex justify-between">
-                     <span><strong>2x</strong> de {formatPrice(installmentPrice)} sem juros</span>
-                  </div>
-               </div>
+               {settings.paymentMethods?.credit && (
+                 <>
+                   <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-2">
+                     <div className="flex gap-1">
+                        {/* Mock payment icons */}
+                        <div className="w-8 h-5 bg-blue-600 rounded text-white text-[8px] flex items-center justify-center font-bold">VISA</div>
+                        <div className="w-8 h-5 bg-orange-500 rounded text-white text-[8px] flex items-center justify-center font-bold">MASTER</div>
+                     </div>
+                     <button className="text-sm text-gray-600 flex items-center gap-1">Parcelas <span>v</span></button>
+                   </div>
+                   
+                   <div className="space-y-2 text-sm text-gray-600 border-b border-gray-100 pb-4 mb-4">
+                      <div className="flex justify-between">
+                         <span><strong>1x</strong> de {formatPrice(product.price)} sem juros</span>
+                      </div>
+                      <div className="flex justify-between">
+                         <span><strong>2x</strong> de {formatPrice(installmentPrice)} sem juros</span>
+                      </div>
+                   </div>
+                 </>
+               )}
                
                <div className="space-y-3">
-                 <div className="flex justify-between items-center text-sm">
-                   <div className="flex items-center gap-2">
-                     <div className="w-4 h-4 bg-teal-400 rounded-sm"></div> <span className="text-gray-500">PIX</span>
+                 {settings.paymentMethods?.pix && (
+                   <div className="flex justify-between items-center text-sm">
+                     <div className="flex items-center gap-2">
+                       <div className="w-4 h-4 bg-teal-400 rounded-sm"></div> <span className="text-gray-500">PIX</span>
+                     </div>
+                     <span className="font-bold">{formatPrice(pixPrice)}</span>
                    </div>
-                   <span className="font-bold">{formatPrice(pixPrice)}</span>
-                 </div>
-                 <div className="flex justify-between items-center text-sm">
-                   <div className="flex items-center gap-2">
-                     <div className="w-4 h-3 bg-gray-800"></div> <span className="text-gray-500">Boleto</span>
+                 )}
+                 {settings.paymentMethods?.boleto && (
+                   <div className="flex justify-between items-center text-sm">
+                     <div className="flex items-center gap-2">
+                       <div className="w-4 h-3 bg-gray-800"></div> <span className="text-gray-500">Boleto</span>
+                     </div>
+                     <span className="font-bold">{formatPrice(product.price)}</span>
                    </div>
-                   <span className="font-bold">{formatPrice(product.price)}</span>
-                 </div>
+                 )}
                </div>
             </div>
 
@@ -164,42 +222,73 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
             </div>
             
             <div className="flex gap-6 justify-center text-sm text-gray-500 border-b border-gray-100 pb-6 mb-6">
-               <button className="flex items-center gap-2 hover:text-gray-800"><Share2 size={16}/> Compartilhar</button>
-               <button className="flex items-center gap-2 hover:text-gray-800"><Heart size={16}/> Adicionar aos desejos</button>
+               <button onClick={handleShare} className="flex items-center gap-2 hover:text-gray-800 transition-colors">
+                 <Share2 size={16}/> Compartilhar
+               </button>
+               <button onClick={handleWishlist} className={`flex items-center gap-2 transition-colors ${isWishlisted ? 'text-red-500 hover:text-red-600' : 'hover:text-gray-800'}`}>
+                 <Heart size={16} className={isWishlisted ? 'fill-current' : ''} /> {isWishlisted ? 'Na lista de desejos' : 'Adicionar aos desejos'}
+               </button>
             </div>
 
             {/* Calculate shipping */}
             <div>
                <label className="block text-sm text-gray-700 mb-2">Calcule o frete</label>
-               <div className="flex gap-2">
-                 <input type="text" placeholder="CEP" className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-purple-400" />
-                 <button className="border border-gray-300 rounded px-6 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">Calcular</button>
+               <div className="flex gap-2 mb-4">
+                 <input 
+                   type="text" 
+                   value={cep}
+                   onChange={e => {
+                     let value = e.target.value.replace(/\D/g, '');
+                     if (value.length > 5) value = value.replace(/^(\d{5})(\d)/, '$1-$2');
+                     setCep(value);
+                   }}
+                   maxLength={9}
+                   placeholder="CEP" 
+                   className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-purple-400" 
+                 />
+                 <button 
+                   onClick={calculateShipping}
+                   disabled={shippingLoading}
+                   className="border border-gray-300 rounded px-6 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                 >
+                   {shippingLoading ? 'Calculando...' : 'Calcular'}
+                 </button>
                </div>
+               
+               {shippingOptions && (
+                 <div className="border border-gray-200 rounded-lg overflow-hidden">
+                   {shippingOptions.map((option, idx) => (
+                     <div key={idx} className={`flex justify-between items-center p-3 text-sm ${idx !== shippingOptions.length -1 ? 'border-b border-gray-100' : ''}`}>
+                       <div>
+                         <span className="font-bold block text-gray-800">{option.name}</span>
+                         <span className="text-gray-500 text-xs">Até {option.days} dias úteis</span>
+                       </div>
+                       <span className="font-bold text-gray-900">{formatPrice(option.price)}</span>
+                     </div>
+                   ))}
+                 </div>
+               )}
             </div>
           </div>
         </div>
       </div>
       
       {/* Description */}
-      <div className="bg-[#fcfafc] py-16 border-t border-b border-gray-100 mt-12">
-         <div className="max-w-[800px] mx-auto px-4 text-center">
-            <h2 className="text-3xl font-bold text-[#783884] mb-8">Descrição</h2>
-            <div className="text-left space-y-4 text-[15px] text-gray-700 italic">
-               <p>Dê um toque de elegância e exclusividade ao seu presente com a <strong>caneca 100% preta personalizada com foto e música do Spotify.</strong></p>
-               <p>Com um visual sofisticado e moderno, ela permite estampar a imagem de sua escolha junto ao código da sua música favorita, criando um item único que une estilo e emoção.</p>
-               <p>Produzida em <strong>cerâmica de alta qualidade</strong>, essa caneca oferece resistência, durabilidade e um acabamento impecável que realça a estampa sobre o fundo preto intenso.</p>
-               <p>Com <strong>capacidade de 325ml</strong>, é perfeita para apreciar café, chá ou qualquer bebida preferida com muito mais personalidade.</p>
-               <p>Acompanha uma <strong>linda caixinha estampada para presente</strong>, pronta para encantar já no momento da entrega.</p>
-               <p>E para garantir ainda mais praticidade, é <strong>segura para uso no micro-ondas e na lava-louças</strong>, preservando cores e detalhes por muito mais tempo.</p>
-               <p>A <strong>foto e o nome da música</strong> para personalização podem ser enviados pelo <strong>WhatsApp (19) 99847-0035</strong> ou pelo <strong>e-mail falecom@amocanecas.com.br</strong>, garantindo que sua caneca seja feita exatamente do jeito que você imaginou.</p>
-               <p><strong>Sofisticação, personalização e música — tudo em uma única caneca que vai tocar o coração!</strong></p>
-            </div>
-         </div>
-      </div>
+      {product.description && (
+        <div className="bg-[#fcfafc] py-16 border-t border-b border-gray-100 mt-12">
+           <div className="max-w-6xl mx-auto px-4 text-center">
+              <h2 className="text-3xl font-bold text-[#783884] mb-8">Descrição</h2>
+              <div 
+                className="text-left space-y-4 text-[15px] text-gray-700 italic"
+                dangerouslySetInnerHTML={{ __html: product.description }}
+              />
+           </div>
+        </div>
+      )}
       
       {/* Reviews */}
       <div className="py-16 bg-white">
-         <div className="max-w-[800px] mx-auto px-4 text-center">
+         <div className="max-w-6xl mx-auto px-4 text-center">
             <h2 className="text-3xl font-bold text-[#783884] mb-8">Avaliações dos consumidores</h2>
             <div className="flex justify-center items-center gap-12">
                <div className="text-center">
