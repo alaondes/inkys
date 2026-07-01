@@ -48,9 +48,9 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   };
 
   return (
-    <div className="flex flex-col items-center group bg-white">
+    <div className="flex flex-col items-center group bg-white border border-gray-100 rounded-xl p-4 hover:shadow-xl transition-all duration-300 h-full w-full overflow-hidden">
       <div 
-        className="aspect-square bg-white mb-4 flex items-center justify-center relative w-full px-4 overflow-hidden cursor-pointer"
+        className="aspect-square bg-white mb-4 relative w-full overflow-hidden cursor-pointer group/image rounded-lg shrink-0"
         onClick={() => onAddToCart(product, selectedColor)}
       >
         <AnimatePresence mode="wait">
@@ -63,7 +63,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
               transition={{ duration: 0.2 }}
               src={images[currentImageIndex]} 
               alt={product.name} 
-              className="object-contain w-full h-full mix-blend-multiply"
+              className="absolute inset-0 w-full h-full object-contain p-4 mix-blend-multiply"
             />
           )}
         </AnimatePresence>
@@ -72,36 +72,36 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           <>
             <button 
               onClick={prevImage}
-              className="absolute left-0 top-1/2 -translate-y-1/2 text-purple-700 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 p-1.5 rounded-full shadow-md opacity-0 group-hover/image:opacity-100 transition-all z-10"
             >
-              <ChevronLeft size={32} strokeWidth={2} />
+              <ChevronLeft size={20} />
             </button>
             <button 
               onClick={nextImage}
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-purple-700 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 p-1.5 rounded-full shadow-md opacity-0 group-hover/image:opacity-100 transition-all z-10"
             >
-              <ChevronRight size={32} strokeWidth={2} />
+              <ChevronRight size={20} />
             </button>
           </>
         )}
       </div>
       
-      <div className="flex flex-col flex-grow items-center text-center px-2 w-full">
+      <div className="flex flex-col flex-grow items-center text-center px-2 w-full min-w-0">
         <h3 
-          className="text-[15px] font-normal text-gray-700 leading-tight mb-2 min-h-[45px] cursor-pointer hover:text-[#783884]"
+          className="text-[15px] font-normal text-gray-700 leading-tight mb-2 min-h-[45px] cursor-pointer hover:text-[#783884] line-clamp-2 break-words w-full"
           onClick={() => onAddToCart(product, selectedColor)}
         >
           {product.name}
         </h3>
         
-        <div className="flex items-center gap-1 mb-2">
+        <div className="flex items-center gap-1 mb-2 shrink-0">
           {[...Array(5)].map((_, i) => (
             <Star key={i} size={14} className={i < rating ? "fill-yellow-400 text-yellow-400" : "fill-gray-200 text-gray-200"} />
           ))}
           <span className="text-xs text-yellow-500 font-medium ml-1">({reviews})</span>
         </div>
         
-        <div className="mb-4 w-full">
+        <div className="mb-4 w-full shrink-0">
           <div className="text-3xl font-bold leading-none mb-1" style={{ color: settings.buyButtonColor }}>
             {formatPrice(pixPrice)} <span className="text-sm font-normal">no pix</span>
           </div>

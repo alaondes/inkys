@@ -13,21 +13,21 @@ export function ProductCarousel({ products, onAddToCart }: ProductCarouselProps)
 
   const scrollLeft = () => {
     if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+      scrollRef.current.scrollBy({ left: -scrollRef.current.offsetWidth, behavior: 'smooth' });
     }
   };
 
   const scrollRight = () => {
     if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+      scrollRef.current.scrollBy({ left: scrollRef.current.offsetWidth, behavior: 'smooth' });
     }
   };
 
   return (
-    <div className="relative group">
+    <div className="relative group w-full">
       <button 
         onClick={scrollLeft}
-        className="absolute left-0 top-1/2 -translate-y-1/2 -ml-4 z-10 bg-white shadow-md text-gray-700 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+        className="absolute -left-5 md:-left-12 top-1/2 -translate-y-1/2 z-10 bg-white shadow-md text-gray-700 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity"
       >
         <ChevronLeft size={24} />
       </button>
@@ -38,7 +38,7 @@ export function ProductCarousel({ products, onAddToCart }: ProductCarouselProps)
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {products.map(product => (
-          <div key={product.id} className="min-w-[280px] w-[280px] shrink-0 snap-start">
+          <div key={product.id} className="min-w-[280px] w-[280px] md:min-w-[calc(25%-18px)] md:w-[calc(25%-18px)] shrink-0 snap-start">
             <ProductCard product={product} onAddToCart={() => onAddToCart(product)} />
           </div>
         ))}
@@ -46,7 +46,7 @@ export function ProductCarousel({ products, onAddToCart }: ProductCarouselProps)
 
       <button 
         onClick={scrollRight}
-        className="absolute right-0 top-1/2 -translate-y-1/2 -mr-4 z-10 bg-white shadow-md text-gray-700 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+        className="absolute -right-5 md:-right-12 top-1/2 -translate-y-1/2 z-10 bg-white shadow-md text-gray-700 rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity"
       >
         <ChevronRight size={24} />
       </button>

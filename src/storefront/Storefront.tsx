@@ -94,7 +94,7 @@ export function Storefront() {
         <div className="max-w-[1400px] mx-auto px-4">
           <div className="flex items-center justify-between h-24 gap-8">
             {/* Logo */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 cursor-pointer" onClick={goHome}>
               {logoUrl ? (
                 <img src={logoUrl} alt="Logo" className="h-16 w-auto object-contain" />
               ) : (
@@ -275,7 +275,7 @@ export function Storefront() {
             </section>
 
             {/* Category Sections */}
-            <div className="space-y-16 max-w-[1200px] mx-auto px-4 bg-[#f9fafb]">
+            <div className="space-y-16 max-w-[1400px] mx-auto px-4 bg-[#f9fafb]">
               <section id="category-all">
                 <h2 className="text-[#783884] text-3xl font-bold text-center mb-10">Todos os Produtos</h2>
                 <ProductCarousel products={products} onAddToCart={openProduct} />
