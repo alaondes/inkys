@@ -22,9 +22,9 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       const snap = await getDocs(productsRef);
       if (snap.empty) {
         const batch = writeBatch(db);
-        INITIAL_PRODUCTS.forEach(p => {
+        INITIAL_PRODUCTS.forEach((p, index) => {
           const docRef = doc(productsRef, p.id);
-          batch.set(docRef, p);
+          batch.set(docRef, { ...p, order: index });
         });
         await batch.commit();
       }
@@ -33,8 +33,17 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribe = onSnapshot(productsRef, (snapshot) => {
       const fbProducts = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product));
+      
+      // Sort by order field if available, else fallback to id
+      fbProducts.sort((a: any, b: any) => {
+        if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
+        return a.id.localeCompare(b.id);
+      });
+      
       if (fbProducts.length > 0) {
         setProductsState(fbProducts);
+      } else {
+        setProductsState([]);
       }
       setInitialized(true);
     }, (error) => {
@@ -44,15 +53,36 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const setProducts = (newProducts: Product[]) => {
-    // This function will now update Firestore, which in turn updates the state via onSnapshot
-    const productsRef = collection(db, 'products');
-    const batch = writeBatch(db);
-    newProducts.forEach(p => {
-      const docRef = doc(productsRef, p.id);
-      batch.set(docRef, p);
-    });
-    batch.commit().catch(e => console.error("Error saving products:", e));
+  const setProducts = async (newProducts: Product[]) => {
+    // Optimistic update
+    setProductsState(newProducts);
+    
+    // This function will now update Firestore, handling additions, updates, deletions, and ordering
+    try {
+      const productsRef = collection(db, 'products');
+      const snap = await getDocs(productsRef);
+      const existingIds = snap.docs.map(d => d.id);
+      const newIds = newProducts.map(p => p.id);
+      
+      const batch = writeBatch(db);
+      
+      // Delete products that are no longer in newProducts
+      existingIds.forEach(id => {
+        if (!newIds.includes(id)) {
+          batch.delete(doc(productsRef, id));
+        }
+      });
+
+      // Update/Add products with their new order
+      newProducts.forEach((p, index) => {
+        const docRef = doc(productsRef, p.id);
+        batch.set(docRef, { ...p, order: index });
+      });
+      
+      await batch.commit();
+    } catch (e) {
+      console.error("Error saving products:", e);
+    }
   };
 
   return (

@@ -7,20 +7,15 @@ import { Products } from './views/Products';
 import { Orders } from './views/Orders';
 import { AdminSettings } from './views/Settings';
 import { Login } from './components/Login';
+import { useSettings } from '../context/SettingsContext';
 
 export function AdminApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return sessionStorage.getItem('inkys-admin-auth') === 'true';
   });
   
-  const [logoUrl, setLogoUrl] = useState('');
-
-  useEffect(() => {
-    const savedLogo = localStorage.getItem('inkys-logo-url');
-    if (savedLogo) {
-      setLogoUrl(savedLogo);
-    }
-  }, []);
+  const { settings } = useSettings();
+  const logoUrl = settings.logoUrl;
 
   const location = useLocation();
 

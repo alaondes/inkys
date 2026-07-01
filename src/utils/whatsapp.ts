@@ -1,6 +1,5 @@
-export const getWhatsAppNumber = () => {
-  return localStorage.getItem('inkys-whatsapp-number') || '5561991365428';
-};
+import { CartItem } from '../storefront/Storefront';
+import { formatPrice } from '../data/products';
 
 export interface CheckoutData {
   name: string;
@@ -8,10 +7,7 @@ export interface CheckoutData {
   paymentMethod: string;
 }
 
-import { CartItem } from '../storefront/Storefront';
-import { formatPrice } from '../data/products';
-
-export const generateWhatsAppLink = (cart: CartItem[], checkoutData: CheckoutData) => {
+export const generateWhatsAppLink = (cart: CartItem[], checkoutData: CheckoutData, phoneNumber: string) => {
   const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   
   let message = `Olá Inkys! Gostaria de finalizar meu pedido.\n\n`;
@@ -30,6 +26,5 @@ export const generateWhatsAppLink = (cart: CartItem[], checkoutData: CheckoutDat
   message += `Forma de Pagamento: ${checkoutData.paymentMethod}\n`;
   
   const encodedMessage = encodeURIComponent(message);
-  const number = getWhatsAppNumber();
-  return `https://wa.me/${number}?text=${encodedMessage}`;
+  return `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
 };

@@ -50,13 +50,43 @@ export function Products() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isGallery: boolean) => {
     const files = Array.from(e.target.files || []) as File[];
     if (files.length > 0) {
-      if (isGallery) {
-        const promises = files.map(file => new Promise<string>((resolve) => {
+      const resizeImage = (file: File): Promise<string> => {
+        return new Promise((resolve) => {
           const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(file);
-        }));
+          reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX_WIDTH = 800;
+              const MAX_HEIGHT = 800;
+              let width = img.width;
+              let height = img.height;
 
+              if (width > height) {
+                if (width > MAX_WIDTH) {
+                  height *= MAX_WIDTH / width;
+                  width = MAX_WIDTH;
+                }
+              } else {
+                if (height > MAX_HEIGHT) {
+                  width *= MAX_HEIGHT / height;
+                  height = MAX_HEIGHT;
+                }
+              }
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, width, height);
+              resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.src = event.target?.result as string;
+          };
+          reader.readAsDataURL(file);
+        });
+      };
+
+      if (isGallery) {
+        const promises = files.map(file => resizeImage(file));
         Promise.all(promises).then(results => {
           setFormData(prev => ({
             ...prev,
@@ -64,14 +94,9 @@ export function Products() {
           }));
         });
       } else {
-        const file = files[0];
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (typeof reader.result === 'string') {
-            setFormData(prev => ({ ...prev, image: reader.result as string }));
-          }
-        };
-        reader.readAsDataURL(file);
+        resizeImage(files[0]).then(result => {
+          setFormData(prev => ({ ...prev, image: result }));
+        });
       }
     }
     
@@ -234,12 +259,22 @@ export function Products() {
                 
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-gray-500">Categoria</label>
-                  <input required type="text" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
+                  <input type="text" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-gray-500">Preço (R$)</label>
-                  <input required type="number" step="0.01" value={formData.price} onChange={e => setFormData({...formData, price: Number(e.target.value)})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
+                  <input 
+                    required 
+                    type="text" 
+                    value={formData.price?.toString().replace('.', ',') || ''} 
+                    onChange={e => {
+                      const val = e.target.value.replace(',', '.');
+                      const parsed = parseFloat(val);
+                      setFormData({...formData, price: isNaN(parsed) ? (val === '' ? 0 : formData.price) : parsed});
+                    }} 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
+                  />
                 </div>
 
 
@@ -314,7 +349,7 @@ export function Products() {
 
                 <div className="space-y-1 col-span-2">
                   <label className="text-[10px] uppercase font-bold text-gray-500">Descrição</label>
-                  <textarea required rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none resize-none" />
+                  <textarea rows={3} value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none resize-none" />
                 </div>
 
                 <div className="col-span-2 space-y-3 pt-4 border-t border-gray-100">
@@ -338,7 +373,6 @@ export function Products() {
                             className="w-10 h-10 rounded cursor-pointer bg-transparent border-none appearance-none p-0 shrink-0" 
                           />
                           <input 
-                            required 
                             type="text" 
                             value={color.name} 
                             onChange={e => handleUpdateColor(index, 'name', e.target.value)} 

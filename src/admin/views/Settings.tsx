@@ -1,37 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Smartphone, Banknote, Save, MessageCircle } from 'lucide-react';
+import { useSettings } from '../../context/SettingsContext';
 
 export function AdminSettings() {
-  const [primaryColor, setPrimaryColor] = useState(
-    document.documentElement.style.getPropertyValue('--admin-primary-color') || '#00f0ff'
-  );
+  const { settings, updateSettings } = useSettings();
 
+  const [primaryColor, setPrimaryColor] = useState(settings.primaryColor);
   const [newPassword, setNewPassword] = useState('');
   const [passwordMessage, setPasswordMessage] = useState('');
   
-  const [logoUrl, setLogoUrl] = useState('');
+  const [logoUrl, setLogoUrl] = useState(settings.logoUrl);
   const [logoMessage, setLogoMessage] = useState('');
   
-  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState(settings.whatsappNumber);
   const [whatsappMessage, setWhatsappMessage] = useState('');
 
-  const [paymentMethods, setPaymentMethods] = useState({
-    pix: true,
-    credit: true,
-    debit: false,
-    boleto: false
-  });
+  const [paymentMethods, setPaymentMethods] = useState(settings.paymentMethods);
+
+  useEffect(() => {
+    setPrimaryColor(settings.primaryColor);
+    setLogoUrl(settings.logoUrl);
+    setWhatsappNumber(settings.whatsappNumber);
+    setPaymentMethods(settings.paymentMethods);
+  }, [settings]);
 
   const handleSaveColor = () => {
     document.documentElement.style.setProperty('--admin-primary-color', primaryColor);
-    // Also we could save to localStorage
-    localStorage.setItem('inkys-admin-primary-color', primaryColor);
+    updateSettings({ primaryColor });
     alert('Tema atualizado com sucesso!');
   };
 
   const handleSaveLogo = (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('inkys-logo-url', logoUrl);
+    updateSettings({ logoUrl });
     setLogoMessage('Logo atualizado com sucesso!');
     setTimeout(() => setLogoMessage(''), 3000);
   };
@@ -41,7 +42,9 @@ export function AdminSettings() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setLogoUrl(reader.result as string);
+        const result = reader.result as string;
+        setLogoUrl(result);
+        updateSettings({ logoUrl: result });
       };
       reader.readAsDataURL(file);
     }
@@ -65,7 +68,8 @@ export function AdminSettings() {
       setWhatsappMessage('Por favor, informe um número válido.');
       return;
     }
-    localStorage.setItem('inkys-whatsapp-number', whatsappNumber.replace(/\D/g, ''));
+    const sanitized = whatsappNumber.replace(/\D/g, '');
+    updateSettings({ whatsappNumber: sanitized });
     setWhatsappMessage('Número atualizado com sucesso!');
     setTimeout(() => setWhatsappMessage(''), 3000);
   };
