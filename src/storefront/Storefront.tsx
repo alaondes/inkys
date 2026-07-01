@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, LayoutGrid, Search, Filter } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -22,6 +22,14 @@ export function Storefront() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [maxPrice, setMaxPrice] = useState<number>(100);
+  const [logoUrl, setLogoUrl] = useState<string>('');
+
+  useEffect(() => {
+    const savedLogo = localStorage.getItem('inkys-logo-url');
+    if (savedLogo) {
+      setLogoUrl(savedLogo);
+    }
+  }, []);
 
   const categories = useMemo(() => {
     const cats = new Set(products.map(p => p.category));
@@ -83,8 +91,11 @@ export function Storefront() {
           <div className="flex items-center justify-between h-20">
             {/* Logo */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 ink-gradient rounded-full"></div>
-              <h1 className="font-display font-[800] text-3xl tracking-tighter uppercase text-gray-900">Inkys</h1>
+              {logoUrl ? (
+                <img src={logoUrl} alt="Inkys Logo" className="h-14 md:h-16 w-auto max-w-[200px] object-contain" />
+              ) : (
+                <div className="w-10 h-10 ink-gradient rounded-full"></div>
+              )}
             </div>
 
             {/* Actions */}

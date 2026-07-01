@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, ExternalLink } from 'lucide-react';
 
@@ -12,6 +12,16 @@ export function AdminApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return sessionStorage.getItem('inkys-admin-auth') === 'true';
   });
+  
+  const [logoUrl, setLogoUrl] = useState('');
+
+  useEffect(() => {
+    const savedLogo = localStorage.getItem('inkys-logo-url');
+    if (savedLogo) {
+      setLogoUrl(savedLogo);
+    }
+  }, []);
+
   const location = useLocation();
 
   const handleLogin = () => {
@@ -41,7 +51,11 @@ export function AdminApp() {
       <aside className="w-64 border-r border-gray-200 bg-white flex flex-col">
         <div className="h-20 flex items-center px-6 border-b border-gray-200">
           <div className="flex items-center gap-3 w-full">
-            <div className="w-8 h-8 rounded-full" style={{ background: 'var(--color-primary)' }} />
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-12 w-auto max-w-[120px] object-contain" />
+            ) : (
+              <div className="w-8 h-8 rounded-full" style={{ background: 'var(--color-primary)' }} />
+            )}
             <h1 className="font-bold tracking-widest uppercase text-xl">Admin</h1>
           </div>
         </div>

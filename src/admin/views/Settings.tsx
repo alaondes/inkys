@@ -9,6 +9,9 @@ export function AdminSettings() {
   const [newPassword, setNewPassword] = useState('');
   const [passwordMessage, setPasswordMessage] = useState('');
   
+  const [logoUrl, setLogoUrl] = useState('');
+  const [logoMessage, setLogoMessage] = useState('');
+  
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [whatsappMessage, setWhatsappMessage] = useState('');
 
@@ -24,6 +27,24 @@ export function AdminSettings() {
     // Also we could save to localStorage
     localStorage.setItem('inkys-admin-primary-color', primaryColor);
     alert('Tema atualizado com sucesso!');
+  };
+
+  const handleSaveLogo = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('inkys-logo-url', logoUrl);
+    setLogoMessage('Logo atualizado com sucesso!');
+    setTimeout(() => setLogoMessage(''), 3000);
+  };
+  
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSavePassword = (e: React.FormEvent) => {
@@ -54,6 +75,10 @@ export function AdminSettings() {
     if (savedColor) {
       setPrimaryColor(savedColor);
     }
+    const savedLogo = localStorage.getItem('inkys-logo-url');
+    if (savedLogo) {
+      setLogoUrl(savedLogo);
+    }
     const savedWhatsapp = localStorage.getItem('inkys-whatsapp-number');
     if (savedWhatsapp) {
       setWhatsappNumber(savedWhatsapp);
@@ -65,6 +90,62 @@ export function AdminSettings() {
   return (
     <div className="space-y-8 max-w-4xl">
       <h2 className="text-2xl font-bold uppercase tracking-widest">Configurações</h2>
+
+      {/* Theme Customization */}
+      <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm space-y-4">
+        <div>
+          <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wider mb-1">Logotipo da Loja</h3>
+          <p className="text-gray-500 text-sm">Personalize a logo que aparecerá na loja e no painel.</p>
+        </div>
+
+        <form onSubmit={handleSaveLogo} className="space-y-4">
+          {logoMessage && (
+            <div className={`p-3 rounded-lg text-sm font-medium ${logoMessage.includes('sucesso') ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+              {logoMessage}
+            </div>
+          )}
+          
+          <div className="flex flex-col sm:flex-row gap-6">
+            <div className="flex-1 space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">URL da Imagem</label>
+                <input
+                  type="text"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none text-gray-900 transition-all"
+                  placeholder="https://..."
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Ou faça upload da galeria</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
+                />
+              </div>
+            </div>
+            
+            <div className="w-32 h-32 flex items-center justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden shrink-0">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain p-2" />
+              ) : (
+                <div className="w-10 h-10 ink-gradient rounded-full"></div>
+              )}
+            </div>
+          </div>
+          
+          <button 
+            type="submit"
+            className="flex items-center justify-center gap-2 w-full sm:w-auto bg-[var(--color-primary)] text-white px-6 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all"
+          >
+            <Save size={18} /> Salvar Logo
+          </button>
+        </form>
+      </div>
 
       {/* Theme Customization */}
       <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm space-y-4">
