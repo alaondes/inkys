@@ -1,54 +1,157 @@
-import React, { useState } from 'react';
-import { Eye, Truck, CheckCircle, Clock, XCircle, Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink } from 'lucide-react';
 import { formatPrice } from '../../data/products';
+import { db } from '../../lib/firebase';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 
 type OrderStatus = 'Pendente' | 'Pago' | 'Enviado' | 'Cancelado';
+
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+  fileUrl?: string;
+}
 
 interface Order {
   id: string;
   customer: string;
+  email?: string;
+  phone?: string;
   date: string;
   total: number;
   status: OrderStatus;
   trackingCode?: string;
-  items: { name: string; quantity: number; price: number }[];
+  items: OrderItem[];
+  shippingInfo?: any;
+  notes?: string;
 }
 
-const MOCK_ORDERS: Order[] = [
-  { id: 'ORD-001', customer: 'João Silva', date: '21 Mai 2026', total: 79.80, status: 'Pendente', items: [{ name: 'Caneca de Vidro Jatiado', quantity: 2, price: 39.90 }] },
-  { id: 'ORD-002', customer: 'Maria Souza', date: '20 Mai 2026', total: 45.90, status: 'Pago', items: [{ name: 'Caneca Fosca Premium', quantity: 1, price: 45.90 }] },
-  { id: 'ORD-003', customer: 'Carlos Andrade', date: '19 Mai 2026', total: 119.80, status: 'Enviado', trackingCode: 'BR123456789BR', items: [{ name: 'Kit 2 Copos Neon', quantity: 2, price: 59.90 }] },
-  { id: 'ORD-004', customer: 'Ana Paula', date: '18 Mai 2026', total: 33.90, status: 'Cancelado', items: [{ name: 'Caneca em Porcelana Branca', quantity: 1, price: 33.90 }] },
-];
-
 const statusConfig = {
-  'Pendente': { icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-  'Pago': { icon: CheckCircle, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-  'Enviado': { icon: Truck, color: 'text-green-400', bg: 'bg-green-400/10' },
-  'Cancelado': { icon: XCircle, color: 'text-red-400', bg: 'bg-red-400/10' },
+  'Pendente': { icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-100' },
+  'Pago': { icon: CheckCircle, color: 'text-blue-600', bg: 'bg-blue-100' },
+  'Enviado': { icon: Truck, color: 'text-green-600', bg: 'bg-green-100' },
+  'Cancelado': { icon: XCircle, color: 'text-red-600', bg: 'bg-red-100' },
 };
 
 export function Orders() {
-  const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'Todos'>('Todos');
+  const [dateFilter, setDateFilter] = useState<'Todos' | 'Hoje' | 'EstaSemana' | 'EsteMes'>('Todos');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
-  const filteredOrders = orders.filter(o => 
-    o.id.toLowerCase().includes(search.toLowerCase()) || 
-    o.customer.toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => {
+    const q = query(collection(db, 'orders'), orderBy('date', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const ordersData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        let formattedDate = 'Data Indisponível';
+        if (data.date?.toDate) {
+          formattedDate = data.date.toDate().toLocaleDateString('pt-BR', {
+            day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+          });
+        }
+        return {
+          id: doc.id,
+          customer: data.customer || 'Cliente não identificado',
+          date: formattedDate,
+          total: data.total || 0,
+          status: data.status || 'Pendente',
+          trackingCode: data.trackingCode,
+          items: data.items || [],
+          shippingInfo: data.shippingInfo || null,
+          notes: data.notes || '',
+          _rawDate: data.date?.toDate ? data.date.toDate() : new Date(0) // Internal use for filtering
+        } as Order & { _rawDate: Date };
+      });
+      setOrders(ordersData);
+      
+      // Update selected order if it's currently open
+      if (selectedOrder) {
+        const updated = ordersData.find(o => o.id === selectedOrder.id);
+        if (updated) setSelectedOrder(updated);
+      }
+    });
 
-  const handleUpdateStatus = (id: string, newStatus: OrderStatus) => {
-    setOrders(orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
-    if (selectedOrder?.id === id) {
-      setSelectedOrder({ ...selectedOrder, status: newStatus });
+    return () => unsubscribe();
+  }, [selectedOrder?.id]);
+
+  const filteredOrders = orders.filter(o => {
+    const matchesSearch = o.id.toLowerCase().includes(search.toLowerCase()) || 
+      o.customer.toLowerCase().includes(search.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'Todos' || o.status === statusFilter;
+
+    let matchesDate = true;
+    if (dateFilter !== 'Todos') {
+      const orderDate = (o as any)._rawDate;
+      const now = new Date();
+      if (dateFilter === 'Hoje') {
+        matchesDate = orderDate.toDateString() === now.toDateString();
+      } else if (dateFilter === 'EstaSemana') {
+        const firstDayOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+        matchesDate = orderDate >= firstDayOfWeek;
+      } else if (dateFilter === 'EsteMes') {
+        matchesDate = orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesDate;
+  });
+
+  const handleExportCSV = () => {
+    if (filteredOrders.length === 0) return alert('Nenhum pedido para exportar.');
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "ID,Cliente,Data,Status,Total,Rastreio\n";
+
+    filteredOrders.forEach(o => {
+      const row = [
+        o.id,
+        `"${o.customer}"`,
+        `"${o.date}"`,
+        o.status,
+        o.total,
+        o.trackingCode || ''
+      ].join(",");
+      csvContent += row + "\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "pedidos.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleUpdateStatus = async (id: string, newStatus: OrderStatus) => {
+    try {
+      const orderRef = doc(db, 'orders', id);
+      await updateDoc(orderRef, { status: newStatus });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Erro ao atualizar status');
     }
   };
 
-  const handleUpdateTracking = (id: string, tracking: string) => {
-    setOrders(orders.map(o => o.id === id ? { ...o, trackingCode: tracking } : o));
-    if (selectedOrder?.id === id) {
-      setSelectedOrder({ ...selectedOrder, trackingCode: tracking });
+  const handleUpdateTracking = async (id: string, tracking: string) => {
+    try {
+      const orderRef = doc(db, 'orders', id);
+      await updateDoc(orderRef, { trackingCode: tracking });
+    } catch (error) {
+      console.error('Error updating tracking code:', error);
+    }
+  };
+
+  const handleUpdateNotes = async (id: string, notes: string) => {
+    try {
+      const orderRef = doc(db, 'orders', id);
+      await updateDoc(orderRef, { notes });
+    } catch (error) {
+      console.error('Error updating notes:', error);
     }
   };
 
@@ -56,17 +159,47 @@ export function Orders() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold uppercase tracking-widest">Pedidos</h2>
+        <button onClick={handleExportCSV} className="text-sm font-bold uppercase tracking-wider bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors">
+          Exportar Excel (CSV)
+        </button>
       </div>
 
-      <div className="bg-white border border-gray-200 p-4 rounded-2xl flex items-center gap-3">
-        <Search className="text-gray-400" size={20} />
-        <input 
-          type="text" 
-          placeholder="Buscar por código do pedido ou cliente..." 
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="bg-transparent border-none outline-none text-gray-900 w-full placeholder-gray-400"
-        />
+      <div className="bg-white border border-gray-200 p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2">
+          <Search className="text-gray-400" size={20} />
+          <input 
+            type="text" 
+            placeholder="Buscar por código ou cliente..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="bg-transparent border-none outline-none text-gray-900 w-full placeholder-gray-400"
+          />
+        </div>
+        
+        <div className="flex gap-2 w-full sm:w-auto">
+          <select 
+            value={statusFilter} 
+            onChange={(e) => setStatusFilter(e.target.value as OrderStatus | 'Todos')}
+            className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm text-gray-700 outline-none focus:border-[var(--color-primary)] flex-1 sm:w-40"
+          >
+            <option value="Todos">Todos os Status</option>
+            <option value="Pendente">Pendentes</option>
+            <option value="Pago">Pagos</option>
+            <option value="Enviado">Enviados</option>
+            <option value="Cancelado">Cancelados</option>
+          </select>
+          
+          <select 
+            value={dateFilter} 
+            onChange={(e) => setDateFilter(e.target.value as any)}
+            className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm text-gray-700 outline-none focus:border-[var(--color-primary)] flex-1 sm:w-40"
+          >
+            <option value="Todos">Qualquer Data</option>
+            <option value="Hoje">Hoje</option>
+            <option value="EstaSemana">Esta Semana</option>
+            <option value="EsteMes">Este Mês</option>
+          </select>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl overflow-hidden border border-gray-200">
@@ -129,7 +262,9 @@ export function Orders() {
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <p className="text-[10px] uppercase font-bold text-gray-500 mb-1">Cliente</p>
-                  <p className="text-sm">{selectedOrder.customer}</p>
+                  <p className="text-sm font-medium">{selectedOrder.customer}</p>
+                  {selectedOrder.email && <p className="text-sm text-gray-600">{selectedOrder.email}</p>}
+                  {selectedOrder.phone && <p className="text-sm text-gray-600">{selectedOrder.phone}</p>}
                 </div>
                 <div>
                   <p className="text-[10px] uppercase font-bold text-gray-500 mb-1">Data do Pedido</p>
@@ -137,15 +272,40 @@ export function Orders() {
                 </div>
               </div>
 
+              {selectedOrder.shippingInfo && (
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-[10px] uppercase font-bold text-gray-500 mb-2">Endereço de Entrega</p>
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm">
+                    <p>{selectedOrder.shippingInfo.street}, {selectedOrder.shippingInfo.number} {selectedOrder.shippingInfo.complement && `- ${selectedOrder.shippingInfo.complement}`}</p>
+                    <p>{selectedOrder.shippingInfo.neighborhood} - {selectedOrder.shippingInfo.city}/{selectedOrder.shippingInfo.state}</p>
+                    <p>CEP: {selectedOrder.shippingInfo.zipCode}</p>
+                    {selectedOrder.shippingInfo.cpf && <p className="mt-2 text-gray-600">CPF: {selectedOrder.shippingInfo.cpf}</p>}
+                    <p className="mt-2 font-bold text-[var(--color-primary)]">Frete: {selectedOrder.shippingInfo.shippingType === 'sedex' ? 'Sedex' : 'PAC'} ({formatPrice(selectedOrder.shippingInfo.shippingCost || 0)})</p>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3 border-t border-gray-100 pt-4">
                 <p className="text-[10px] uppercase font-bold text-gray-500">Itens do Pedido</p>
                 {selectedOrder.items.map((item, i) => (
-                  <div key={i} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
-                    <div className="flex gap-3 items-center">
-                      <span className="bg-white border border-gray-200 text-xs px-2 py-1 rounded font-bold">{item.quantity}x</span>
-                      <span className="text-sm text-gray-900">{item.name}</span>
+                  <div key={i} className="flex flex-col gap-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <div className="flex justify-between items-center">
+                      <div className="flex gap-3 items-center">
+                        <span className="bg-white border border-gray-200 text-xs px-2 py-1 rounded font-bold">{item.quantity}x</span>
+                        <span className="text-sm text-gray-900">{item.name}</span>
+                      </div>
+                      <span className="font-bold text-sm text-[var(--color-primary)]">{formatPrice(item.price * item.quantity)}</span>
                     </div>
-                    <span className="font-bold text-sm text-[var(--color-primary)]">{formatPrice(item.price * item.quantity)}</span>
+                    {item.fileUrl && (
+                      <a 
+                        href={item.fileUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1 mt-1 w-fit"
+                      >
+                        <ExternalLink size={12} /> Ver arte enviada
+                      </a>
+                    )}
                   </div>
                 ))}
                 <div className="flex justify-between items-center pt-2 font-bold text-lg">
@@ -189,6 +349,19 @@ export function Orders() {
                       />
                     </div>
                   </div>
+                </div>
+                
+                <div className="space-y-1 pt-2">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Anotações Internas (Visível apenas para você)</label>
+                  <textarea 
+                    value={selectedOrder.notes || ''}
+                    onChange={(e) => {
+                      setSelectedOrder({...selectedOrder, notes: e.target.value});
+                    }}
+                    onBlur={(e) => handleUpdateNotes(selectedOrder.id, e.target.value)}
+                    placeholder="Ex: Cliente pediu para embalar para presente..."
+                    className="w-full bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm focus:border-yellow-400 outline-none resize-y min-h-[80px] text-gray-800 placeholder-yellow-600/50"
+                  />
                 </div>
               </div>
 

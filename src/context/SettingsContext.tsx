@@ -35,6 +35,9 @@ export interface AppSettings {
   productReviews: number;
   pixDiscount: number;
   installments: number;
+  categories: string[];
+  freeShippingThreshold?: number;
+  fixedShippingRates?: Record<string, number>;
 }
 
 const defaultSettings: AppSettings = {
@@ -70,6 +73,8 @@ const defaultSettings: AppSettings = {
   productReviews: 5,
   pixDiscount: 0.10,
   installments: 2,
+  categories: ['Canecas', 'Música', 'Divertidas', 'Copa', 'Outros'],
+  fixedShippingRates: { 'SP': 15.90, 'RJ': 20.00 }
 };
 
 interface SettingsContextType {

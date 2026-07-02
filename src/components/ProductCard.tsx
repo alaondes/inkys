@@ -124,11 +124,12 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         
         <div className="flex flex-col gap-2 w-full mt-auto">
           <button 
-            onClick={() => onAddToCart(product, selectedColor)}
-            className="w-full text-white py-2.5 rounded font-bold text-[15px] hover:brightness-110 transition-all"
-            style={{ backgroundColor: settings.buyButtonColor }}
+            onClick={() => product.stock !== undefined && product.stock <= 0 ? null : onAddToCart(product, selectedColor)}
+            disabled={product.stock !== undefined && product.stock <= 0}
+            className={`w-full text-white py-2.5 rounded font-bold text-[15px] transition-all ${product.stock !== undefined && product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : 'hover:brightness-110'}`}
+            style={{ backgroundColor: product.stock !== undefined && product.stock <= 0 ? '#9CA3AF' : settings.buyButtonColor }}
           >
-            Comprar
+            {product.stock !== undefined && product.stock <= 0 ? 'Esgotado' : 'Comprar'}
           </button>
           <button 
             onClick={handleWhatsapp}

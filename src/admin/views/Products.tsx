@@ -1,13 +1,15 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft, Tags } from 'lucide-react';
 import { formatPrice, Product } from '../../data/products';
 import { useProducts } from '../../context/ProductContext';
-
+import { useSettings } from '../../context/SettingsContext';
 
 export function Products() {
   const { products, setProducts } = useProducts();
+  const { settings, updateSettings } = useSettings();
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -136,7 +138,7 @@ export function Products() {
   };
 
   const currentProductEmptyTemplate: Partial<Product> = {
-    name: '', category: '', description: '', price: 0, image: '', colors: []
+    name: '', category: '', description: '', price: 0, image: '', colors: [], stock: 0
   };
 
   const [formData, setFormData] = useState<Partial<Product>>(currentProductEmptyTemplate);
@@ -179,12 +181,20 @@ export function Products() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold uppercase tracking-widest">Produtos</h2>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 bg-[var(--color-primary)] text-white px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all"
-        >
-          <Plus size={18} /> Novo Produto
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setIsCategoriesModalOpen(true)}
+            className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider hover:bg-gray-800 transition-all"
+          >
+            <Tags size={18} /> Categorias
+          </button>
+          <button 
+            onClick={() => handleOpenModal()}
+            className="flex items-center gap-2 bg-[var(--color-primary)] text-white px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all"
+          >
+            <Plus size={18} /> Novo Produto
+          </button>
+        </div>
       </div>
 
       <div className="bg-white border border-gray-200 p-4 rounded-2xl flex items-center gap-3">
@@ -205,6 +215,7 @@ export function Products() {
               <tr className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-widest text-gray-500">
                 <th className="p-4 font-bold">Produto</th>
                 <th className="p-4 font-bold">Categoria</th>
+                <th className="p-4 font-bold">Estoque</th>
                 <th className="p-4 font-bold">Preço</th>
                 <th className="p-4 font-bold text-right">Ações</th>
               </tr>
@@ -223,9 +234,18 @@ export function Products() {
                     ) : (
                       <div className="w-10 h-10 rounded bg-gray-100 border border-gray-200 shrink-0"></div>
                     )}
-                    <span className="font-medium text-sm text-gray-900 group-hover:text-cyan-600">{product.name}</span>
+                    <span className="font-medium text-sm text-gray-900 group-hover:text-[var(--color-primary)]">{product.name}</span>
                   </td>
                   <td className="p-4 text-sm text-gray-500">{product.category}</td>
+                  <td className="p-4 text-sm text-gray-500">
+                    {product.stock !== undefined ? (
+                      <span className={`px-2 py-1 rounded text-xs font-bold ${product.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {product.stock > 0 ? `${product.stock} un.` : 'Esgotado'}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
                   <td className="p-4 text-sm font-bold text-[var(--color-primary)]">{formatPrice(product.price)}</td>
                   <td className="p-4 text-right">
                     {search === '' && (
@@ -282,7 +302,16 @@ export function Products() {
                 
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-gray-500">Categoria</label>
-                  <input type="text" value={formData.category || ""} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
+                  <select 
+                    value={formData.category || ""} 
+                    onChange={e => setFormData({...formData, category: e.target.value})} 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                  >
+                    <option value="">Selecione uma categoria...</option>
+                    {settings.categories?.map((cat, idx) => (
+                      <option key={idx} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1">
@@ -347,6 +376,21 @@ export function Products() {
                 </div>
 
                 <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Quantidade em Estoque</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    value={formData.stock !== undefined ? formData.stock : ''} 
+                    onChange={e => {
+                      const val = parseInt(e.target.value);
+                      setFormData({...formData, stock: isNaN(val) ? 0 : val});
+                    }} 
+                    placeholder="Ex: 10"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
+                  />
+                </div>
+
+                <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-gray-500">Avaliação (Estrelas)</label>
                   <input 
                     type="number" 
@@ -378,7 +422,21 @@ export function Products() {
                   />
                 </div>
 
-
+                <div className="space-y-1 col-span-2 flex items-center justify-between bg-gray-50 p-4 rounded-xl border border-gray-200">
+                  <div>
+                    <label className="text-[12px] uppercase font-bold text-gray-900 block">Ocultar Produto</label>
+                    <span className="text-[10px] text-gray-500">Produtos ocultos não aparecem na loja para os clientes.</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={!!formData.hidden}
+                      onChange={e => setFormData({...formData, hidden: e.target.checked})}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary)]"></div>
+                  </label>
+                </div>
 
                 <div className="space-y-2 col-span-2">
                   <div className="flex justify-between items-center">
@@ -509,6 +567,72 @@ export function Products() {
                 <button type="submit" className="px-6 py-2 rounded-lg font-bold text-sm uppercase tracking-wider bg-[var(--color-primary)] text-white hover:brightness-110 transition-all">Salvar Produto</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Categories Modal */}
+      {isCategoriesModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl p-6 relative border border-gray-200 shadow-xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100 shrink-0">
+              <h3 className="text-xl font-bold uppercase tracking-wider flex items-center gap-3">
+                <Tags size={24} className="text-[var(--color-primary)]" /> Categorias
+              </h3>
+              <button onClick={() => setIsCategoriesModalOpen(false)} className="text-gray-400 hover:text-gray-900"><X size={24} /></button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  id="new-category"
+                  placeholder="Nova categoria..." 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const val = e.currentTarget.value.trim();
+                      if (val && !settings.categories?.includes(val)) {
+                        updateSettings({ categories: [...(settings.categories || []), val] });
+                        e.currentTarget.value = '';
+                      }
+                    }
+                  }}
+                />
+                <button 
+                  onClick={() => {
+                    const input = document.getElementById('new-category') as HTMLInputElement;
+                    const val = input.value.trim();
+                    if (val && !settings.categories?.includes(val)) {
+                      updateSettings({ categories: [...(settings.categories || []), val] });
+                      input.value = '';
+                    }
+                  }}
+                  className="bg-[var(--color-primary)] text-white p-2 rounded-lg hover:brightness-110"
+                >
+                  <Plus size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-2 mt-4">
+                {settings.categories?.map((cat, idx) => (
+                  <div key={idx} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <span className="text-sm font-medium text-gray-900">{cat}</span>
+                    <button 
+                      onClick={() => {
+                        updateSettings({ categories: settings.categories?.filter(c => c !== cat) });
+                      }}
+                      className="text-red-500 hover:text-red-700 p-1"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+                {(!settings.categories || settings.categories.length === 0) && (
+                  <p className="text-sm text-gray-500 text-center py-4">Nenhuma categoria cadastrada.</p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

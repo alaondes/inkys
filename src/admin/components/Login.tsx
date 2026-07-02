@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Lock, Mail, ExternalLink } from 'lucide-react';
+import { Lock, Mail, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../../lib/firebase';
 
 interface LoginProps {
   onLogin: () => void;
@@ -10,16 +12,25 @@ export function Login({ onLogin }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
     
-    const storedPassword = localStorage.getItem('inkys-admin-password') || 'InkysAdmin2026!';
-    
-    if (email === 'admin@inkys.com' && password === storedPassword) {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
       onLogin();
-    } else {
-      setError('Credenciais inválidas. Tente: admin@inkys.com e sua senha (padrão: InkysAdmin2026!)');
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setError('E-mail ou senha incorretos.');
+      } else {
+        setError('Ocorreu um erro ao fazer login. Certifique-se de que o provedor E-mail/Senha está ativado no Firebase Console.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -34,14 +45,21 @@ export function Login({ onLogin }: LoginProps) {
       
       <div className="w-full max-w-md bg-white border border-gray-200 p-8 rounded-2xl relative overflow-hidden shadow-xl">
         {/* Glow effect */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-primary)] to-transparent opacity-50" />
         
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-full inline-flex items-center justify-center bg-gray-50 border border-gray-200 mb-4">
-            <Lock className="text-cyan-600" size={28} />
+            <Lock className="text-[var(--color-primary)]" size={28} />
           </div>
           <h2 className="text-2xl font-bold uppercase tracking-wider text-gray-900">Área Restrita</h2>
           <p className="text-gray-500 text-sm mt-2">Faça login para acessar o painel administrativo</p>
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 flex items-start gap-3">
+          <AlertTriangle className="text-blue-500 shrink-0" size={20} />
+          <div className="text-xs text-blue-800">
+            <strong>Atenção:</strong> Você precisa ativar o provedor de autenticação <strong>E-mail/Senha</strong> no Firebase Console (Autenticação {'>'} Sign-in method) e criar um usuário para conseguir fazer login.
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -50,7 +68,6 @@ export function Login({ onLogin }: LoginProps) {
               {error}
             </div>
           )}
-
           <div className="space-y-1">
             <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">E-mail</label>
             <div className="relative">
@@ -60,8 +77,8 @@ export function Login({ onLogin }: LoginProps) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-12 pr-4 text-gray-900 focus:outline-none focus:border-cyan-500 transition-all"
-                placeholder="admin@inkys.com"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-12 pr-4 text-gray-900 focus:outline-none focus:border-[var(--color-primary)] transition-all"
+                placeholder="seu-email@exemplo.com"
               />
             </div>
           </div>
@@ -75,17 +92,18 @@ export function Login({ onLogin }: LoginProps) {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-12 pr-4 text-gray-900 focus:outline-none focus:border-cyan-500 transition-all"
-                placeholder="InkysAdmin2026!"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-12 pr-4 text-gray-900 focus:outline-none focus:border-[var(--color-primary)] transition-all"
+                placeholder="Sua senha secreta"
               />
             </div>
           </div>
 
           <button
             type="submit"
-            className="w-full mt-4 py-3 rounded-xl bg-cyan-500 text-white font-bold uppercase tracking-wider hover:bg-cyan-600 transition-all"
+            disabled={loading}
+            className={`w-full mt-4 py-3 rounded-xl text-white font-bold uppercase tracking-wider transition-all ${loading ? 'bg-gray-400' : 'bg-[var(--color-primary)] hover:brightness-90'}`}
           >
-            Entrar no Painel
+            {loading ? 'Autenticando...' : 'Entrar no Painel'}
           </button>
         </form>
       </div>

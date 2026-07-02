@@ -12,6 +12,8 @@ export interface Product {
   reviews?: number;
   pixDiscount?: number;
   installments?: number;
+  hidden?: boolean;
+  stock?: number;
 }
 
 export const INITIAL_PRODUCTS: Product[] = [

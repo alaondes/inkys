@@ -43,6 +43,11 @@ export function AdminSettings() {
     installments: settings.installments || 2,
   });
   
+  const [shippingSettings, setShippingSettings] = useState({
+    freeShippingThreshold: settings.freeShippingThreshold,
+    fixedShippingRates: settings.fixedShippingRates || { 'SP': 15.90, 'RJ': 20.00 }
+  });
+
   const [toastMessage, setToastMessage] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -79,6 +84,10 @@ export function AdminSettings() {
       productReviews: settings.productReviews || 5,
       pixDiscount: settings.pixDiscount !== undefined ? settings.pixDiscount : 0.10,
       installments: settings.installments || 2,
+    });
+    setShippingSettings({
+      freeShippingThreshold: settings.freeShippingThreshold,
+      fixedShippingRates: settings.fixedShippingRates || { 'SP': 15.90, 'RJ': 20.00 }
     });
   }, [settings]);
 
@@ -167,6 +176,15 @@ export function AdminSettings() {
       setWhatsappNumber('5561991365428');
     }
   }, []);
+
+  const handleSaveShipping = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateSettings({
+      freeShippingThreshold: shippingSettings.freeShippingThreshold,
+      fixedShippingRates: shippingSettings.fixedShippingRates
+    });
+    showToast('Configurações de frete salvas!');
+  };
 
   return (
     <div className="space-y-8 max-w-4xl">
@@ -606,6 +624,101 @@ export function AdminSettings() {
             className="flex items-center justify-center gap-2 w-full bg-green-500 text-white px-4 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:bg-green-600 transition-all"
           >
             <Save size={18} /> Salvar Número
+          </button>
+        </form>
+      </div>
+
+      {/* Shipping Configuration */}
+      <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm space-y-4">
+        <div>
+          <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wider mb-1">Configurações de Frete</h3>
+          <p className="text-gray-500 text-sm">Defina regras de frete e valores fixos.</p>
+        </div>
+
+        <form onSubmit={handleSaveShipping} className="space-y-4 max-w-xl">
+          <div className="space-y-1 max-w-sm">
+            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Frete Grátis Acima de (R$)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={shippingSettings.freeShippingThreshold || ''}
+              onChange={(e) => setShippingSettings({...shippingSettings, freeShippingThreshold: parseFloat(e.target.value) || undefined})}
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none text-gray-900 transition-all"
+              placeholder="Ex: 200 (deixe em branco para desativar)"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Taxas Fixas por Estado (Opcional)</label>
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  id="new-state-code"
+                  placeholder="UF (ex: SP)" 
+                  maxLength={2}
+                  className="w-20 uppercase bg-white border border-gray-300 rounded p-2 text-sm outline-none focus:border-[var(--color-primary)]"
+                />
+                <input 
+                  type="number" 
+                  id="new-state-price"
+                  placeholder="Valor (ex: 15.90)" 
+                  step="0.01"
+                  className="flex-1 bg-white border border-gray-300 rounded p-2 text-sm outline-none focus:border-[var(--color-primary)]"
+                />
+                <button 
+                  type="button"
+                  onClick={() => {
+                    const uf = (document.getElementById('new-state-code') as HTMLInputElement).value.toUpperCase();
+                    const price = parseFloat((document.getElementById('new-state-price') as HTMLInputElement).value);
+                    if (uf.length === 2 && !isNaN(price)) {
+                      setShippingSettings({
+                        ...shippingSettings,
+                        fixedShippingRates: {
+                          ...shippingSettings.fixedShippingRates,
+                          [uf]: price
+                        }
+                      });
+                      (document.getElementById('new-state-code') as HTMLInputElement).value = '';
+                      (document.getElementById('new-state-price') as HTMLInputElement).value = '';
+                    }
+                  }}
+                  className="bg-gray-800 text-white px-3 rounded hover:bg-gray-700"
+                >
+                  Add
+                </button>
+              </div>
+              
+              <div className="space-y-1 mt-2">
+                {(Object.entries(shippingSettings.fixedShippingRates || {}) as [string, number][]).map(([uf, price]) => (
+                  <div key={uf} className="flex justify-between items-center bg-white border border-gray-200 p-2 rounded text-sm">
+                    <span className="font-bold">{uf}</span>
+                    <div className="flex items-center gap-4">
+                      <span>R$ {price.toFixed(2)}</span>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const newRates = { ...shippingSettings.fixedShippingRates };
+                          delete newRates[uf];
+                          setShippingSettings({ ...shippingSettings, fixedShippingRates: newRates });
+                        }}
+                        className="text-red-500 hover:underline text-xs"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <button 
+            type="submit"
+            className="flex items-center justify-center gap-2 w-full max-w-sm bg-[var(--color-primary)] text-white px-4 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all"
+          >
+            <Save size={18} /> Salvar Frete
           </button>
         </form>
       </div>

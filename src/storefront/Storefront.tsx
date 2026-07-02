@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Menu, MessageCircle, CreditCard, Truck, ShieldCheck, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatPrice, Product } from '../data/products';
@@ -6,6 +6,7 @@ import { generateWhatsAppLink, CheckoutData } from '../utils/whatsapp';
 import { ProductCard } from '../components/ProductCard';
 import { ProductCarousel } from '../components/ProductCarousel';
 import { CheckoutPage } from '../components/CheckoutPage';
+import { CustomProductPage } from './CustomProductPage';
 import { ProductDetails } from './ProductDetails';
 import { useProducts } from '../context/ProductContext';
 import { useSettings } from '../context/SettingsContext';
@@ -16,6 +17,7 @@ export interface CartItem extends Product {
   selectedColor?: string;
   cartItemId: string;
   file?: File;
+  fileUrl?: string;
 }
 
 export function Storefront() {
@@ -24,7 +26,33 @@ export function Storefront() {
   const logoUrl = settings.logoUrl;
 
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [currentView, setCurrentView] = useState<'home' | 'product' | 'cart' | 'checkout'>('home');
+  const [isCartLoaded, setIsCartLoaded] = useState(false);
+
+  useEffect(() => {
+    import('localforage').then((localforage) => {
+      localforage.default.getItem<CartItem[]>('cart').then((savedCart) => {
+        if (savedCart) {
+          setCart(savedCart);
+        }
+        setIsCartLoaded(true);
+      }).catch((e) => {
+        console.error('Failed to load cart from localforage', e);
+        setIsCartLoaded(true);
+      });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isCartLoaded) {
+      import('localforage').then((localforage) => {
+        localforage.default.setItem('cart', cart).catch((e) => {
+          console.error('Failed to save cart to localforage', e);
+        });
+      });
+    }
+  }, [cart, isCartLoaded]);
+
+  const [currentView, setCurrentView] = useState<'home' | 'product' | 'cart' | 'checkout' | 'custom'>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
@@ -64,13 +92,71 @@ export function Storefront() {
     window.scrollTo(0, 0);
   };
 
-  const handleWhatsAppRedirect = (data: CheckoutData) => {
+  const handleWhatsAppRedirect = async (data: CheckoutData) => {
     if (cart.length === 0) return;
-    const url = generateWhatsAppLink(cart, data, settings.whatsappNumber);
-    window.open(url, '_blank');
-    setCart([]);
-    setCurrentView('home');
-    window.scrollTo(0, 0);
+    
+    const toast = (await import('react-hot-toast')).default;
+    const { storage, db } = await import('../lib/firebase');
+    const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+    const { collection, addDoc, doc, updateDoc, increment, serverTimestamp } = await import('firebase/firestore');
+
+    try {
+      const updatedCart = [...cart];
+      // Upload files
+      for (let i = 0; i < updatedCart.length; i++) {
+        const item = updatedCart[i];
+        if (item.file) {
+          const fileRef = ref(storage, `uploads/${Date.now()}_${item.file.name}`);
+          await uploadBytes(fileRef, item.file);
+          const url = await getDownloadURL(fileRef);
+          updatedCart[i].fileUrl = url;
+          // Don't send File object to firestore
+          delete updatedCart[i].file;
+        }
+        
+        // Deduct stock
+        if (item.stock !== undefined) {
+          try {
+            await updateDoc(doc(db, 'products', item.id), {
+              stock: increment(-item.quantity)
+            });
+          } catch(e) {
+            console.error('Failed to deduct stock', e);
+          }
+        }
+      }
+
+      const subtotal = updatedCart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+      const discount = data.couponDiscount || 0;
+      const subAfterCoupon = Math.max(0, subtotal - discount);
+      const pixDiscount = data.paymentMethod === 'pix' ? subAfterCoupon * 0.10 : 0;
+      const finalTotal = subAfterCoupon - pixDiscount + data.shippingCost;
+
+      // Create order in Firestore
+      const orderData = {
+        customer: data.name,
+        email: data.email,
+        phone: data.phone,
+        total: finalTotal,
+        status: 'Pendente',
+        date: serverTimestamp(),
+        items: updatedCart,
+        shippingInfo: data
+      };
+
+      const docRef = await addDoc(collection(db, 'orders'), orderData);
+      
+      const url = generateWhatsAppLink(updatedCart, data, settings.whatsappNumber, docRef.id);
+      window.open(url, '_blank');
+      setCart([]);
+      setCurrentView('home');
+      window.scrollTo(0, 0);
+      toast.success('Pedido finalizado com sucesso!');
+    } catch (error) {
+      console.error('Error processing order:', error);
+      toast.error('Erro ao processar seu pedido. Tente novamente.');
+      throw error;
+    }
   };
 
   const openProduct = (product: Product) => {
@@ -87,11 +173,16 @@ export function Storefront() {
 
   const cartItemsCount = cart.reduce((acc, item) => acc + item.quantity, 0);
   
+  const visibleProducts = products.filter(p => !p.hidden);
+
   const getProductsByCategory = (cat: string) => {
-    return products.filter(p => (p.category || 'Outros') === cat);
+    return visibleProducts.filter(p => (p.category || 'Outros') === cat);
   };
 
-  const categories = Array.from<string>(new Set(products.map(p => p.category || 'Outros')));
+  const categories = Array.from<string>(new Set([
+    ...(settings.categories || []),
+    ...visibleProducts.map(p => p.category || 'Outros')
+  ]));
 
   return (
     <div className="min-h-screen bg-white">
@@ -155,11 +246,46 @@ export function Storefront() {
               <Link to="/admin" className="text-xs opacity-50 hover:opacity-100 hidden sm:block">Admin</Link>
             </div>
           </div>
+          
+          {/* Dynamic Navigation Menu */}
+          {currentView === 'home' && (
+            <nav className="flex items-center justify-center gap-6 pb-4 overflow-x-auto whitespace-nowrap hide-scrollbar text-sm font-bold">
+              <button 
+                onClick={() => setCurrentView('custom')}
+                className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full hover:brightness-110 transition-colors uppercase flex items-center gap-1 shadow-sm"
+              >
+                Personalizados ✨
+              </button>
+              <button 
+                onClick={() => {
+                  const el = document.getElementById('category-all');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="hover:text-pink-200 transition-colors uppercase"
+              >
+                Todos os Produtos
+              </button>
+              {categories.map(category => (
+                <button 
+                  key={category}
+                  onClick={() => {
+                    const el = document.getElementById(`category-${category}`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="hover:text-pink-200 transition-colors uppercase"
+                >
+                  {category}
+                </button>
+              ))}
+            </nav>
+          )}
         </div>
       </header>
 
       <main className="pb-20 bg-[#f9fafb] min-h-[calc(100vh-140px)]">
-        {currentView === 'checkout' ? (
+        {currentView === 'custom' ? (
+          <CustomProductPage onBack={goHome} />
+        ) : currentView === 'checkout' ? (
           <CheckoutPage 
             cart={cart}
             updateItemFile={updateItemFile}

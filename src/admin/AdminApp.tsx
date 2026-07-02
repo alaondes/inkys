@@ -1,42 +1,63 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, ExternalLink, Users, Ticket } from 'lucide-react';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 import { Overview } from './views/Overview';
 import { Products } from './views/Products';
 import { Orders } from './views/Orders';
 import { AdminSettings } from './views/Settings';
+import { Customers } from './views/Customers';
+import { Coupons } from './views/Coupons';
 import { Login } from './components/Login';
 import { useSettings } from '../context/SettingsContext';
+import { auth } from '../lib/firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 export function AdminApp() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return sessionStorage.getItem('inkys-admin-auth') === 'true';
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
   
   const { settings } = useSettings();
   const logoUrl = settings.logoUrl;
 
   const location = useLocation();
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-    sessionStorage.setItem('inkys-admin-auth', 'true');
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setIsAuthenticated(!!user);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const q = query(collection(db, 'orders'), where('status', 'in', ['Pendente', 'Pago']));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setPendingCount(snapshot.docs.length);
+    });
+    return () => unsubscribe();
+  }, [isAuthenticated]);
+
+  const handleLogout = async () => {
+    await signOut(auth);
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    sessionStorage.removeItem('inkys-admin-auth');
-  };
+  if (isAuthenticated === null) {
+    return <div className="h-screen w-full flex items-center justify-center">Carregando...</div>;
+  }
 
   if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
+    return <Login onLogin={() => setIsAuthenticated(true)} />;
   }
 
   const navItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Visão Geral' },
     { path: '/admin/products', icon: Package, label: 'Produtos' },
     { path: '/admin/orders', icon: ShoppingBag, label: 'Pedidos' },
+    { path: '/admin/customers', icon: Users, label: 'Clientes' },
+    { path: '/admin/coupons', icon: Ticket, label: 'Cupons' },
     { path: '/admin/settings', icon: Settings, label: 'Configurações' },
   ];
 
@@ -63,14 +84,21 @@ export function AdminApp() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${
+                className={`flex items-center justify-between px-4 py-3 rounded-lg font-medium transition-all ${
                   isActive 
                     ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' 
                     : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <Icon size={20} />
-                {item.label}
+                <div className="flex items-center gap-3">
+                  <Icon size={20} />
+                  {item.label}
+                </div>
+                {item.label === 'Pedidos' && pendingCount > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {pendingCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -110,6 +138,8 @@ export function AdminApp() {
             <Route path="/" element={<Overview />} />
             <Route path="/products" element={<Products />} />
             <Route path="/orders" element={<Orders />} />
+            <Route path="/customers" element={<Customers />} />
+            <Route path="/coupons" element={<Coupons />} />
             <Route path="/settings" element={<AdminSettings />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Routes>

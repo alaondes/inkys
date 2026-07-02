@@ -4,12 +4,14 @@ import { Storefront } from './storefront/Storefront';
 import { AdminApp } from './admin/AdminApp';
 import { ProductProvider } from './context/ProductContext';
 import { SettingsProvider } from './context/SettingsContext';
+import { Toaster } from 'react-hot-toast';
 
 export default function App() {
   return (
     <SettingsProvider>
       <ProductProvider>
         <BrowserRouter>
+          <Toaster position="top-center" />
           <Routes>
             <Route path="/" element={<Storefront />} />
             <Route path="/admin/*" element={<AdminApp />} />

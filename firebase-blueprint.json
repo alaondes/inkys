@@ -1,0 +1,85 @@
+{
+  "entities": {
+    "Order": {
+      "title": "Order",
+      "description": "Customer order created at checkout.",
+      "type": "object",
+      "properties": {
+        "customer": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "total": { "type": "number" },
+        "status": { "type": "string" },
+        "date": { "type": "object" },
+        "items": { "type": "array" },
+        "shippingInfo": { "type": "object" },
+        "trackingCode": { "type": "string" },
+        "coupon": { "type": "string" }
+      }
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Product in the store.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "image": { "type": "string" },
+        "colors": { "type": "array" },
+        "badge": { "type": "string" },
+        "hidden": { "type": "boolean" },
+        "category": { "type": "string" },
+        "stock": { "type": "number" }
+      }
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "Discount coupon for the store.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "type": { "type": "string" },
+        "value": { "type": "number" },
+        "active": { "type": "boolean" },
+        "minPurchase": { "type": "number" }
+      }
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Store settings like colors and banners.",
+      "type": "object",
+      "properties": {
+        "primaryColor": { "type": "string" },
+        "adminPrimaryColor": { "type": "string" },
+        "bannerTop": { "type": "string" },
+        "bannerMiddle": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "paymentMethods": { "type": "object" },
+        "categories": { "type": "array" },
+        "freeShippingThreshold": { "type": "number" },
+        "fixedShippingRates": { "type": "object" }
+      }
+    }
+  },
+  "firestore": {
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Collection of all orders."
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of all products."
+    },
+    "/coupons/{couponId}": {
+      "schema": "Coupon",
+      "description": "Collection of all coupons."
+    },
+    "/config/{settingId}": {
+      "schema": "Settings",
+      "description": "Singleton configuration for the store."
+    }
+  }
+}

@@ -2,8 +2,75 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Default Deny
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    
+    function incoming() {
+      return request.resource.data;
+    }
+    
+    function existing() {
+      return resource.data;
+    }
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn();
+    }
+
+    // Orders Collection
+    match /orders/{orderId} {
+      function isValidOrder(data) {
+        return data.keys().hasAll(['customer', 'email', 'phone', 'total', 'status', 'items', 'shippingInfo', 'date'])
+          && data.customer is string && data.customer.size() <= 200
+          && data.email is string && data.email.size() <= 200
+          && data.phone is string && data.phone.size() <= 50
+          && data.total is number
+          && data.status is string && data.status.size() <= 50
+          && data.items is list
+          && data.shippingInfo is map;
+      }
+
+      allow create: if isValidId(orderId) && isValidOrder(incoming());
+      allow read: if isAdmin();
+      allow update: if isAdmin() && isValidOrder(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Products Collection
+    match /products/{productId} {
+      function isValidProduct(data) {
+        return data.keys().hasAll(['name', 'price'])
+          && data.name is string && data.name.size() <= 200
+          && data.price is number;
+      }
+
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(productId) && isValidProduct(incoming());
+      allow update: if (isAdmin() && isValidProduct(incoming())) || (request.auth == null && incoming().diff(existing()).affectedKeys().hasOnly(['stock'])); // Allow anonymous to update stock
+      allow delete: if isAdmin();
+    }
+
+    // Coupons Collection
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Settings Collection
+    match /config/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

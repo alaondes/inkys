@@ -12,25 +12,41 @@ export interface CheckoutData {
   landline: string;
   address: string;
   paymentMethod: string;
+  shippingCost: number;
+  coupon?: string;
+  couponDiscount?: number;
 }
 
-export const generateWhatsAppLink = (cart: CartItem[], checkoutData: CheckoutData, phoneNumber: string) => {
-  const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+export const generateWhatsAppLink = (cart: CartItem[], checkoutData: CheckoutData, phoneNumber: string, orderId?: string) => {
+  const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const discountAmount = checkoutData.couponDiscount || 0;
+  const subtotalAfterCoupon = Math.max(0, subtotal - discountAmount);
+  
   const pixDiscount = 0.10;
-  const finalTotal = checkoutData.paymentMethod === 'pix' ? total * (1 - pixDiscount) : total;
+  const subtotalWithPix = checkoutData.paymentMethod === 'pix' ? subtotalAfterCoupon * (1 - pixDiscount) : subtotalAfterCoupon;
+  const finalTotal = subtotalWithPix + checkoutData.shippingCost;
   
   let message = `Olá! Gostaria de finalizar meu pedido.\n\n`;
+  if (orderId) {
+    message += `*Nº DO PEDIDO:* ${orderId}\n\n`;
+  }
   
   message += `*PEDIDO:*\n`;
   cart.forEach(item => {
     const colorText = item.selectedColor ? ` (${item.selectedColor})` : '';
-    const fileText = item.file ? `\n   📎 [A arte "${item.file.name}" será enviada a seguir no chat]` : '';
+    const fileText = item.fileUrl ? `\n   📎 [Ver Arte: ${item.fileUrl}]` : (item.file ? `\n   📎 [A arte "${item.file.name}" será enviada a seguir no chat]` : '');
     message += `${item.quantity}x ${item.name}${colorText} - ${formatPrice(item.price * item.quantity)}${fileText}\n`;
   });
   
-  message += `\n*SUBTOTAL:* ${formatPrice(total)}\n`;
-  if (checkoutData.paymentMethod === 'pix') {
-     message += `*DESCONTO PIX (10%):* -${formatPrice(total * pixDiscount)}\n`;
+  message += `\n*SUBTOTAL:* ${formatPrice(subtotal)}\n`;
+  if (checkoutData.coupon && checkoutData.couponDiscount) {
+    message += `*CUPOM (${checkoutData.coupon}):* -${formatPrice(checkoutData.couponDiscount)}\n`;
+  }
+  if (checkoutData.paymentMethod === 'pix') { 
+    message += `*DESCONTO PIX (10%):* -${formatPrice(subtotalAfterCoupon * pixDiscount)}\n`;
+  }
+  if (checkoutData.shippingCost > 0) {
+    message += `*FRETE:* ${formatPrice(checkoutData.shippingCost)}\n`;
   }
   message += `*TOTAL:* ${formatPrice(finalTotal)}\n\n`;
   

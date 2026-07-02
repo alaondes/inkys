@@ -1,23 +1,76 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DollarSign, Package, ShoppingCart, TrendingUp } from 'lucide-react';
-
-const salesData = [
-  { name: 'Seg', total: 400 },
-  { name: 'Ter', total: 300 },
-  { name: 'Qua', total: 550 },
-  { name: 'Qui', total: 450 },
-  { name: 'Sex', total: 700 },
-  { name: 'Sab', total: 850 },
-  { name: 'Dom', total: 600 },
-];
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { formatPrice } from '../../data/products';
 
 export function Overview() {
+  const [salesData, setSalesData] = useState<{ name: string; total: number }[]>([]);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [activeOrders, setActiveOrders] = useState(0);
+  const [productCount, setProductCount] = useState(0);
+
+  useEffect(() => {
+    const productsUnsubscribe = onSnapshot(collection(db, 'products'), (snap) => {
+      setProductCount(snap.docs.length);
+    });
+
+    const ordersUnsubscribe = onSnapshot(collection(db, 'orders'), (snap) => {
+      let revenue = 0;
+      let active = 0;
+      const days: Record<string, number> = {};
+
+      // Initialize last 7 days
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        days[d.toLocaleDateString('pt-BR', { weekday: 'short' })] = 0;
+      }
+
+      snap.docs.forEach(doc => {
+        const order = doc.data();
+        if (order.status !== 'Cancelado') {
+          revenue += order.total || 0;
+        }
+        if (order.status === 'Pendente' || order.status === 'Pago') {
+          active++;
+        }
+
+        // Add to chart if within last 7 days
+        if (order.date && order.date.toDate) {
+          const date = order.date.toDate();
+          const now = new Date();
+          const diffTime = Math.abs(now.getTime() - date.getTime());
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+          
+          if (diffDays <= 7) {
+            const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' });
+            if (days[dayName] !== undefined && order.status !== 'Cancelado') {
+              days[dayName] += order.total || 0;
+            }
+          }
+        }
+      });
+
+      setTotalRevenue(revenue);
+      setActiveOrders(active);
+      
+      const chartData = Object.entries(days).map(([name, total]) => ({ name, total }));
+      setSalesData(chartData);
+    });
+
+    return () => {
+      productsUnsubscribe();
+      ordersUnsubscribe();
+    };
+  }, []);
+
   const stats = [
-    { label: 'Vendas Totais', value: 'R$ 8.459,00', icon: DollarSign, change: '+12%' },
-    { label: 'Pedidos Ativos', value: '34', icon: ShoppingCart, change: '+5%' },
-    { label: 'Produtos', value: '112', icon: Package, change: '0%' },
-    { label: 'Conversão', value: '3.4%', icon: TrendingUp, change: '+1.2%' },
+    { label: 'Faturamento Total', value: formatPrice(totalRevenue), icon: DollarSign, change: '100%' },
+    { label: 'Pedidos Pendentes', value: activeOrders.toString(), icon: ShoppingCart, change: 'Pedidos não enviados' },
+    { label: 'Produtos', value: productCount.toString(), icon: Package, change: 'Catálogo' },
+    { label: 'Conversão', value: '---', icon: TrendingUp, change: 'BETA' },
   ];
 
   return (
@@ -26,7 +79,6 @@ export function Overview() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => {
           const Icon = stat.icon;
-          const isPositive = stat.change.startsWith('+');
           return (
             <div key={i} className="bg-white border border-gray-200 p-6 rounded-2xl flex flex-col relative overflow-hidden group shadow-sm">
               <div className="absolute -right-4 -top-4 w-24 h-24 bg-[var(--color-primary)] opacity-5 rounded-full blur-2xl group-hover:opacity-10 transition-opacity" />
@@ -35,7 +87,7 @@ export function Overview() {
                 <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100">
                   <Icon className="text-[var(--color-primary)]" size={20} />
                 </div>
-                <span className={`text-xs font-bold px-2 py-1 rounded-full ${isPositive ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                <span className={`text-xs font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-500`}>
                   {stat.change}
                 </span>
               </div>
@@ -69,6 +121,7 @@ export function Overview() {
               <Tooltip 
                 contentStyle={{ backgroundColor: '#ffffff', borderColor: 'rgba(0,0,0,0.1)', borderRadius: '8px', color: '#111827' }}
                 itemStyle={{ color: 'var(--color-primary)' }}
+                formatter={(value: number) => formatPrice(value)}
               />
               <Area type="monotone" dataKey="total" stroke="var(--color-primary)" strokeWidth={2} fillOpacity={1} fill="url(#colorSales)" />
             </AreaChart>
