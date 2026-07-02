@@ -88,8 +88,6 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
         <div className="flex items-center gap-2 text-sm text-gray-500 mb-8">
           <button onClick={onBack} className="hover:text-gray-900 transition-colors">Início</button>
           <span>›</span>
-          <span className="hover:text-gray-900 transition-colors cursor-pointer">Coleção</span>
-          <span>›</span>
           <span className="text-gray-900">{product.category}</span>
         </div>
 
@@ -185,7 +183,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
                )}
                
                <div className="space-y-3">
-                 {settings.paymentMethods?.pix && (
+                 {settings.paymentMethods?.pix !== false && (
                    <div className="flex justify-between items-center text-sm">
                      <div className="flex items-center gap-2">
                        <div className="w-4 h-4 bg-teal-400 rounded-sm"></div> <span className="text-gray-500">PIX</span>

@@ -1,15 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { formatPrice } from '../data/products';
 import { CartItem } from '../storefront/Storefront';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Paperclip, FileText, RefreshCw, Info } from 'lucide-react';
 import { CheckoutData } from '../utils/whatsapp';
+import { useSettings } from '../context/SettingsContext';
 
 interface CheckoutPageProps {
   cart: CartItem[];
+  updateItemFile: (cartItemId: string, file: File | undefined) => void;
   onComplete: (data: CheckoutData) => void;
+  onBack: () => void;
 }
 
-export function CheckoutPage({ cart, onComplete }: CheckoutPageProps) {
+export function CheckoutPage({ cart, updateItemFile, onComplete, onBack }: CheckoutPageProps) {
+  const { settings } = useSettings();
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  
   const [formData, setFormData] = useState({
     email: '',
     nome: '',
@@ -18,16 +24,74 @@ export function CheckoutPage({ cart, onComplete }: CheckoutPageProps) {
     cep: '',
     rua: '',
     numero: '',
+    complemento: '',
+    bairro: '',
     cidade: '',
     estado: ''
   });
   
   const [paymentMethod, setPaymentMethod] = useState('pix');
   const [agreed, setAgreed] = useState(false);
+  const [isLoadingCep, setIsLoadingCep] = useState(false);
+
+  const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 8) value = value.substring(0, 8);
+    
+    setFormData(prev => ({ ...prev, cep: value }));
+
+    if (value.length === 8) {
+      setIsLoadingCep(true);
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${value}/json/`);
+        const data = await response.json();
+        if (!data.erro) {
+          setFormData(prev => ({
+            ...prev,
+            rua: data.logradouro || prev.rua,
+            bairro: data.bairro || prev.bairro,
+            cidade: `${data.localidade}/${data.uf}` || prev.cidade,
+          }));
+        }
+      } catch (error) {
+        console.error("Erro ao buscar CEP", error);
+      } finally {
+        setIsLoadingCep(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (settings.paymentMethods) {
+      if (settings.paymentMethods.pix !== false) {
+        setPaymentMethod('pix');
+      } else if (settings.paymentMethods.credit) {
+        setPaymentMethod('credit');
+      } else if (settings.paymentMethods.boleto) {
+        setPaymentMethod('boleto');
+      }
+    }
+  }, [settings.paymentMethods]);
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const pixDiscount = 0.10;
   const total = paymentMethod === 'pix' ? subtotal * (1 - pixDiscount) : subtotal;
+
+  if (cart.length === 0) {
+    return (
+      <div className="max-w-[1000px] mx-auto px-4 py-16 text-center bg-white rounded shadow-sm border border-gray-200 mt-8">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Seu carrinho está vazio</h2>
+        <p className="text-gray-500 mb-8">Adicione produtos para prosseguir com a compra.</p>
+        <button 
+          onClick={onBack} 
+          className="px-6 py-2.5 text-white rounded font-bold hover:brightness-90 transition-colors"
+          style={{ backgroundColor: settings.topBarColor }}
+        >
+          Continuar Comprando
+        </button>
+      </div>
+    );
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +119,7 @@ export function CheckoutPage({ cart, onComplete }: CheckoutPageProps) {
       birthDate: birthDate,
       phone: formData.celular,
       landline: landline,
-      address: `${formData.rua ? formData.rua + ', ' : ''}${formData.numero ? formData.numero + ', ' : ''}${formData.cidade ? formData.cidade + ', ' : ''}${formData.cep}`,
+      address: `${formData.rua ? formData.rua + ', ' : ''}${formData.numero ? formData.numero + ' - ' : ''}${formData.complemento ? formData.complemento + ' - ' : ''}${formData.bairro ? formData.bairro + ', ' : ''}${formData.cidade ? formData.cidade + ' - ' : ''}CEP: ${formData.cep}`,
       paymentMethod: paymentMethod
     });
   };
@@ -74,7 +138,32 @@ export function CheckoutPage({ cart, onComplete }: CheckoutPageProps) {
           <div key={item.cartItemId} className="grid grid-cols-12 p-4 border-b border-gray-100 text-sm items-center">
             <div className="col-span-8 flex flex-col">
               <span className="text-gray-700">{item.name} {item.selectedColor ? `- ${item.selectedColor}` : ''}</span>
-              <span className="text-xs text-gray-500">Cód: {(item.id || '').substring(0, 4).toUpperCase()}</span>
+              <span className="text-xs text-gray-500 mt-0.5">Cód: {(item.id || '').substring(0, 4).toUpperCase()}</span>
+              
+              <div className="mt-2">
+                {item.file ? (
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-[#3b9370] font-bold flex items-center gap-1"><Paperclip size={12} /> 1 arquivo enviado</span>
+                    <button type="button" onClick={() => fileInputRefs.current[item.cartItemId]?.click()} className="text-[11px] text-gray-500 hover:text-gray-900 flex items-center gap-1 transition-colors">
+                      <RefreshCw size={10} /> Alterar
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => fileInputRefs.current[item.cartItemId]?.click()} className="text-xs text-gray-500 hover:text-[#3b9370] flex items-center gap-1 transition-colors font-medium">
+                    <Paperclip size={12} /> Anexar arquivo
+                  </button>
+                )}
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  ref={el => fileInputRefs.current[item.cartItemId] = el}
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      updateItemFile(item.cartItemId, e.target.files[0]);
+                    }
+                  }}
+                />
+              </div>
             </div>
             <div className="col-span-2 text-center text-gray-700">{item.quantity}</div>
             <div className="col-span-2 text-right font-bold text-[#5ba324]">{formatPrice(item.price * item.quantity)}</div>
@@ -94,6 +183,18 @@ export function CheckoutPage({ cart, onComplete }: CheckoutPageProps) {
             <span>Total:</span>
             <span className="font-bold text-gray-900">{formatPrice(total)}</span>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded p-4 mb-8 text-sm text-blue-800 flex gap-3">
+        <Info className="flex-shrink-0 text-blue-500 mt-0.5" size={18} />
+        <div>
+          <p className="font-bold mb-1">Como enviar sua arte:</p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li>Anexe os arquivos para cada produto na seção "Arquivo" acima.</li>
+            <li>Certifique-se de que a imagem esteja em boa resolução.</li>
+            <li>Se preferir, ou se tiver dificuldades, você também poderá enviar a arte diretamente pelo WhatsApp após finalizar o pedido.</li>
+          </ul>
         </div>
       </div>
 
@@ -129,22 +230,22 @@ export function CheckoutPage({ cart, onComplete }: CheckoutPageProps) {
 
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">CPF</label>
-              <input required type="text" value={formData.cpf} onChange={e => setFormData({...formData, cpf: e.target.value})} className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400 max-w-[150px]" />
+              <input type="text" value={formData.cpf} onChange={e => setFormData({...formData, cpf: e.target.value})} className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400 max-w-[150px]" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Sexo</label>
-                <select className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400 bg-white">
-                  <option>- Selecione -</option>
-                  <option>Masculino</option>
-                  <option>Feminino</option>
-                  <option>Outro</option>
+                <select required className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400 bg-white">
+                  <option value="">- Selecione -</option>
+                  <option value="Masculino">Masculino</option>
+                  <option value="Feminino">Feminino</option>
+                  <option value="Outro">Outro</option>
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Data de nascimento</label>
-                <input type="text" placeholder="DD/MM/AAAA" className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400" />
+                <input required type="text" placeholder="DD/MM/AAAA" className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400" />
               </div>
             </div>
 
@@ -170,8 +271,8 @@ export function CheckoutPage({ cart, onComplete }: CheckoutPageProps) {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">CEP</label>
-              <input required type="text" value={formData.cep} onChange={e => setFormData({...formData, cep: e.target.value})} className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400 max-w-[120px]" />
+              <label className="block text-xs font-bold text-gray-700 mb-1">CEP {isLoadingCep && <span className="text-gray-400 font-normal ml-2">Buscando...</span>}</label>
+              <input required type="text" value={formData.cep} onChange={handleCepChange} maxLength={8} className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400 max-w-[120px]" />
             </div>
             
             {formData.cep.length >= 8 && (
@@ -184,6 +285,16 @@ export function CheckoutPage({ cart, onComplete }: CheckoutPageProps) {
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">Número</label>
                     <input required type="text" value={formData.numero} onChange={e => setFormData({...formData, numero: e.target.value})} className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Complemento</label>
+                    <input type="text" value={formData.complemento} onChange={e => setFormData({...formData, complemento: e.target.value})} className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Bairro</label>
+                    <input required type="text" value={formData.bairro} onChange={e => setFormData({...formData, bairro: e.target.value})} className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400" />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">Cidade/UF</label>
@@ -203,32 +314,38 @@ export function CheckoutPage({ cart, onComplete }: CheckoutPageProps) {
           </h2>
 
           <div className="space-y-0 border border-gray-200 rounded-sm mb-6">
-            <label className={`flex items-center gap-3 p-3 cursor-pointer border-b border-gray-200 ${paymentMethod === 'pix' ? 'bg-gray-50' : ''}`}>
-              <input type="radio" name="payment" checked={paymentMethod === 'pix'} onChange={() => setPaymentMethod('pix')} className="accent-[#5ba324] w-4 h-4" />
-              <div className="flex items-center gap-2">
-                <span className="text-[#32bcad] font-bold">pix</span>
-                <span className="text-xs text-gray-500">Desconto de 10%</span>
-              </div>
-            </label>
+            {settings.paymentMethods?.pix !== false && (
+              <label className={`flex items-center gap-3 p-3 cursor-pointer border-b border-gray-200 ${paymentMethod === 'pix' ? 'bg-gray-50' : ''}`}>
+                <input type="radio" name="payment" checked={paymentMethod === 'pix'} onChange={() => setPaymentMethod('pix')} className="accent-[#5ba324] w-4 h-4" />
+                <div className="flex items-center gap-2">
+                  <span className="text-[#32bcad] font-bold">pix</span>
+                  <span className="text-xs text-gray-500">Desconto de 10%</span>
+                </div>
+              </label>
+            )}
             
-            <label className={`flex items-center gap-3 p-3 cursor-pointer border-b border-gray-200 ${paymentMethod === 'boleto' ? 'bg-gray-50' : ''}`}>
-              <input type="radio" name="payment" checked={paymentMethod === 'boleto'} onChange={() => setPaymentMethod('boleto')} className="accent-[#5ba324] w-4 h-4" />
-              <div className="flex flex-col">
-                <span className="text-sm text-gray-800 font-bold leading-none">Boleto</span>
-                <span className="text-sm text-gray-800 font-bold leading-none">Bancário</span>
-              </div>
-            </label>
+            {settings.paymentMethods?.boleto && (
+              <label className={`flex items-center gap-3 p-3 cursor-pointer border-b border-gray-200 ${paymentMethod === 'boleto' ? 'bg-gray-50' : ''}`}>
+                <input type="radio" name="payment" checked={paymentMethod === 'boleto'} onChange={() => setPaymentMethod('boleto')} className="accent-[#5ba324] w-4 h-4" />
+                <div className="flex flex-col">
+                  <span className="text-sm text-gray-800 font-bold leading-none">Boleto</span>
+                  <span className="text-sm text-gray-800 font-bold leading-none">Bancário</span>
+                </div>
+              </label>
+            )}
 
-            <label className={`flex items-center gap-3 p-3 cursor-pointer ${paymentMethod === 'credit' ? 'bg-gray-50' : ''}`}>
-              <input type="radio" name="payment" checked={paymentMethod === 'credit'} onChange={() => setPaymentMethod('credit')} className="accent-[#5ba324] w-4 h-4" />
-              <div className="flex items-center gap-1 flex-wrap">
-                <span className="text-[10px] font-bold border border-gray-300 rounded px-1 py-0.5 text-blue-800">VISA</span>
-                <span className="text-[10px] font-bold border border-gray-300 rounded px-1 py-0.5 text-red-600">MasterCard</span>
-                <span className="text-[10px] font-bold border border-gray-300 rounded px-1 py-0.5 text-orange-500">Hiper</span>
-                <span className="text-[10px] font-bold border border-gray-300 rounded px-1 py-0.5 text-blue-600">Amex</span>
-                <span className="text-[10px] font-bold border border-gray-300 rounded px-1 py-0.5 text-black">elo</span>
-              </div>
-            </label>
+            {settings.paymentMethods?.credit && (
+              <label className={`flex items-center gap-3 p-3 cursor-pointer ${paymentMethod === 'credit' ? 'bg-gray-50' : ''}`}>
+                <input type="radio" name="payment" checked={paymentMethod === 'credit'} onChange={() => setPaymentMethod('credit')} className="accent-[#5ba324] w-4 h-4" />
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[10px] font-bold border border-gray-300 rounded px-1 py-0.5 text-blue-800">VISA</span>
+                  <span className="text-[10px] font-bold border border-gray-300 rounded px-1 py-0.5 text-red-600">MasterCard</span>
+                  <span className="text-[10px] font-bold border border-gray-300 rounded px-1 py-0.5 text-orange-500">Hiper</span>
+                  <span className="text-[10px] font-bold border border-gray-300 rounded px-1 py-0.5 text-blue-600">Amex</span>
+                  <span className="text-[10px] font-bold border border-gray-300 rounded px-1 py-0.5 text-black">elo</span>
+                </div>
+              </label>
+            )}
           </div>
 
           <label className="flex items-start gap-2 mb-6 cursor-pointer">

@@ -24,7 +24,8 @@ export const generateWhatsAppLink = (cart: CartItem[], checkoutData: CheckoutDat
   message += `*PEDIDO:*\n`;
   cart.forEach(item => {
     const colorText = item.selectedColor ? ` (${item.selectedColor})` : '';
-    message += `${item.quantity}x ${item.name}${colorText} - ${formatPrice(item.price * item.quantity)}\n`;
+    const fileText = item.file ? `\n   📎 [A arte "${item.file.name}" será enviada a seguir no chat]` : '';
+    message += `${item.quantity}x ${item.name}${colorText} - ${formatPrice(item.price * item.quantity)}${fileText}\n`;
   });
   
   message += `\n*SUBTOTAL:* ${formatPrice(total)}\n`;

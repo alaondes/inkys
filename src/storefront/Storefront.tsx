@@ -5,7 +5,6 @@ import { formatPrice, Product } from '../data/products';
 import { generateWhatsAppLink, CheckoutData } from '../utils/whatsapp';
 import { ProductCard } from '../components/ProductCard';
 import { ProductCarousel } from '../components/ProductCarousel';
-import { CartPage } from '../components/CartPage';
 import { CheckoutPage } from '../components/CheckoutPage';
 import { ProductDetails } from './ProductDetails';
 import { useProducts } from '../context/ProductContext';
@@ -16,6 +15,7 @@ export interface CartItem extends Product {
   quantity: number;
   selectedColor?: string;
   cartItemId: string;
+  file?: File;
 }
 
 export function Storefront() {
@@ -39,7 +39,7 @@ export function Storefront() {
       }
       return [...prev, { ...product, quantity: 1, selectedColor, cartItemId }];
     });
-    setCurrentView('cart');
+    setCurrentView('checkout');
     window.scrollTo(0, 0);
   };
 
@@ -51,6 +51,12 @@ export function Storefront() {
       }
       return item;
     }).filter(item => item.quantity > 0));
+  };
+
+  const updateItemFile = (cartItemId: string, file: File | undefined) => {
+    setCart(prev => prev.map(item => 
+      item.cartItemId === cartItemId ? { ...item, file } : item
+    ));
   };
 
   const handleCheckout = () => {
@@ -137,7 +143,7 @@ export function Storefront() {
               </div>
 
               <button 
-                onClick={() => setCurrentView('cart')}
+                onClick={() => setCurrentView('checkout')}
                 className="flex items-center gap-2 relative hover:text-pink-200 transition-colors"
               >
                 <ShoppingCart size={28} />
@@ -152,37 +158,13 @@ export function Storefront() {
         </div>
       </header>
 
-      {/* Nav Menu */}
-      <nav className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
-        <div className="max-w-[1400px] mx-auto px-4">
-          <ul className="flex items-center justify-center gap-8 text-[15px] text-gray-600 font-medium">
-            <li className="flex items-center gap-2 py-4 cursor-pointer font-bold transition-colors" style={{ color: settings.topBarColor }}>
-              <Menu size={18} /> Todas as categorias
-            </li>
-            <li className="py-4 cursor-pointer transition-colors" style={{ color: settings.headerColor }}>Coleção</li>
-            <li className="py-4 cursor-pointer transition-colors" style={{ color: settings.headerColor }}>Caneca Mágica</li>
-            <li className="py-4 cursor-pointer transition-colors" style={{ color: settings.headerColor }}>Canecas com Foto</li>
-            <li className="py-4 cursor-pointer transition-colors" style={{ color: settings.headerColor }}>Presentes</li>
-            <li className="py-4 cursor-pointer transition-colors" style={{ color: settings.headerColor }}>Personalize do seu Jeito</li>
-            <li className="py-4 px-6 text-white font-bold cursor-pointer transition-colors hover:brightness-110" style={{ backgroundColor: settings.topBarColor }}>
-              COPA DO MUNDO
-            </li>
-          </ul>
-        </div>
-      </nav>
-
       <main className="pb-20 bg-[#f9fafb] min-h-[calc(100vh-140px)]">
         {currentView === 'checkout' ? (
           <CheckoutPage 
             cart={cart}
+            updateItemFile={updateItemFile}
             onComplete={handleWhatsAppRedirect}
-          />
-        ) : currentView === 'cart' ? (
-          <CartPage 
-            cart={cart}
-            updateQuantity={updateQuantity}
-            onCheckout={handleCheckout}
-            onContinueShopping={goHome}
+            onBack={goHome}
           />
         ) : currentView === 'product' && selectedProduct ? (
           <ProductDetails 
@@ -223,20 +205,24 @@ export function Storefront() {
                       <p className="text-gray-500 text-sm">Entregas em Todo Brasil</p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-center gap-4 px-4">
-                    <CreditCard size={32} className="text-gray-700" strokeWidth={1.5} />
-                    <div>
-                      <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>Parcelamento</h4>
-                      <p className="text-gray-500 text-sm">Em até 6x sem juros</p>
+                  {settings.paymentMethods?.credit && (
+                    <div className="flex items-center justify-center gap-4 px-4">
+                      <CreditCard size={32} className="text-gray-700" strokeWidth={1.5} />
+                      <div>
+                        <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>Parcelamento</h4>
+                        <p className="text-gray-500 text-sm">Em até {settings.installments || 2}x sem juros</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-center gap-4 px-4">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700"><path d="M2 12l5.25 5 2.625-3 5.25 5 6.875-10"/></svg>
-                    <div>
-                      <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>Ganhe Desconto</h4>
-                      <p className="text-gray-500 text-sm">Pagando com PIX</p>
+                  )}
+                  {settings.paymentMethods?.pix !== false && (
+                    <div className="flex items-center justify-center gap-4 px-4">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700"><path d="M2 12l5.25 5 2.625-3 5.25 5 6.875-10"/></svg>
+                      <div>
+                        <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>Ganhe Desconto</h4>
+                        <p className="text-gray-500 text-sm">Pagando com PIX</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div className="flex items-center justify-center gap-4 px-4">
                     <ShieldCheck size={32} className="text-gray-700" strokeWidth={1.5} />
                     <div>
