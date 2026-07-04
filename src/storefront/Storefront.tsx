@@ -132,6 +132,42 @@ export function Storefront() {
       const pixDiscount = data.paymentMethod === 'pix' ? subAfterCoupon * 0.10 : 0;
       const finalTotal = subAfterCoupon - pixDiscount + data.shippingCost;
 
+      // Clean items and shipping info to prevent Firestore undefined errors
+      const cleanItems = updatedCart.map(item => {
+        const cleanItem: any = {
+          id: item.id || '',
+          name: item.name || '',
+          price: Number(item.price) || 0,
+          quantity: Number(item.quantity) || 1,
+          category: item.category || 'Outros',
+          image: item.image || '',
+        };
+        if (item.selectedColor !== undefined && item.selectedColor !== null) {
+          cleanItem.selectedColor = item.selectedColor;
+        }
+        if (item.fileUrl !== undefined && item.fileUrl !== null) {
+          cleanItem.fileUrl = item.fileUrl;
+        }
+        return cleanItem;
+      });
+
+      const cleanShippingInfo: any = {
+        email: data.email || '',
+        type: data.type || '',
+        name: data.name || '',
+        cpf: data.cpf || '',
+        phone: data.phone || '',
+        address: data.address || '',
+        paymentMethod: data.paymentMethod || '',
+        shippingCost: Number(data.shippingCost) || 0,
+        couponDiscount: Number(data.couponDiscount) || 0,
+      };
+
+      if (data.gender) cleanShippingInfo.gender = data.gender;
+      if (data.birthDate) cleanShippingInfo.birthDate = data.birthDate;
+      if (data.landline) cleanShippingInfo.landline = data.landline;
+      if (data.coupon) cleanShippingInfo.coupon = data.coupon;
+
       // Create order in Firestore
       const orderData = {
         customer: data.name,
@@ -140,8 +176,8 @@ export function Storefront() {
         total: finalTotal,
         status: 'Pendente',
         date: serverTimestamp(),
-        items: updatedCart,
-        shippingInfo: data
+        items: cleanItems,
+        shippingInfo: cleanShippingInfo
       };
 
       const docRef = await addDoc(collection(db, 'orders'), orderData);
