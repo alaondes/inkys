@@ -73,7 +73,7 @@ const defaultSettings: AppSettings = {
   promoBanner2ColorStart: '#b861ff',
   promoBanner2ColorEnd: '#c37aff',
   buyButtonColor: '#5ba324',
-  storeName: 'Amo Canecas',
+  storeName: 'inkys',
   productRating: 5,
   productReviews: 5,
   pixDiscount: 0.10,

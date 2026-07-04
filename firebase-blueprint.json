@@ -62,9 +62,36 @@
         "freeShippingThreshold": { "type": "number" },
         "fixedShippingRates": { "type": "object" }
       }
+    },
+    "Document": {
+      "title": "Document",
+      "description": "Custom invoice, quote or receipt document history.",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "date": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerDoc": { "type": "string" },
+        "items": { "type": "array" },
+        "discount": { "type": "number" },
+        "subtotal": { "type": "number" },
+        "total": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "paymentConditions": { "type": "string" },
+        "notes": { "type": "string" },
+        "validUntil": { "type": "string" },
+        "status": { "type": "string" },
+        "emitter": { "type": "object" },
+        "design": { "type": "object" },
+        "createdAt": { "type": "string" }
+      }
     }
   },
   "firestore": {
+    "/documents/{documentId}": {
+      "schema": "Document",
+      "description": "History of all custom issued documents (quotes, receipts)."
+    },
     "/orders/{orderId}": {
       "schema": "Order",
       "description": "Collection of all orders."

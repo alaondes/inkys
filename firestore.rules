@@ -72,5 +72,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // Documents Collection
+    match /documents/{documentId} {
+      allow read, write: if isAdmin();
+    }
   }
 }

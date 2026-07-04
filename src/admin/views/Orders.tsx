@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink } from 'lucide-react';
+import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink, FileText, Printer } from 'lucide-react';
 import { formatPrice } from '../../data/products';
 import { db } from '../../lib/firebase';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
+import toast from 'react-hot-toast';
+import { useSettings } from '../../context/SettingsContext';
 
 type OrderStatus = 'Pendente' | 'Pago' | 'Enviado' | 'Cancelado';
 
@@ -25,6 +27,15 @@ interface Order {
   items: OrderItem[];
   shippingInfo?: any;
   notes?: string;
+  receipt?: {
+    date: string;
+    items: Array<{ description: string; quantity: number; unitPrice: number }>;
+    discount: number;
+    total: number;
+    notes: string;
+    customerName: string;
+    customerDoc: string;
+  };
 }
 
 const statusConfig = {
@@ -40,6 +51,25 @@ export function Orders() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'Todos'>('Todos');
   const [dateFilter, setDateFilter] = useState<'Todos' | 'Hoje' | 'EstaSemana' | 'EsteMes'>('Todos');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showReceiptPreview, setShowReceiptPreview] = useState(false);
+  const { settings } = useSettings();
+
+  const [localStatus, setLocalStatus] = useState<OrderStatus>('Pendente');
+  const [localTracking, setLocalTracking] = useState('');
+  const [localNotes, setLocalNotes] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (selectedOrder) {
+      setLocalStatus(selectedOrder.status);
+      setLocalTracking(selectedOrder.trackingCode || '');
+      setLocalNotes(selectedOrder.notes || '');
+    } else {
+      setLocalStatus('Pendente');
+      setLocalTracking('');
+      setLocalNotes('');
+    }
+  }, [selectedOrder?.id]);
 
   useEffect(() => {
     const q = query(collection(db, 'orders'), orderBy('date', 'desc'));
@@ -62,6 +92,7 @@ export function Orders() {
           items: data.items || [],
           shippingInfo: data.shippingInfo || null,
           notes: data.notes || '',
+          receipt: data.receipt || null,
           _rawDate: data.date?.toDate ? data.date.toDate() : new Date(0) // Internal use for filtering
         } as Order & { _rawDate: Date };
       });
@@ -127,31 +158,46 @@ export function Orders() {
     document.body.removeChild(link);
   };
 
-  const handleUpdateStatus = async (id: string, newStatus: OrderStatus) => {
+  const handleSave = async () => {
+    if (!selectedOrder) return;
+    setIsSaving(true);
     try {
-      const orderRef = doc(db, 'orders', id);
-      await updateDoc(orderRef, { status: newStatus });
-    } catch (error) {
-      console.error('Error updating status:', error);
-      alert('Erro ao atualizar status');
-    }
-  };
+      const orderRef = doc(db, 'orders', selectedOrder.id);
+      
+      const updateData: any = {
+        status: localStatus,
+        trackingCode: localTracking,
+        notes: localNotes
+      };
 
-  const handleUpdateTracking = async (id: string, tracking: string) => {
-    try {
-      const orderRef = doc(db, 'orders', id);
-      await updateDoc(orderRef, { trackingCode: tracking });
-    } catch (error) {
-      console.error('Error updating tracking code:', error);
-    }
-  };
+      // Se o status for alterado para "Enviado", cria/atualiza o recibo automaticamente no pedido
+      if (localStatus === 'Enviado') {
+        updateData.receipt = {
+          date: new Date().toLocaleDateString('pt-BR'),
+          items: selectedOrder.items.map(item => ({
+            description: item.name,
+            quantity: item.quantity,
+            unitPrice: item.price
+          })),
+          discount: selectedOrder.shippingInfo?.couponDiscount || 0,
+          total: selectedOrder.total,
+          notes: `Recibo gerado automaticamente para o pedido #${selectedOrder.id} finalizado e enviado.`,
+          customerName: selectedOrder.customer,
+          customerDoc: selectedOrder.shippingInfo?.cpf || ''
+        };
+      }
 
-  const handleUpdateNotes = async (id: string, notes: string) => {
-    try {
-      const orderRef = doc(db, 'orders', id);
-      await updateDoc(orderRef, { notes });
+      await updateDoc(orderRef, updateData);
+      toast.success('Pedido salvo com sucesso!');
+      if (localStatus === 'Enviado') {
+        toast.success('Recibo gerado e anexado ao pedido!');
+      }
+      setSelectedOrder(null);
     } catch (error) {
-      console.error('Error updating notes:', error);
+      console.error('Error saving order:', error);
+      toast.error('Erro ao salvar o pedido');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -224,9 +270,16 @@ export function Orders() {
                     <td className="p-4 text-sm text-gray-900">{order.customer}</td>
                     <td className="p-4 text-sm text-gray-500">{order.date}</td>
                     <td className="p-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${statusConfig[order.status].bg} ${statusConfig[order.status].color}`}>
-                        <StatusIcon size={12} /> {order.status}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${statusConfig[order.status].bg} ${statusConfig[order.status].color}`}>
+                          <StatusIcon size={12} /> {order.status}
+                        </span>
+                        {(order.receipt || order.status === 'Enviado') && (
+                          <span className="text-green-600 bg-green-50 px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5" title="Recibo disponível">
+                            <FileText size={10} /> Recibo
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-4 text-sm font-bold text-gray-900">{formatPrice(order.total)}</td>
                     <td className="p-4 text-right">
@@ -314,6 +367,31 @@ export function Orders() {
                 </div>
               </div>
 
+              {(selectedOrder.receipt || localStatus === 'Enviado') ? (
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-[10px] uppercase font-bold text-gray-500 mb-2">Recibo do Pedido</p>
+                  <div className="bg-green-50 border border-green-200 p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-green-800 flex items-center gap-1.5">
+                        <CheckCircle size={16} className="text-green-600" /> Recibo disponível
+                      </p>
+                      <p className="text-xs text-green-600">
+                        {selectedOrder.receipt 
+                          ? `Armazenado neste pedido em ${selectedOrder.receipt.date}` 
+                          : 'Pronto para visualizar (será salvo automaticamente ao salvar o pedido como "Enviado")'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowReceiptPreview(true)}
+                      className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors shadow-sm"
+                    >
+                      <FileText size={14} /> Ver Recibo
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="space-y-4 border-t border-gray-100 pt-4">
                 <p className="text-[10px] uppercase font-bold text-gray-500">Gerenciar Pedido</p>
                 
@@ -324,9 +402,9 @@ export function Orders() {
                       {(['Pendente', 'Pago', 'Enviado', 'Cancelado'] as OrderStatus[]).map(status => (
                         <button
                           key={status}
-                          onClick={() => handleUpdateStatus(selectedOrder.id, status)}
+                          onClick={() => setLocalStatus(status)}
                           className={`text-xs px-3 py-2 rounded-lg font-bold border transition-all ${
-                            selectedOrder.status === status
+                            localStatus === status
                               ? `border-${statusConfig[status].color.split('-')[1]}-500 text-${statusConfig[status].color.split('-')[1]}-600 bg-${statusConfig[status].color.split('-')[1]}-50`
                               : 'border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                           }`}
@@ -342,8 +420,8 @@ export function Orders() {
                     <div className="flex gap-2">
                       <input 
                         type="text" 
-                        value={selectedOrder.trackingCode || ''}
-                        onChange={(e) => handleUpdateTracking(selectedOrder.id, e.target.value)}
+                        value={localTracking}
+                        onChange={(e) => setLocalTracking(e.target.value)}
                         placeholder="Ex: BR123456789BR"
                         className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none font-mono"
                       />
@@ -354,11 +432,8 @@ export function Orders() {
                 <div className="space-y-1 pt-2">
                   <label className="text-[10px] uppercase font-bold text-gray-500">Anotações Internas (Visível apenas para você)</label>
                   <textarea 
-                    value={selectedOrder.notes || ''}
-                    onChange={(e) => {
-                      setSelectedOrder({...selectedOrder, notes: e.target.value});
-                    }}
-                    onBlur={(e) => handleUpdateNotes(selectedOrder.id, e.target.value)}
+                    value={localNotes}
+                    onChange={(e) => setLocalNotes(e.target.value)}
                     placeholder="Ex: Cliente pediu para embalar para presente..."
                     className="w-full bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm focus:border-yellow-400 outline-none resize-y min-h-[80px] text-gray-800 placeholder-yellow-600/50"
                   />
@@ -366,6 +441,173 @@ export function Orders() {
               </div>
 
             </div>
+
+            {/* Footer with Save/Cancel Buttons */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 shrink-0 mt-4">
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="px-4 py-2 text-sm font-bold uppercase tracking-wider text-gray-500 hover:text-gray-900 transition-colors"
+                disabled={isSaving}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="px-6 py-2 text-sm font-bold uppercase tracking-wider bg-gray-950 text-white rounded-xl hover:bg-gray-800 transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                {isSaving ? 'Salvando...' : 'Salvar e Sair'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReceiptPreview && selectedOrder && (selectedOrder.receipt || localStatus === 'Enviado') && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:z-0">
+          <style>{`
+            @media print {
+              body * {
+                visibility: hidden !important;
+              }
+              #printable-receipt-area, #printable-receipt-area * {
+                visibility: visible !important;
+              }
+              #printable-receipt-area {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+              }
+            }
+          `}</style>
+          <div className="bg-white w-full max-w-3xl rounded-2xl p-6 relative border border-gray-200 shadow-2xl flex flex-col max-h-[95vh] print:max-h-none print:shadow-none print:border-none print:p-0 print:w-full print:h-auto print:static">
+            
+            {/* Header hidden on print */}
+            <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100 shrink-0 print:hidden">
+              <h3 className="text-lg font-black uppercase tracking-wider text-gray-900 flex items-center gap-2">
+                <FileText className="text-green-600" size={20} /> Recibo do Pedido #{selectedOrder.id.substring(0, 8)}
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors"
+                >
+                  <Printer size={14} /> Imprimir / PDF
+                </button>
+                <button 
+                  onClick={() => setShowReceiptPreview(false)} 
+                  className="text-gray-400 hover:text-gray-900 p-1"
+                >
+                  <XCircle size={24} />
+                </button>
+              </div>
+            </div>
+
+            {/* Receipt Printable Content */}
+            <div className="flex-1 overflow-y-auto pr-1 print:overflow-visible print:pr-0">
+              <div id="printable-receipt-area" className="bg-white p-6 rounded-xl border border-gray-100 text-gray-800 min-h-[500px] print:border-none print:p-0">
+                
+                {/* Store Header */}
+                <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6 mb-6">
+                  <div>
+                    {settings.logoUrl ? (
+                      <img src={settings.logoUrl} alt="Logo" className="h-14 object-contain mb-2" />
+                    ) : (
+                      <h2 className="text-xl font-black text-pink-600 tracking-tighter uppercase mb-2">
+                        {settings.storeName || 'Minha Loja'}
+                      </h2>
+                    )}
+                    {settings.supportPhone && <p className="text-xs text-gray-600 font-medium">WhatsApp: {settings.supportPhone}</p>}
+                  </div>
+                  <div className="text-right">
+                    <h1 className="text-2xl font-black uppercase tracking-widest text-gray-300 mb-1">
+                      Recibo
+                    </h1>
+                    <p className="text-xs"><strong>Data:</strong> {selectedOrder.receipt?.date || new Date().toLocaleDateString('pt-BR')}</p>
+                    <p className="text-xs"><strong>Pedido ID:</strong> #{selectedOrder.id}</p>
+                  </div>
+                </div>
+
+                {/* Client Info */}
+                <div className="mb-6 bg-gray-50 p-4 rounded-lg print:bg-transparent print:p-0 print:border-b print:border-gray-200 print:rounded-none">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Cliente:</h3>
+                  <p className="text-base font-bold text-gray-900">{selectedOrder.receipt?.customerName || selectedOrder.customer}</p>
+                  {(selectedOrder.receipt?.customerDoc || selectedOrder.shippingInfo?.cpf) && (
+                    <p className="text-xs text-gray-600 mt-1 font-medium">CPF/CNPJ: {selectedOrder.receipt?.customerDoc || selectedOrder.shippingInfo?.cpf}</p>
+                  )}
+                </div>
+
+                {/* Items Table */}
+                <div className="overflow-x-auto mb-6">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b-2 border-gray-800 text-xs font-bold uppercase tracking-wider text-gray-500">
+                        <th className="py-2.5 pl-2">Descrição</th>
+                        <th className="py-2.5 text-center w-16">Qtd</th>
+                        <th className="py-2.5 text-right w-24">Unit.</th>
+                        <th className="py-2.5 text-right pr-2 w-24">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(selectedOrder.receipt?.items || selectedOrder.items.map(i => ({ description: i.name, quantity: i.quantity, unitPrice: i.price }))).map((item: any, idx: number) => (
+                        <tr key={idx} className="border-b border-gray-100 text-sm">
+                          <td className="py-2.5 pl-2 font-medium text-gray-900">{item.description}</td>
+                          <td className="py-2.5 text-center text-gray-600">{item.quantity}</td>
+                          <td className="py-2.5 text-right text-gray-600">{formatPrice(item.unitPrice)}</td>
+                          <td className="py-2.5 text-right pr-2 font-bold text-gray-900">{formatPrice(item.quantity * item.unitPrice)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Totals */}
+                <div className="flex justify-end mb-8">
+                  <div className="w-60 space-y-2 text-sm">
+                    <div className="flex justify-between text-gray-600">
+                      <span>Subtotal:</span>
+                      <span>
+                        {formatPrice(
+                          (selectedOrder.receipt?.items || selectedOrder.items.map(i => ({ description: i.name, quantity: i.quantity, unitPrice: i.price })))
+                            .reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0)
+                        )}
+                      </span>
+                    </div>
+                    {(selectedOrder.receipt?.discount || selectedOrder.shippingInfo?.couponDiscount) ? (
+                      <div className="flex justify-between text-red-500">
+                        <span>Desconto:</span>
+                        <span>-{formatPrice(selectedOrder.receipt?.discount || selectedOrder.shippingInfo?.couponDiscount || 0)}</span>
+                      </div>
+                    ) : null}
+                    <div className="flex justify-between text-lg font-black border-t border-gray-800 pt-2 text-gray-900">
+                      <span>Total:</span>
+                      <span>{formatPrice(selectedOrder.receipt?.total || selectedOrder.total)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div className="mt-8 text-xs text-gray-500 border-t border-gray-100 pt-4">
+                  <p className="font-bold uppercase tracking-wider text-gray-400 mb-1">Observações:</p>
+                  <p className="whitespace-pre-line text-gray-600">{selectedOrder.receipt?.notes || `Recibo gerado automaticamente para o pedido #${selectedOrder.id} finalizado e enviado.`}</p>
+                </div>
+
+                {/* Sign-off */}
+                <div className="mt-16 pt-6 border-t border-gray-200 text-center text-xs text-gray-500">
+                  <p>Recebemos o valor acima especificado, referente à prestação de serviços / venda de produtos.</p>
+                  <div className="mt-12 border-t border-gray-800 w-48 mx-auto pt-1.5 font-bold text-gray-800">
+                    Assinatura
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
           </div>
         </div>
       )}

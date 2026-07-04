@@ -56,7 +56,7 @@ export function DadosCliente({
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">E-mail</label>
+            <label className="block text-xs font-bold text-gray-700 mb-1">E-mail *</label>
             <input 
               required 
               type="email" 
@@ -67,7 +67,7 @@ export function DadosCliente({
               }} 
               className={`w-full border ${errors.email ? 'border-red-500 bg-red-50' : 'border-gray-300'} rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400`} 
             />
-            {errors.email && <span className="text-xs text-red-500 mt-1">E-mail inválido</span>}
+            {errors.email && <span className="text-xs text-red-500 mt-1">E-mail inválido (obrigatório)</span>}
           </div>
 
           <div className="flex gap-4 text-xs font-bold text-gray-700">
@@ -129,32 +129,20 @@ export function DadosCliente({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Celular</label>
-              <input 
-                required 
-                type="text" 
-                value={formData.celular} 
-                maxLength={15}
-                onChange={e => {
-                  setFormData({...formData, celular: maskPhone(e.target.value)});
-                  if (errors.celular) setErrors({...errors, celular: false});
-                }} 
-                className={`w-full border ${errors.celular ? 'border-red-500 bg-red-50' : 'border-gray-300'} rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400`} 
-              />
-              {errors.celular && <span className="text-xs text-red-500 mt-1 block">Celular inválido</span>}
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Telefone fixo</label>
-              <input 
-                type="text" 
-                value={landline} 
-                maxLength={14}
-                onChange={e => setLandline(maskPhone(e.target.value))} 
-                className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400" 
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Celular / WhatsApp *</label>
+            <input 
+              required 
+              type="text" 
+              value={formData.celular} 
+              maxLength={15}
+              onChange={e => {
+                setFormData({...formData, celular: maskPhone(e.target.value)});
+                if (errors.celular) setErrors({...errors, celular: false});
+              }} 
+              className={`w-full border ${errors.celular ? 'border-red-500 bg-red-50' : 'border-gray-300'} rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400`} 
+            />
+            {errors.celular && <span className="text-xs text-red-500 mt-1 block">Celular inválido (obrigatório)</span>}
           </div>
         </div>
       </div>

@@ -123,7 +123,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
           
           {/* Info */}
           <div className="w-full md:w-[40%]">
-            <div className="text-gray-500 text-sm mb-1">{settings.storeName || 'Amo Canecas'}</div>
+            <div className="text-gray-500 text-sm mb-1">{settings.storeName || 'inkys'}</div>
             <h1 className="text-2xl font-normal text-gray-800 mb-2">{product.name}</h1>
             
             <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">

@@ -36,7 +36,7 @@ export function AdminSettings() {
     promoBanner2ColorStart: settings.promoBanner2ColorStart || '#b861ff',
     promoBanner2ColorEnd: settings.promoBanner2ColorEnd || '#c37aff',
     buyButtonColor: settings.buyButtonColor || '#5ba324',
-    storeName: settings.storeName || 'Amo Canecas',
+    storeName: settings.storeName || 'inkys',
     productRating: settings.productRating || 5,
     productReviews: settings.productReviews || 5,
     pixDiscount: settings.pixDiscount !== undefined ? settings.pixDiscount : 0.10,
@@ -84,7 +84,7 @@ export function AdminSettings() {
       promoBanner2ColorStart: settings.promoBanner2ColorStart || '#b861ff',
       promoBanner2ColorEnd: settings.promoBanner2ColorEnd || '#c37aff',
       buyButtonColor: settings.buyButtonColor || '#5ba324',
-      storeName: settings.storeName || 'Amo Canecas',
+      storeName: settings.storeName || 'inkys',
       productRating: settings.productRating || 5,
       productReviews: settings.productReviews || 5,
       pixDiscount: settings.pixDiscount !== undefined ? settings.pixDiscount : 0.10,
@@ -112,10 +112,15 @@ export function AdminSettings() {
     showToast('Tema atualizado com sucesso!');
   };
 
-  const handleSaveLogo = (e: React.FormEvent) => {
+  const handleSaveStoreDetails = (e: React.FormEvent) => {
     e.preventDefault();
-    updateSettings({ logoUrl });
-    showToast('Logo atualizado com sucesso!');
+    const sanitizedWhatsapp = whatsappNumber.replace(/\D/g, '');
+    updateSettings({ 
+      logoUrl, 
+      storeName: storefrontSettings.storeName,
+      whatsappNumber: sanitizedWhatsapp
+    });
+    showToast('Dados da loja salvos com sucesso!');
   };
   
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,45 +205,78 @@ export function AdminSettings() {
     <div className="space-y-8 max-w-4xl">
       <h2 className="text-2xl font-bold uppercase tracking-widest">Configurações</h2>
 
-      {/* Theme Customization */}
+      {/* Store Details and Logo Customization */}
       <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm space-y-4">
         <div>
-          <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wider mb-1">Logotipo da Loja</h3>
-          <p className="text-gray-500 text-sm">Personalize a logo que aparecerá na loja e no painel.</p>
+          <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wider mb-1">Dados e Logotipo da Loja</h3>
+          <p className="text-gray-500 text-sm">Personalize as informações gerais e a logo da sua loja de forma rápida.</p>
         </div>
 
-        <form onSubmit={handleSaveLogo} className="space-y-4">
-          
-          <div className="flex flex-col sm:flex-row gap-6">
-            <div className="flex-1 space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">URL da Imagem</label>
+        <form onSubmit={handleSaveStoreDetails} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Nome da Loja</label>
+              <input
+                type="text"
+                required
+                value={storefrontSettings.storeName || ""}
+                onChange={(e) => setStorefrontSettings({...storefrontSettings, storeName: e.target.value})}
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none text-gray-900 transition-all"
+                placeholder="Ex: Minha Loja"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Número do WhatsApp (com DDD)</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-green-500">
+                  <MessageCircle size={18} />
+                </div>
                 <input
                   type="text"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none text-gray-900 transition-all"
-                  placeholder="https://..."
-                />
-              </div>
-              
-              <div className="space-y-1">
-                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Ou faça upload da galeria</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoUpload}
-                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
+                  required
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 pl-10 text-sm focus:border-[var(--color-primary)] outline-none text-gray-900 transition-all"
+                  placeholder="Ex: 5561991365428"
                 />
               </div>
             </div>
-            
-            <div className="w-32 h-32 flex items-center justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden shrink-0">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain p-2" />
-              ) : (
-                <div className="w-10 h-10 ink-gradient rounded-full"></div>
-              )}
+          </div>
+
+          <div className="border-t border-gray-100 my-4 pt-4">
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-700 block mb-3">Logotipo</label>
+            <div className="flex flex-col sm:flex-row gap-6">
+              <div className="flex-1 space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">URL da Imagem da Logo</label>
+                  <input
+                    type="text"
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none text-gray-900 transition-all"
+                    placeholder="https://..."
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Ou faça upload do computador</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
+                  />
+                </div>
+              </div>
+              
+              <div className="w-32 h-32 flex items-center justify-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden shrink-0">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain p-2" />
+                ) : (
+                  <div className="w-10 h-10 ink-gradient rounded-full"></div>
+                )}
+              </div>
             </div>
           </div>
           
@@ -246,7 +284,7 @@ export function AdminSettings() {
             type="submit"
             className="flex items-center justify-center gap-2 w-full sm:w-auto bg-[var(--color-primary)] text-white px-6 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all"
           >
-            <Save size={18} /> Salvar Logo
+            <Save size={18} /> Salvar Dados da Loja
           </button>
         </form>
       </div>

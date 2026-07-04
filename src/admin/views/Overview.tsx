@@ -4,12 +4,14 @@ import { DollarSign, Package, ShoppingCart, TrendingUp } from 'lucide-react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { formatPrice } from '../../data/products';
+import { useNavigate } from 'react-router-dom';
 
 export function Overview() {
   const [salesData, setSalesData] = useState<{ name: string; total: number }[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [activeOrders, setActiveOrders] = useState(0);
   const [productCount, setProductCount] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const productsUnsubscribe = onSnapshot(collection(db, 'products'), (snap) => {
@@ -67,10 +69,10 @@ export function Overview() {
   }, []);
 
   const stats = [
-    { label: 'Faturamento Total', value: formatPrice(totalRevenue), icon: DollarSign, change: '100%' },
-    { label: 'Pedidos Pendentes', value: activeOrders.toString(), icon: ShoppingCart, change: 'Pedidos não enviados' },
-    { label: 'Produtos', value: productCount.toString(), icon: Package, change: 'Catálogo' },
-    { label: 'Conversão', value: '---', icon: TrendingUp, change: 'BETA' },
+    { label: 'Faturamento Total', value: formatPrice(totalRevenue), icon: DollarSign, change: '100%', path: '/admin/orders' },
+    { label: 'Pedidos Pendentes', value: activeOrders.toString(), icon: ShoppingCart, change: 'Pedidos não enviados', path: '/admin/orders' },
+    { label: 'Produtos', value: productCount.toString(), icon: Package, change: 'Catálogo', path: '/admin/products' },
+    { label: 'Conversão', value: '---', icon: TrendingUp, change: 'BETA', path: null },
   ];
 
   return (
@@ -80,7 +82,11 @@ export function Overview() {
         {stats.map((stat, i) => {
           const Icon = stat.icon;
           return (
-            <div key={i} className="bg-white border border-gray-200 p-6 rounded-2xl flex flex-col relative overflow-hidden group shadow-sm">
+            <div 
+              key={i} 
+              onClick={() => stat.path && navigate(stat.path)}
+              className={`bg-white border border-gray-200 p-6 rounded-2xl flex flex-col relative overflow-hidden group shadow-sm ${stat.path ? 'cursor-pointer hover:border-[var(--color-primary)] transition-all' : ''}`}
+            >
               <div className="absolute -right-4 -top-4 w-24 h-24 bg-[var(--color-primary)] opacity-5 rounded-full blur-2xl group-hover:opacity-10 transition-opacity" />
               
               <div className="flex justify-between items-start mb-4">
