@@ -210,7 +210,7 @@ export function Products() {
 
       <div className="bg-white rounded-2xl overflow-hidden border border-gray-200">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-widest text-gray-500">
                 <th className="p-4 font-bold">Produto</th>
@@ -488,7 +488,7 @@ export function Products() {
                       {formData.gallery.map((img, index) => (
                         <div key={index} className="relative group w-16 h-16 rounded border border-gray-200 overflow-hidden">
                           <img 
-                            src={img} 
+                            src={img || undefined} 
                             alt={`Galeria ${index}`} 
                             className="w-full h-full object-contain" 
                             onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}

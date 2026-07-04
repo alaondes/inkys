@@ -189,13 +189,13 @@ export function Storefront() {
       {/* Top Header - Purple */}
       <header className="text-white" style={{ backgroundColor: settings.headerColor }}>
         <div className="max-w-[1400px] mx-auto px-4">
-          <div className="flex items-center justify-between h-24 gap-8">
+          <div className="flex items-center justify-between h-16 sm:h-20 md:h-24 gap-3 md:gap-8">
             {/* Logo */}
             <div className="flex-shrink-0 cursor-pointer" onClick={goHome}>
               {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="h-16 w-auto object-contain" />
+                <img src={logoUrl} alt="Logo" className="h-10 sm:h-12 md:h-16 w-auto object-contain" />
               ) : (
-                <div className="text-3xl font-extrabold italic tracking-tighter text-pink-300">
+                <div className="text-xl sm:text-2xl md:text-3xl font-extrabold italic tracking-tighter text-pink-300">
                   Amo<span className="text-white">Canecas</span><span className="text-sm font-normal">.com</span>
                 </div>
               )}
@@ -243,13 +243,35 @@ export function Storefront() {
                 </span>
               </button>
               
-              <Link to="/admin" className="text-xs opacity-50 hover:opacity-100 hidden sm:block">Admin</Link>
+              <Link 
+                to="/admin" 
+                className="text-xs bg-white/15 hover:bg-white/25 text-white font-bold px-3 py-1.5 rounded-full border border-white/10 transition-all flex items-center gap-1 shrink-0"
+              >
+                <User size={14} />
+                <span>Admin</span>
+              </Link>
             </div>
+          </div>
+          
+          {/* Search Mobile */}
+          <div className="md:hidden pb-4">
+             <div className="relative">
+               <input 
+                 type="text" 
+                 placeholder="Digite o que você procura"
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 className="w-full bg-white text-gray-900 rounded-full py-2 px-4 pr-10 text-sm focus:outline-none"
+               />
+               <button className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                 <Search size={18} />
+               </button>
+             </div>
           </div>
           
           {/* Dynamic Navigation Menu */}
           {currentView === 'home' && (
-            <nav className="flex items-center justify-center gap-6 pb-4 overflow-x-auto whitespace-nowrap hide-scrollbar text-sm font-bold">
+            <nav className="flex items-center justify-start md:justify-center gap-6 pb-4 overflow-x-auto whitespace-nowrap hide-scrollbar text-sm font-bold px-2 md:px-0">
               <button 
                 onClick={() => setCurrentView('custom')}
                 className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full hover:brightness-110 transition-colors uppercase flex items-center gap-1 shadow-sm"
@@ -323,7 +345,7 @@ export function Storefront() {
             {/* Features Row */}
             <section className="border-b border-gray-200 bg-white">
               <div className="max-w-[1400px] mx-auto px-4 py-8">
-                <div className="grid grid-cols-4 gap-4 divide-x divide-gray-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-4 lg:divide-x divide-gray-200">
                   <div className="flex items-center justify-center gap-4 px-4">
                     <Truck size={32} className="text-gray-700" strokeWidth={1.5} />
                     <div>
@@ -362,8 +384,8 @@ export function Storefront() {
 
             {/* Promo Banners */}
             <section className="max-w-[1400px] mx-auto px-4 py-12 bg-[#f9fafb]">
-               <div className="grid grid-cols-2 gap-6">
-                  <div className="rounded-3xl overflow-hidden relative h-[250px] flex items-center px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner1ColorStart}, ${settings.promoBanner1ColorEnd})` }} onClick={() => {
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="rounded-3xl overflow-hidden relative h-[200px] md:h-[250px] flex items-center px-6 md:px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner1ColorStart}, ${settings.promoBanner1ColorEnd})` }} onClick={() => {
                     const el = document.getElementById('category-Música');
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
                   }}>
@@ -373,7 +395,7 @@ export function Storefront() {
                        <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f]">{settings.promoBanner1ButtonText}</button>
                      </div>
                   </div>
-                  <div className="rounded-3xl overflow-hidden relative h-[250px] flex items-center px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner2ColorStart}, ${settings.promoBanner2ColorEnd})` }} onClick={() => {
+                  <div className="rounded-3xl overflow-hidden relative h-[200px] md:h-[250px] flex items-center px-6 md:px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner2ColorStart}, ${settings.promoBanner2ColorEnd})` }} onClick={() => {
                     const el = document.getElementById('category-Canecas com Foto') || document.getElementById('category-Canecas');
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
                   }}>

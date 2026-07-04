@@ -38,6 +38,11 @@ export interface AppSettings {
   categories: string[];
   freeShippingThreshold?: number;
   fixedShippingRates?: Record<string, number>;
+  customPageTitle?: string;
+  customPageDescription?: string;
+  customPageGuideText?: string;
+  customPageGuideImage?: string;
+  customProducts?: { name: string; image: string; guideText?: string; guideImage?: string; price?: number }[];
 }
 
 const defaultSettings: AppSettings = {
@@ -74,7 +79,19 @@ const defaultSettings: AppSettings = {
   pixDiscount: 0.10,
   installments: 2,
   categories: ['Canecas', 'Música', 'Divertidas', 'Copa', 'Outros'],
-  fixedShippingRates: { 'SP': 15.90, 'RJ': 20.00 }
+  fixedShippingRates: { 'SP': 15.90, 'RJ': 20.00 },
+  customPageTitle: 'Seu Produto, do Seu Jeito!',
+  customPageDescription: 'Faça um orçamento de canecas, azulejos, camisetas e muito mais com a sua cara, logo da sua empresa ou para presentear alguém especial.',
+  customPageGuideText: 'Para garantir a melhor qualidade na impressão:\n- Envie imagens em alta resolução (preferencialmente PNG com fundo transparente)\n- Evite prints de tela ou fotos borradas\n- Formatos aceitos: JPG, PNG ou SVG',
+  customPageGuideImage: '',
+  customProducts: [
+    { name: 'Caneca', image: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&q=80&w=400', price: 39.90 },
+    { name: 'Azulejo', image: 'https://images.unsplash.com/photo-1522204523234-8729aa6e3d5f?auto=format&fit=crop&q=80&w=400', price: 29.90 },
+    { name: 'Camiseta', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=400', price: 49.90 },
+    { name: 'Garrafa/Squeeze', image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&q=80&w=400', price: 59.90 },
+    { name: 'Mousepad', image: 'https://images.unsplash.com/photo-1628102283857-41864f434778?auto=format&fit=crop&q=80&w=400', price: 19.90 },
+    { name: 'Almofada', image: 'https://images.unsplash.com/photo-1584100936595-c0654b35a111?auto=format&fit=crop&q=80&w=400', price: 45.90 }
+  ]
 };
 
 interface SettingsContextType {

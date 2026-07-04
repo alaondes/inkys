@@ -63,38 +63,40 @@ export function Coupons() {
       </div>
 
       <div className="bg-white rounded-2xl overflow-hidden border border-gray-200">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-widest text-gray-500">
-              <th className="p-4 font-bold">Código</th>
-              <th className="p-4 font-bold">Desconto</th>
-              <th className="p-4 font-bold">Min. Compra</th>
-              <th className="p-4 font-bold">Status</th>
-              <th className="p-4 font-bold text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {coupons.map(c => (
-              <tr key={c.id}>
-                <td className="p-4 font-bold text-gray-900">{c.code}</td>
-                <td className="p-4 text-gray-500">{c.type === 'percentage' ? `${c.value}%` : formatPrice(c.value)}</td>
-                <td className="p-4 text-gray-500">{c.minPurchase ? formatPrice(c.minPurchase) : 'Sem mínimo'}</td>
-                <td className="p-4">
-                  <span className={`px-2 py-1 rounded text-xs font-bold ${c.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {c.active ? 'Ativo' : 'Inativo'}
-                  </span>
-                </td>
-                <td className="p-4 text-right space-x-2">
-                  <button onClick={() => handleEdit(c)} className="text-gray-400 hover:text-gray-900"><Edit2 size={18} /></button>
-                  <button onClick={() => handleDelete(c.id)} className="text-red-400 hover:text-red-600"><Trash2 size={18} /></button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[600px]">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-widest text-gray-500">
+                <th className="p-4 font-bold">Código</th>
+                <th className="p-4 font-bold">Desconto</th>
+                <th className="p-4 font-bold">Min. Compra</th>
+                <th className="p-4 font-bold">Status</th>
+                <th className="p-4 font-bold text-right">Ações</th>
               </tr>
-            ))}
-            {coupons.length === 0 && (
-              <tr><td colSpan={5} className="p-8 text-center text-gray-500">Nenhum cupom cadastrado.</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {coupons.map(c => (
+                <tr key={c.id}>
+                  <td className="p-4 font-bold text-gray-900">{c.code}</td>
+                  <td className="p-4 text-gray-500">{c.type === 'percentage' ? `${c.value}%` : formatPrice(c.value)}</td>
+                  <td className="p-4 text-gray-500">{c.minPurchase ? formatPrice(c.minPurchase) : 'Sem mínimo'}</td>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${c.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {c.active ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </td>
+                  <td className="p-4 text-right space-x-2">
+                    <button onClick={() => handleEdit(c)} className="text-gray-400 hover:text-gray-900"><Edit2 size={18} /></button>
+                    <button onClick={() => handleDelete(c.id)} className="text-red-400 hover:text-red-600"><Trash2 size={18} /></button>
+                  </td>
+                </tr>
+              ))}
+              {coupons.length === 0 && (
+                <tr><td colSpan={5} className="p-8 text-center text-gray-500">Nenhum cupom cadastrado.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {isModalOpen && (

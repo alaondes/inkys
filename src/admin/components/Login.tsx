@@ -35,10 +35,10 @@ export function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 relative" style={{ '--color-primary': 'var(--admin-primary-color, #0891b2)' } as React.CSSProperties}>
       <Link 
         to="/"
-        className="absolute top-8 right-8 flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 font-medium bg-white border border-gray-200 px-4 py-2 rounded-lg hover:border-gray-300 transition-all shadow-sm"
+        className="mb-4 sm:absolute sm:top-8 sm:right-8 flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 font-medium bg-white border border-gray-200 px-4 py-2 rounded-lg hover:border-gray-300 transition-all shadow-sm"
       >
         <ExternalLink size={16} /> Voltar à loja
       </Link>

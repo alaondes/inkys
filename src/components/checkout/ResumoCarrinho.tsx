@@ -22,7 +22,7 @@ export function ResumoCarrinho({ cart, fileInputRefs, updateItemFile }: ResumoCa
         <div key={item.cartItemId} className="flex flex-col md:grid md:grid-cols-12 p-4 border-b border-gray-100 text-sm md:items-center gap-4">
           <div className="md:col-span-8 flex items-start gap-4">
             <img 
-              src={item.image} 
+              src={item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop'} 
               alt={item.name} 
               className="w-20 h-20 object-cover rounded-md border border-gray-200 flex-shrink-0"
             />

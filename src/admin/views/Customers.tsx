@@ -63,7 +63,7 @@ export function Customers() {
 
       <div className="bg-white rounded-2xl overflow-hidden border border-gray-200">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-widest text-gray-500">
                 <th className="p-4 font-bold">Cliente</th>

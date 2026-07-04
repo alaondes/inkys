@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Smartphone, Banknote, Save, MessageCircle } from 'lucide-react';
+import { CreditCard, Smartphone, Banknote, Save, MessageCircle, Plus, Trash2, Upload } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
 
 export function AdminSettings() {
@@ -41,6 +41,11 @@ export function AdminSettings() {
     productReviews: settings.productReviews || 5,
     pixDiscount: settings.pixDiscount !== undefined ? settings.pixDiscount : 0.10,
     installments: settings.installments || 2,
+    customPageTitle: settings.customPageTitle,
+    customPageDescription: settings.customPageDescription,
+    customPageGuideText: settings.customPageGuideText,
+    customPageGuideImage: settings.customPageGuideImage,
+    customProducts: settings.customProducts,
   });
   
   const [shippingSettings, setShippingSettings] = useState({
@@ -84,6 +89,11 @@ export function AdminSettings() {
       productReviews: settings.productReviews || 5,
       pixDiscount: settings.pixDiscount !== undefined ? settings.pixDiscount : 0.10,
       installments: settings.installments || 2,
+      customPageTitle: settings.customPageTitle,
+      customPageDescription: settings.customPageDescription,
+      customPageGuideText: settings.customPageGuideText,
+      customPageGuideImage: settings.customPageGuideImage,
+      customProducts: settings.customProducts,
     });
     setShippingSettings({
       freeShippingThreshold: settings.freeShippingThreshold,
@@ -248,16 +258,34 @@ export function AdminSettings() {
           <p className="text-gray-500 text-sm">Personalize a cor principal de destaque do sistema.</p>
         </div>
 
-        <div className="flex items-center gap-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
-          <div>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+          <div className="flex items-center gap-4">
             <input 
               type="color" 
               value={primaryColor}
               onChange={(e) => setPrimaryColor(e.target.value)}
-              className="w-16 h-16 rounded cursor-pointer bg-transparent border-none appearance-none p-0"
+              className="w-16 h-16 rounded cursor-pointer bg-transparent border-none appearance-none p-0 shrink-0"
             />
+            <div className="sm:hidden flex-1 space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Cor Hexadecimal</label>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="text" 
+                  value={primaryColor}
+                  onChange={(e) => setPrimaryColor(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none font-mono text-gray-900"
+                />
+                <button 
+                  onClick={handleSaveColor}
+                  className="bg-[var(--color-primary)] text-white p-2.5 rounded-lg font-bold hover:brightness-110 transition-all shrink-0"
+                  title="Aplicar Cor"
+                >
+                  <Save size={16} />
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="flex-1 space-y-1">
+          <div className="hidden sm:block flex-1 space-y-1">
             <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Cor Hexadecimal</label>
             <div className="flex items-center gap-3">
               <input 
@@ -274,7 +302,7 @@ export function AdminSettings() {
               </button>
             </div>
           </div>
-          <div className="w-32 h-20 rounded-xl bg-white shadow-sm" style={{ border: `1px solid ${primaryColor}80` }}>
+          <div className="w-full sm:w-32 h-20 rounded-xl bg-white shadow-sm flex-shrink-0" style={{ border: `1px solid ${primaryColor}80` }}>
             <div className="p-3">
               <div className="w-1/2 h-2 rounded-full mb-2" style={{ backgroundColor: primaryColor }} />
               <div className="w-3/4 h-2 rounded-full bg-gray-200" />
@@ -382,7 +410,7 @@ export function AdminSettings() {
             </div>
             <div className="space-y-1 col-span-full">
               <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor do Botão Comprar</label>
-              <div className="flex items-center gap-3 w-1/2">
+              <div className="flex items-center gap-3 w-full sm:w-1/2">
                 <input
                   type="color"
                   value={storefrontSettings.buyButtonColor}
@@ -581,6 +609,173 @@ export function AdminSettings() {
                   onChange={(e) => setStorefrontSettings({...storefrontSettings, productReviews: parseInt(e.target.value) || 0})}
                   className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
                 />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 p-4 border border-gray-100 rounded-xl bg-gray-50">
+            <h4 className="text-sm font-bold uppercase tracking-widest text-gray-700">Página de Personalizados</h4>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Título da Página</label>
+              <input
+                type="text"
+                value={storefrontSettings.customPageTitle || ""}
+                onChange={(e) => setStorefrontSettings({...storefrontSettings, customPageTitle: e.target.value})}
+                className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Descrição</label>
+              <textarea
+                value={storefrontSettings.customPageDescription || ""}
+                onChange={(e) => setStorefrontSettings({...storefrontSettings, customPageDescription: e.target.value})}
+                className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none resize-y min-h-[80px]"
+              ></textarea>
+            </div>
+            
+            <div className="pt-2">
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Produtos Personalizáveis</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const products = storefrontSettings.customProducts || [];
+                    setStorefrontSettings({...storefrontSettings, customProducts: [...products, { name: '', image: '' }]});
+                  }}
+                  className="text-xs text-[var(--color-primary)] font-bold flex items-center gap-1"
+                >
+                  <Plus size={14} /> Adicionar Produto
+                </button>
+              </div>
+              <div className="space-y-3">
+                {(storefrontSettings.customProducts || []).map((cp, idx) => (
+                  <div key={idx} className="flex gap-2 items-start bg-white p-3 rounded-lg border border-gray-200">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="text"
+                          placeholder="Nome (ex: Caneca)"
+                          value={cp.name}
+                          onChange={(e) => {
+                            const newProds = [...(storefrontSettings.customProducts || [])];
+                            newProds[idx].name = e.target.value;
+                            setStorefrontSettings({...storefrontSettings, customProducts: newProds});
+                          }}
+                          className="flex-1 bg-gray-50 border border-gray-200 rounded p-2 text-sm focus:border-[var(--color-primary)] outline-none"
+                        />
+                        <div className="relative w-full sm:w-32">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0,00"
+                            value={cp.price || ''}
+                            onChange={(e) => {
+                              const newProds = [...(storefrontSettings.customProducts || [])];
+                              newProds[idx].price = parseFloat(e.target.value) || undefined;
+                              setStorefrontSettings({...storefrontSettings, customProducts: newProds});
+                            }}
+                            className="w-full pl-8 pr-2 py-2 bg-gray-50 border border-gray-200 rounded text-sm focus:border-[var(--color-primary)] outline-none"
+                          />
+                        </div>
+                        <div className="flex-1 flex gap-2 items-center">
+                          <input
+                            type="text"
+                            placeholder="URL da Imagem"
+                            value={cp.image}
+                            onChange={(e) => {
+                              const newProds = [...(storefrontSettings.customProducts || [])];
+                              newProds[idx].image = e.target.value;
+                              setStorefrontSettings({...storefrontSettings, customProducts: newProds});
+                            }}
+                            className="flex-1 w-full bg-gray-50 border border-gray-200 rounded p-2 text-sm focus:border-[var(--color-primary)] outline-none"
+                          />
+                          <label className="cursor-pointer bg-gray-100 p-2 rounded border border-gray-200 hover:bg-gray-200 transition-colors shrink-0 text-gray-600" title="Upload Imagem">
+                            <Upload size={16} />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    const result = reader.result as string;
+                                    const newProds = [...(storefrontSettings.customProducts || [])];
+                                    newProds[idx].image = result;
+                                    setStorefrontSettings({...storefrontSettings, customProducts: newProds});
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          placeholder="URL da Imagem Guia (Opcional)"
+                          value={cp.guideImage || ''}
+                          onChange={(e) => {
+                            const newProds = [...(storefrontSettings.customProducts || [])];
+                            newProds[idx].guideImage = e.target.value;
+                            setStorefrontSettings({...storefrontSettings, customProducts: newProds});
+                          }}
+                          className="flex-1 w-full bg-gray-50 border border-gray-200 rounded p-2 text-sm focus:border-[var(--color-primary)] outline-none"
+                        />
+                        <label className="cursor-pointer bg-gray-100 p-2 rounded border border-gray-200 hover:bg-gray-200 transition-colors shrink-0 text-gray-600" title="Upload Imagem Guia">
+                          <Upload size={16} />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  const result = reader.result as string;
+                                  const newProds = [...(storefrontSettings.customProducts || [])];
+                                  newProds[idx].guideImage = result;
+                                  setStorefrontSettings({...storefrontSettings, customProducts: newProds});
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                      <textarea
+                        placeholder="Texto de instruções (ex: Envie imagem em PNG...)"
+                        value={cp.guideText || ''}
+                        onChange={(e) => {
+                          const newProds = [...(storefrontSettings.customProducts || [])];
+                          newProds[idx].guideText = e.target.value;
+                          setStorefrontSettings({...storefrontSettings, customProducts: newProds});
+                        }}
+                        className="w-full bg-gray-50 border border-gray-200 rounded p-2 text-sm focus:border-[var(--color-primary)] outline-none resize-y min-h-[60px]"
+                      ></textarea>
+                    </div>
+                    {cp.image ? (
+                      <img src={cp.image} alt={cp.name} className="w-16 h-16 object-cover rounded-md border border-gray-100" />
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newProds = [...(storefrontSettings.customProducts || [])];
+                        newProds.splice(idx, 1);
+                        setStorefrontSettings({...storefrontSettings, customProducts: newProds});
+                      }}
+                      className="text-red-500 hover:bg-red-50 p-2 rounded-lg"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

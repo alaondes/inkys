@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, ExternalLink, Users, Ticket } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, ExternalLink, Users, Ticket, FileText, X } from 'lucide-react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -8,6 +8,7 @@ import { Overview } from './views/Overview';
 import { Products } from './views/Products';
 import { Orders } from './views/Orders';
 import { AdminSettings } from './views/Settings';
+import { Documents } from './views/Documents';
 import { Customers } from './views/Customers';
 import { Coupons } from './views/Coupons';
 import { Login } from './components/Login';
@@ -18,6 +19,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 export function AdminApp() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const { settings } = useSettings();
   const logoUrl = settings.logoUrl;
@@ -58,14 +60,23 @@ export function AdminApp() {
     { path: '/admin/orders', icon: ShoppingBag, label: 'Pedidos' },
     { path: '/admin/customers', icon: Users, label: 'Clientes' },
     { path: '/admin/coupons', icon: Ticket, label: 'Cupons' },
+    { path: '/admin/documents', icon: FileText, label: 'Documentos' },
     { path: '/admin/settings', icon: Settings, label: 'Configurações' },
   ];
 
   return (
     <div className="flex h-screen bg-gray-50 text-gray-900 overflow-hidden" style={{ '--color-primary': 'var(--admin-primary-color, #0891b2)' } as React.CSSProperties}>
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 border-r border-gray-200 bg-white flex flex-col">
-        <div className="h-20 flex items-center px-6 border-b border-gray-200">
+      <aside className={`w-64 border-r border-gray-200 bg-white flex flex-col absolute lg:static top-0 bottom-0 left-0 z-50 transition-transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className="h-20 flex items-center justify-between px-6 border-b border-gray-200">
           <div className="flex items-center gap-3 w-full">
             {logoUrl ? (
               <img src={logoUrl} alt="Logo" className="h-12 w-auto max-w-[120px] object-contain" />
@@ -74,9 +85,12 @@ export function AdminApp() {
             )}
             <h1 className="font-bold tracking-widest uppercase text-xl">Admin</h1>
           </div>
+          <button className="lg:hidden text-gray-500" onClick={() => setIsMobileMenuOpen(false)}>
+            <X size={24} />
+          </button>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -84,6 +98,7 @@ export function AdminApp() {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center justify-between px-4 py-3 rounded-lg font-medium transition-all ${
                   isActive 
                     ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' 
@@ -124,22 +139,29 @@ export function AdminApp() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto bg-gray-50">
-        <header className="h-20 border-b border-gray-200 flex items-center justify-between px-8 bg-white/80 backdrop-blur-md sticky top-0 z-10">
-          <h2 className="text-xl font-bold uppercase tracking-wider text-gray-700">Painel de Controle</h2>
+        <header className="h-20 border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 bg-white/80 backdrop-blur-md sticky top-0 z-10">
           <div className="flex items-center gap-4">
-            <Link to="/" className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 font-medium border border-gray-200 px-4 py-2 rounded-lg hover:border-gray-300 transition-all">
-              <ExternalLink size={16} /> Voltar ao site
+            <button className="lg:hidden text-gray-700 hover:text-gray-900" onClick={() => setIsMobileMenuOpen(true)}>
+              <Menu size={24} />
+            </button>
+            <h2 className="text-lg sm:text-xl font-bold uppercase tracking-wider text-gray-700 hidden sm:block">Painel de Controle</h2>
+            <h2 className="text-lg sm:text-xl font-bold uppercase tracking-wider text-gray-700 sm:hidden">Painel</h2>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link to="/" className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 font-medium border border-gray-200 px-3 sm:px-4 py-2 rounded-lg hover:border-gray-300 transition-all">
+              <ExternalLink size={16} /> <span className="hidden sm:inline">Voltar ao site</span>
             </Link>
           </div>
         </header>
 
-        <div className="p-8 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-8 max-w-7xl mx-auto">
           <Routes>
             <Route path="/" element={<Overview />} />
             <Route path="/products" element={<Products />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/customers" element={<Customers />} />
             <Route path="/coupons" element={<Coupons />} />
+            <Route path="/documents" element={<Documents />} />
             <Route path="/settings" element={<AdminSettings />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Routes>

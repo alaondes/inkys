@@ -204,7 +204,7 @@ export function Orders() {
 
       <div className="bg-white rounded-2xl overflow-hidden border border-gray-200">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-widest text-gray-500">
                 <th className="p-4 font-bold">Pedido</th>
@@ -259,7 +259,7 @@ export function Orders() {
             </div>
             
             <div className="flex-1 overflow-y-auto space-y-6 pr-2 text-gray-900">
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <p className="text-[10px] uppercase font-bold text-gray-500 mb-1">Cliente</p>
                   <p className="text-sm font-medium">{selectedOrder.customer}</p>
