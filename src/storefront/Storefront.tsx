@@ -422,16 +422,36 @@ export function Storefront() {
                        <div className="absolute inset-0 bg-white/40" />
                        <div className="relative z-10 text-center flex flex-col items-center">
                           <div dangerouslySetInnerHTML={{ __html: currentBanner?.titleHtml || '' }} className={`font-bold mb-4 ${currentBanner?.titleSize || 'text-5xl'} ${currentBanner?.titleFont || 'font-sans'}`} style={{ color: currentBanner?.titleColor || settings.topBarColor }} />
-                          <p className={`font-medium max-w-lg mb-6 ${currentBanner?.subtitleSize || 'text-xl'} ${currentBanner?.subtitleFont || 'font-sans'}`} style={{ color: currentBanner?.subtitleColor || '#592c60' }}>{currentBanner?.subtitle}</p>
+                          <p className={`font-medium max-w-lg mb-6 ${currentBanner?.subtitleSameSize ? (currentBanner?.titleSize || 'text-5xl') : (currentBanner?.subtitleSize || 'text-xl')} ${currentBanner?.subtitleFont || 'font-sans'}`} style={{ color: currentBanner?.subtitleColor || '#592c60' }}>{currentBanner?.subtitle}</p>
                           
                           <div className="flex gap-6 mb-8 text-[#592c60] font-bold text-sm">
                             <div className="flex items-center gap-2"><div className="w-10 h-10 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: settings.topBarColor }}><User size={20}/></div> Personalizada com sua foto</div>
                             <div className="flex items-center gap-2"><div className="w-10 h-10 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: settings.topBarColor }}><MessageCircle size={20}/></div> Estampa com sua música</div>
                           </div>
                           
-                          <button className="text-white px-8 py-3 rounded-md font-bold text-lg hover:brightness-90 transition-colors shadow-lg" style={{ backgroundColor: currentBanner?.buttonColor }}>
-                            {currentBanner?.buttonText}
-                          </button>
+                          {currentBanner?.buttonLink ? (
+                            <a 
+                              href={currentBanner.buttonLink}
+                              onClick={(e) => {
+                                if (currentBanner.buttonLink?.startsWith('#')) {
+                                  e.preventDefault();
+                                  const id = currentBanner.buttonLink.substring(1);
+                                  const el = document.getElementById(id);
+                                  if (el) {
+                                    el.scrollIntoView({ behavior: 'smooth' });
+                                  }
+                                }
+                              }}
+                              className="text-white px-8 py-3 rounded-md font-bold text-lg hover:brightness-90 transition-colors shadow-lg inline-block text-center cursor-pointer"
+                              style={{ backgroundColor: currentBanner?.buttonColor }}
+                            >
+                              {currentBanner?.buttonText}
+                            </a>
+                          ) : (
+                            <button className="text-white px-8 py-3 rounded-md font-bold text-lg hover:brightness-90 transition-colors shadow-lg cursor-pointer" style={{ backgroundColor: currentBanner?.buttonColor }}>
+                              {currentBanner?.buttonText}
+                            </button>
+                          )}
                        </div>
                     </motion.div>
                   );

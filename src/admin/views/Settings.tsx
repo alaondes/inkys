@@ -472,7 +472,23 @@ const res = await resizeImage(file, 2000, 1125);
                             newBanners[index] = { ...newBanners[index], subtitle: e.target.value };
                             setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});
                           }} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" />
-                        <div className="grid grid-cols-3 gap-2 mt-2">                          <div className="space-y-1">                            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor</label>                            <input type="color" value={banner.subtitleColor || '#592c60'} onChange={e => {                              const newBanners = [...storefrontSettings.heroBanners];                              newBanners[index] = { ...newBanners[index], subtitleColor: e.target.value };                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});                            }} className="w-full h-8 cursor-pointer border-0 p-0" />                          </div>                          <div className="space-y-1">                            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Tamanho</label>                            <select value={banner.subtitleSize || 'text-xl'} onChange={e => {                              const newBanners = [...storefrontSettings.heroBanners];                              newBanners[index] = { ...newBanners[index], subtitleSize: e.target.value };                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});                            }} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:border-[var(--color-primary)] outline-none">                              <option value="text-sm">Pequeno</option>                              <option value="text-base">Médio</option>                              <option value="text-lg">Grande (lg)</option>                              <option value="text-xl">Extra (xl)</option>                              <option value="text-2xl">2xl</option>                            </select>                          </div>                          <div className="space-y-1">                            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Fonte</label>                            <select value={banner.subtitleFont || 'font-sans'} onChange={e => {                              const newBanners = [...storefrontSettings.heroBanners];                              newBanners[index] = { ...newBanners[index], subtitleFont: e.target.value };                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});                            }} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:border-[var(--color-primary)] outline-none">                              <option value="font-sans">Sans-serif</option>                              <option value="font-serif">Serif</option>                              <option value="font-mono">Monospace</option>                            </select>                          </div>                        </div>
+                        <div className="grid grid-cols-3 gap-2 mt-2">                          <div className="space-y-1">                            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor</label>                            <input type="color" value={banner.subtitleColor || '#592c60'} onChange={e => {                              const newBanners = [...storefrontSettings.heroBanners];                              newBanners[index] = { ...newBanners[index], subtitleColor: e.target.value };                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});                            }} className="w-full h-8 cursor-pointer border-0 p-0" />                          </div>                          <div className="space-y-1">                            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Tamanho</label>                            <select value={banner.subtitleSize || 'text-xl'} disabled={banner.subtitleSameSize} onChange={e => {                              const newBanners = [...storefrontSettings.heroBanners];                              newBanners[index] = { ...newBanners[index], subtitleSize: e.target.value };                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});                            }} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:border-[var(--color-primary)] outline-none disabled:opacity-50">                              <option value="text-sm">Pequeno</option>                              <option value="text-base">Médio</option>                              <option value="text-lg">Grande (lg)</option>                              <option value="text-xl">Extra (xl)</option>                              <option value="text-2xl">2xl</option>                            </select>                          </div>                          <div className="space-y-1">                            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Fonte</label>                            <select value={banner.subtitleFont || 'font-sans'} onChange={e => {                              const newBanners = [...storefrontSettings.heroBanners];                              newBanners[index] = { ...newBanners[index], subtitleFont: e.target.value };                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});                            }} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:border-[var(--color-primary)] outline-none">                              <option value="font-sans">Sans-serif</option>                              <option value="font-serif">Serif</option>                              <option value="font-mono">Monospace</option>                            </select>                          </div>                        </div>
+                          <div className="flex items-center gap-2 mt-2 ml-1">
+                            <input 
+                              type="checkbox" 
+                              id={`subtitle-same-size-${banner.id || index}`}
+                              checked={banner.subtitleSameSize || false} 
+                              onChange={e => {
+                                const newBanners = [...storefrontSettings.heroBanners];
+                                newBanners[index] = { ...newBanners[index], subtitleSameSize: e.target.checked };
+                                setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});
+                              }}
+                              className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+                            />
+                            <label htmlFor={`subtitle-same-size-${banner.id || index}`} className="text-xs text-gray-600 font-medium cursor-pointer">
+                              Subtítulo no mesmo tamanho do título
+                            </label>
+                          </div>
                         </div>
                         <div className="flex gap-2">
                           <div className="space-y-1 flex-1">
@@ -491,6 +507,20 @@ const res = await resizeImage(file, 2000, 1125);
                               setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});
                             }} className="w-full h-9 cursor-pointer border-0 p-0" />
                           </div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Link do Botão (Ex: #category-all ou link externo)</label>
+                          <input 
+                            type="text" 
+                            placeholder="Ex: #category-all ou https://..."
+                            value={banner.buttonLink || ''} 
+                            onChange={e => {
+                              const newBanners = [...storefrontSettings.heroBanners];
+                              newBanners[index] = { ...newBanners[index], buttonLink: e.target.value };
+                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});
+                            }} 
+                            className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" 
+                          />
                         </div>
                       </div>
                     </div>
