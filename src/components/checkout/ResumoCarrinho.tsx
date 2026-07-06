@@ -65,7 +65,7 @@ export function ResumoCarrinho({
                 <input 
                   type="file" 
                   className="hidden" 
-                  ref={el => fileInputRefs.current[item.cartItemId] = el}
+                  ref={(el) => { fileInputRefs.current[item.cartItemId] = el; }}
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
                       updateItemFile(item.cartItemId, e.target.files[0]);

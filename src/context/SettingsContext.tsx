@@ -2,6 +2,21 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
+export interface HeroBanner {
+  id: string;
+  image: string;
+  titleHtml: string;
+  subtitle: string;
+  buttonText: string;
+  buttonColor: string;
+  titleColor?: string;
+  titleSize?: string;
+  titleFont?: string;
+  subtitleColor?: string;
+  subtitleSize?: string;
+  subtitleFont?: string;
+}
+
 export interface AppSettings {
   logoUrl: string;
   primaryColor: string;
@@ -14,11 +29,15 @@ export interface AppSettings {
   };
   topBarColor: string;
   headerColor: string;
+  headerTextColor: string;
+  customButtonBgColor: string;
+  customButtonTextColor: string;
   heroBannerImage: string;
   heroBannerTitleHtml: string;
   heroBannerSubtitle: string;
   heroBannerButtonText: string;
   heroBannerButtonColor: string;
+  heroBanners?: HeroBanner[];
   promoBanner1TitleHtml: string;
   promoBanner1SubtitleHtml: string;
   promoBanner1ButtonText: string;
@@ -43,6 +62,7 @@ export interface AppSettings {
   customPageGuideText?: string;
   customPageGuideImage?: string;
   customProducts?: { name: string; image: string; guideText?: string; guideImage?: string; price?: number }[];
+  storeFeatures?: { id: string; icon: string; title: string; subtitle: string; enabled: boolean }[];
 }
 
 const defaultSettings: AppSettings = {
@@ -57,11 +77,24 @@ const defaultSettings: AppSettings = {
   },
   topBarColor: '#d64c71',
   headerColor: '#8b3887',
+  headerTextColor: '#ffffff',
+  customButtonBgColor: '#facc15',
+  customButtonTextColor: '#713f12',
   heroBannerImage: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&q=80',
   heroBannerTitleHtml: 'Caneca com<br/><span class="text-5xl italic font-serif mt-2 block">Foto e Música</span>',
   heroBannerSubtitle: 'O presente perfeito para transformar lembranças em emoção.',
   heroBannerButtonText: 'Peça a sua agora ♥',
   heroBannerButtonColor: '#b44e68',
+  heroBanners: [
+    {
+      id: 'default-1',
+      image: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&q=80',
+      titleHtml: 'Caneca com<br/><span class="text-5xl italic font-serif mt-2 block">Foto e Música</span>',
+      subtitle: 'O presente perfeito para transformar lembranças em emoção.',
+      buttonText: 'Peça a sua agora ♥',
+      buttonColor: '#b44e68'
+    }
+  ],
   promoBanner1TitleHtml: 'CANECAS COM SUA<br/>MÚSICA FAVORITA!',
   promoBanner1SubtitleHtml: 'Modelos prontos com código<br/>de música para adicionar.',
   promoBanner1ButtonText: 'COMPRAR',
@@ -91,6 +124,12 @@ const defaultSettings: AppSettings = {
     { name: 'Garrafa/Squeeze', image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&q=80&w=400', price: 59.90 },
     { name: 'Mousepad', image: 'https://images.unsplash.com/photo-1628102283857-41864f434778?auto=format&fit=crop&q=80&w=400', price: 19.90 },
     { name: 'Almofada', image: 'https://images.unsplash.com/photo-1584100936595-c0654b35a111?auto=format&fit=crop&q=80&w=400', price: 45.90 }
+  ],
+  storeFeatures: [
+    { id: 'f1', icon: 'Truck', title: 'Do Oiapoque ao Chuí', subtitle: 'Entregas em Todo Brasil', enabled: true },
+    { id: 'f2', icon: 'CreditCard', title: 'Parcelamento', subtitle: 'Em até 2x sem juros', enabled: true },
+    { id: 'f3', icon: 'Zap', title: 'Ganhe Desconto', subtitle: 'Pagando com PIX', enabled: true },
+    { id: 'f4', icon: 'ShieldCheck', title: 'Segurança', subtitle: 'Loja com SSL de proteção', enabled: true },
   ]
 };
 
@@ -102,20 +141,30 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 const getInitialSettings = (): AppSettings => {
-  const cached = localStorage.getItem('inkys-settings');
-  if (cached) {
-    try {
-      return { ...defaultSettings, ...JSON.parse(cached) };
-    } catch (e) {
-      console.error('Failed to parse cached settings', e);
+  try {
+    const cached = localStorage.getItem('inkys-settings');
+    if (cached) {
+      try {
+        return { ...defaultSettings, ...JSON.parse(cached) };
+      } catch (e) {
+        console.error('Failed to parse cached settings', e);
+      }
     }
+  } catch (err) {
+    console.warn('localStorage access denied', err);
   }
   return defaultSettings;
 };
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(getInitialSettings);
-  const [isLoading, setIsLoading] = useState(!localStorage.getItem('inkys-settings'));
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      return !localStorage.getItem('inkys-settings');
+    } catch {
+      return true;
+    }
+  });
 
   useEffect(() => {
     const settingsRef = doc(db, 'config', 'settings');
@@ -123,7 +172,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (docSnap.exists()) {
         const newSettings = { ...defaultSettings, ...docSnap.data() as AppSettings };
         setSettings(newSettings);
-        localStorage.setItem('inkys-settings', JSON.stringify(newSettings));
+        try {
+          localStorage.setItem('inkys-settings', JSON.stringify(newSettings));
+        } catch (e) {
+          // ignore
+        }
         setIsLoading(false);
       } else {
         // Initialize settings if they don't exist

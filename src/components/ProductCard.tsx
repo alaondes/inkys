@@ -60,7 +60,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              src={images[currentImageIndex]} 
+              src={images[currentImageIndex] || undefined} 
               alt={product.name} 
               className="absolute inset-0 w-full h-full object-contain p-2 sm:p-4 mix-blend-multiply"
             />

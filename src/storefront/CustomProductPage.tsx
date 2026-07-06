@@ -123,11 +123,8 @@ export function CustomProductPage({ onBack }: { onBack: () => void }) {
     
     if (imageFile) {
       try {
-        const { storage } = await import('../lib/firebase');
-        const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
-        const fileRef = ref(storage, `custom_requests/${Date.now()}_${imageFile.name}`);
-        await uploadBytes(fileRef, imageFile);
-        imageUrl = await getDownloadURL(fileRef);
+        const { resizeImage } = await import('../utils/image');
+        imageUrl = await resizeImage(imageFile, 800, 800);
       } catch (error) {
         console.error("Error uploading image:", error);
       }

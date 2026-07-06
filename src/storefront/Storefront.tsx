@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Menu, MessageCircle, CreditCard, Truck, ShieldCheck, User } from 'lucide-react';
+import { ShoppingCart, Search, Menu, MessageCircle, CreditCard, Truck, ShieldCheck, User, Star, Heart, Gift } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatPrice, Product } from '../data/products';
 import { generateWhatsAppLink, CheckoutData } from '../utils/whatsapp';
@@ -30,24 +30,31 @@ export function Storefront() {
 
   useEffect(() => {
     import('localforage').then((localforage) => {
-      localforage.default.getItem<CartItem[]>('cart').then((savedCart) => {
+      const lf = localforage.default || localforage;
+      lf.getItem<CartItem[]>('cart').then((savedCart) => {
         if (savedCart) {
           setCart(savedCart);
         }
         setIsCartLoaded(true);
-      }).catch((e) => {
+      }).catch((e: any) => {
         console.error('Failed to load cart from localforage', e);
         setIsCartLoaded(true);
       });
+    }).catch(e => {
+      console.error('Failed to import localforage', e);
+      setIsCartLoaded(true);
     });
   }, []);
 
   useEffect(() => {
     if (isCartLoaded) {
       import('localforage').then((localforage) => {
-        localforage.default.setItem('cart', cart).catch((e) => {
+        const lf = localforage.default || localforage;
+        lf.setItem('cart', cart).catch((e: any) => {
           console.error('Failed to save cart to localforage', e);
         });
+      }).catch(e => {
+        console.error('Failed to import localforage for saving', e);
       });
     }
   }, [cart, isCartLoaded]);
@@ -55,6 +62,17 @@ export function Storefront() {
   const [currentView, setCurrentView] = useState<'home' | 'product' | 'cart' | 'checkout' | 'custom'>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+
+  const [currentBannerIdx, setCurrentBannerIdx] = useState(0);
+  
+  useEffect(() => {
+    const banners = settings.heroBanners || [];
+    if (banners.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentBannerIdx((prev) => (prev + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [settings.heroBanners]);
 
   const addToCart = (product: any, selectedColor?: string) => {
     const cartItemId = `${product.id}-${selectedColor || 'default'}`;
@@ -104,8 +122,7 @@ export function Storefront() {
     if (cart.length === 0) return;
     
     const toast = (await import('react-hot-toast')).default;
-    const { storage, db } = await import('../lib/firebase');
-    const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+    const { db } = await import('../lib/firebase');
     const { collection, addDoc, doc, updateDoc, increment, serverTimestamp } = await import('firebase/firestore');
 
     try {
@@ -114,9 +131,8 @@ export function Storefront() {
       for (let i = 0; i < updatedCart.length; i++) {
         const item = updatedCart[i];
         if (item.file) {
-          const fileRef = ref(storage, `uploads/${Date.now()}_${item.file.name}`);
-          await uploadBytes(fileRef, item.file);
-          const url = await getDownloadURL(fileRef);
+          const { resizeImage } = await import('../utils/image');
+          const url = await resizeImage(item.file, 800, 800);
           updatedCart[i].fileUrl = url;
           // Don't send File object to firestore
           delete updatedCart[i].file;
@@ -231,16 +247,16 @@ export function Storefront() {
   return (
     <div className="min-h-screen bg-white">
       {/* Top Header - Purple */}
-      <header className="text-white" style={{ backgroundColor: settings.headerColor }}>
+      <header style={{ backgroundColor: settings.headerColor, color: settings.headerTextColor || '#ffffff' }}>
         <div className="max-w-[1400px] mx-auto px-4">
           <div className="flex items-center justify-between h-16 sm:h-20 md:h-24 gap-3 md:gap-8">
             {/* Logo */}
             <div className="flex-shrink-0 cursor-pointer" onClick={goHome}>
               {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="h-10 sm:h-12 md:h-16 w-auto object-contain" />
+                <img src={logoUrl || undefined} alt="Logo" className="h-10 sm:h-12 md:h-16 w-auto object-contain" />
               ) : (
-                <div className="text-xl sm:text-2xl md:text-3xl font-extrabold italic tracking-tighter text-pink-300">
-                  Amo<span className="text-white">Canecas</span><span className="text-sm font-normal">.com</span>
+                <div className="text-xl sm:text-2xl md:text-3xl font-extrabold italic tracking-tighter" style={{ color: settings.topBarColor || '#f9a8d4' }}>
+                  Amo<span style={{ color: settings.headerTextColor || '#ffffff' }}>Canecas</span><span className="text-sm font-normal">.com</span>
                 </div>
               )}
             </div>
@@ -289,7 +305,8 @@ export function Storefront() {
               
               <Link 
                 to="/admin" 
-                className="text-xs bg-white/15 hover:bg-white/25 text-white font-bold px-3 py-1.5 rounded-full border border-white/10 transition-all flex items-center gap-1 shrink-0"
+                className="text-xs bg-white/15 hover:bg-white/25 font-bold px-3 py-1.5 rounded-full border border-white/10 transition-all flex items-center gap-1 shrink-0"
+                style={{ color: settings.headerTextColor || '#ffffff' }}
               >
                 <User size={14} />
                 <span>Admin</span>
@@ -318,7 +335,8 @@ export function Storefront() {
             <nav className="flex items-center justify-start md:justify-center gap-6 pb-4 overflow-x-auto whitespace-nowrap hide-scrollbar text-sm font-bold px-2 md:px-0">
               <button 
                 onClick={() => setCurrentView('custom')}
-                className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full hover:brightness-110 transition-colors uppercase flex items-center gap-1 shadow-sm"
+                className="px-3 py-1 rounded-full hover:brightness-110 transition-colors uppercase flex items-center gap-1 shadow-sm"
+                style={{ backgroundColor: settings.customButtonBgColor || '#facc15', color: settings.customButtonTextColor || '#713f12' }}
               >
                 Personalizados ✨
               </button>
@@ -369,65 +387,106 @@ export function Storefront() {
           />
         ) : (
           <>
-            {/* Hero Banner */}
-            <section className="w-full bg-[#f9e5e6]">
-              <div className="w-full h-[400px] bg-cover bg-center flex items-center justify-center relative" style={{ backgroundImage: `url(${settings.heroBannerImage})`}}>
-                 <div className="absolute inset-0 bg-white/40" />
-                 <div className="relative z-10 text-center flex flex-col items-center">
-                    <div dangerouslySetInnerHTML={{ __html: settings.heroBannerTitleHtml }} className="text-[#e84e70] font-bold mb-4" style={{ color: settings.topBarColor }} />
-                    <p className="text-[#592c60] text-xl font-medium max-w-lg mb-6">{settings.heroBannerSubtitle}</p>
-                    
-                    <div className="flex gap-6 mb-8 text-[#592c60] font-bold text-sm">
-                      <div className="flex items-center gap-2"><div className="w-10 h-10 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: settings.topBarColor }}><User size={20}/></div> Personalizada com sua foto</div>
-                      <div className="flex items-center gap-2"><div className="w-10 h-10 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: settings.topBarColor }}><MessageCircle size={20}/></div> Estampa com sua música</div>
-                    </div>
-                    
-                    <button className="text-white px-8 py-3 rounded-md font-bold text-lg hover:brightness-90 transition-colors shadow-lg" style={{ backgroundColor: settings.heroBannerButtonColor }}>
-                      {settings.heroBannerButtonText}
-                    </button>
-                 </div>
-              </div>
+            {/* Hero Banner Carousel */}
+            <section className="w-full bg-[#f9e5e6] overflow-hidden relative" style={{ height: '400px' }}>
+              <AnimatePresence mode="wait">
+                {(() => {
+                  const banners = settings.heroBanners && settings.heroBanners.length > 0 
+                    ? settings.heroBanners 
+                    : [{
+                        id: 'legacy',
+                        image: settings.heroBannerImage,
+                        titleHtml: settings.heroBannerTitleHtml,
+                        subtitle: settings.heroBannerSubtitle,
+                        buttonText: settings.heroBannerButtonText,
+                        buttonColor: settings.heroBannerButtonColor
+                      }];
+                  const currentBanner = banners[currentBannerIdx % banners.length];
+                  
+                  return (
+                    <motion.div
+                      key={currentBannerIdx}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.8 }}
+                      className="absolute inset-0 w-full h-full bg-cover bg-center flex items-center justify-center"
+                      style={{ backgroundImage: `url(${currentBanner?.image})` }}
+                    >
+                       <div className="absolute inset-0 bg-white/40" />
+                       <div className="relative z-10 text-center flex flex-col items-center">
+                          <div dangerouslySetInnerHTML={{ __html: currentBanner?.titleHtml || '' }} className="text-[#e84e70] font-bold mb-4" style={{ color: settings.topBarColor }} />
+                          <p className="text-[#592c60] text-xl font-medium max-w-lg mb-6">{currentBanner?.subtitle}</p>
+                          
+                          <div className="flex gap-6 mb-8 text-[#592c60] font-bold text-sm">
+                            <div className="flex items-center gap-2"><div className="w-10 h-10 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: settings.topBarColor }}><User size={20}/></div> Personalizada com sua foto</div>
+                            <div className="flex items-center gap-2"><div className="w-10 h-10 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: settings.topBarColor }}><MessageCircle size={20}/></div> Estampa com sua música</div>
+                          </div>
+                          
+                          <button className="text-white px-8 py-3 rounded-md font-bold text-lg hover:brightness-90 transition-colors shadow-lg" style={{ backgroundColor: currentBanner?.buttonColor }}>
+                            {currentBanner?.buttonText}
+                          </button>
+                       </div>
+                    </motion.div>
+                  );
+                })()}
+              </AnimatePresence>
+
+              {/* Dots indicator */}
+              {settings.heroBanners && settings.heroBanners.length > 1 && (
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
+                  {settings.heroBanners.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentBannerIdx(idx)}
+                      className={`w-3 h-3 rounded-full transition-colors ${
+                        idx === currentBannerIdx % settings.heroBanners.length ? 'bg-white' : 'bg-white/50'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
             </section>
             
             {/* Features Row */}
-            <section className="border-b border-gray-200 bg-white">
-              <div className="max-w-[1400px] mx-auto px-4 py-8">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-4 lg:divide-x divide-gray-200">
-                  <div className="flex items-center justify-center gap-4 px-4">
-                    <Truck size={32} className="text-gray-700" strokeWidth={1.5} />
-                    <div>
-                      <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>Do Oiapoque ao Chuí</h4>
-                      <p className="text-gray-500 text-sm">Entregas em Todo Brasil</p>
-                    </div>
-                  </div>
-                  {settings.paymentMethods?.credit && (
-                    <div className="flex items-center justify-center gap-4 px-4">
-                      <CreditCard size={32} className="text-gray-700" strokeWidth={1.5} />
-                      <div>
-                        <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>Parcelamento</h4>
-                        <p className="text-gray-500 text-sm">Em até {settings.installments || 2}x sem juros</p>
-                      </div>
-                    </div>
-                  )}
-                  {settings.paymentMethods?.pix !== false && (
-                    <div className="flex items-center justify-center gap-4 px-4">
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700"><path d="M2 12l5.25 5 2.625-3 5.25 5 6.875-10"/></svg>
-                      <div>
-                        <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>Ganhe Desconto</h4>
-                        <p className="text-gray-500 text-sm">Pagando com PIX</p>
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-center gap-4 px-4">
-                    <ShieldCheck size={32} className="text-gray-700" strokeWidth={1.5} />
-                    <div>
-                      <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>Segurança</h4>
-                      <p className="text-gray-500 text-sm">Loja com SSL de proteção</p>
-                    </div>
+            {settings.storeFeatures && settings.storeFeatures.length > 0 && (
+              <section className="border-b border-gray-200 bg-white">
+                <div className="max-w-[1400px] mx-auto px-4 py-8">
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(settings.storeFeatures.filter(f => f.enabled).length, 4)} gap-6 sm:gap-4 lg:divide-x divide-gray-200`}>
+                    {settings.storeFeatures.filter(f => f.enabled).map((feature, idx) => {
+                      let IconComponent: any = Search;
+                      if (feature.icon === 'Truck') IconComponent = Truck;
+                      else if (feature.icon === 'CreditCard') IconComponent = CreditCard;
+                      else if (feature.icon === 'Zap') IconComponent = ShieldCheck; // We don't have Zap imported, let's use ShieldCheck or something else, or import Zap
+                      else if (feature.icon === 'ShieldCheck') IconComponent = ShieldCheck;
+                      else if (feature.icon === 'User') IconComponent = User;
+                      else if (feature.icon === 'MessageCircle') IconComponent = MessageCircle;
+                      else if (feature.icon === 'ShoppingCart') IconComponent = ShoppingCart;
+                      else if (feature.icon === 'Menu') IconComponent = Menu;
+                      else if (feature.icon === 'Star') IconComponent = Star;
+                      else if (feature.icon === 'Heart') IconComponent = Heart;
+                      else if (feature.icon === 'Gift') IconComponent = Gift;
+
+                      return (
+                        <div key={feature.id || idx} className="flex items-center justify-center gap-4 px-4">
+                          {feature.icon === 'Zap' ? (
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                          ) : feature.icon === 'Pix' ? (
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700"><path d="M2 12l5.25 5 2.625-3 5.25 5 6.875-10"/></svg>
+                          ) : (
+                            <IconComponent size={32} className="text-gray-700" strokeWidth={1.5} />
+                          )}
+                          <div>
+                            <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>{feature.title}</h4>
+                            <p className="text-gray-500 text-sm">{feature.subtitle}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
 
             {/* Promo Banners */}
             <section className="max-w-[1400px] mx-auto px-4 py-12 bg-[#f9fafb]">
@@ -437,8 +496,8 @@ export function Storefront() {
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
                   }}>
                      <div className="z-10 text-white">
-                       <h3 className="text-3xl font-bold text-yellow-300 mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner1TitleHtml }}></h3>
-                       <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner1SubtitleHtml }}></p>
+                       <h3 className="text-3xl font-bold text-yellow-300 mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner1TitleHtml || '' }}></h3>
+                       <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner1SubtitleHtml || '' }}></p>
                        <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f]">{settings.promoBanner1ButtonText}</button>
                      </div>
                   </div>
@@ -447,8 +506,8 @@ export function Storefront() {
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
                   }}>
                      <div className="z-10 text-white">
-                       <h3 className="text-3xl font-bold text-white mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner2TitleHtml }}></h3>
-                       <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner2SubtitleHtml }}></p>
+                       <h3 className="text-3xl font-bold text-white mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner2TitleHtml || '' }}></h3>
+                       <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner2SubtitleHtml || '' }}></p>
                        <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f]">{settings.promoBanner2ButtonText}</button>
                      </div>
                   </div>

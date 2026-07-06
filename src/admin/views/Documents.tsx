@@ -185,23 +185,30 @@ export function Documents() {
   const [discount, setDiscount] = useState(0);
   const [quoteStatus, setQuoteStatus] = useState<'Pendente' | 'Aprovado' | 'Rejeitado'>('Pendente');
 
+  const getSafeStorage = (key: string, defaultVal: string) => {
+    try { return localStorage.getItem(key) || defaultVal; } catch { return defaultVal; }
+  };
+  const setSafeStorage = (key: string, val: string) => {
+    try { localStorage.setItem(key, val); } catch {}
+  };
+
   // Emitter Details (customised & loaded from localStorage)
   const [emitterName, setEmitterName] = useState(() => {
-    const cached = localStorage.getItem('doc_emitter_name');
+    const cached = getSafeStorage('doc_emitter_name', '');
     if (cached === 'Amo Canecas') {
       return settings.storeName || 'inkys';
     }
     return cached || settings.storeName || 'inkys';
   });
-  const [emitterDoc, setEmitterDoc] = useState(() => localStorage.getItem('doc_emitter_doc') || '');
-  const [emitterAddress, setEmitterAddress] = useState(() => localStorage.getItem('doc_emitter_address') || '');
+  const [emitterDoc, setEmitterDoc] = useState(() => getSafeStorage('doc_emitter_doc', ''));
+  const [emitterAddress, setEmitterAddress] = useState(() => getSafeStorage('doc_emitter_address', ''));
   
   // Payment Details
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentConditions, setPaymentConditions] = useState('');
 
   // Design/Theme Choices
-  const [documentTheme, setDocumentTheme] = useState<keyof typeof THEMES>(() => (localStorage.getItem('doc_theme') as any) || 'charcoal');
+  const [documentTheme, setDocumentTheme] = useState<keyof typeof THEMES>(() => (getSafeStorage('doc_theme', 'charcoal') as any));
   const [documentFont, setDocumentFont] = useState<keyof typeof FONTS>('sans');
   const [watermarkText, setWatermarkText] = useState('');
 
@@ -225,14 +232,14 @@ export function Documents() {
 
   // Sync Emitter info to localStorage
   useEffect(() => {
-    localStorage.setItem('doc_emitter_name', emitterName);
-    localStorage.setItem('doc_emitter_doc', emitterDoc);
-    localStorage.setItem('doc_emitter_address', emitterAddress);
+    setSafeStorage('doc_emitter_name', emitterName);
+    setSafeStorage('doc_emitter_doc', emitterDoc);
+    setSafeStorage('doc_emitter_address', emitterAddress);
   }, [emitterName, emitterDoc, emitterAddress]);
 
   // Sync Theme to localStorage
   useEffect(() => {
-    localStorage.setItem('doc_theme', documentTheme);
+    setSafeStorage('doc_theme', documentTheme);
   }, [documentTheme]);
 
   // Sync Store Logo or name changes
@@ -1057,7 +1064,7 @@ export function Documents() {
                 <div className={`flex flex-col sm:flex-row justify-between items-start gap-4 border-b-2 pb-6 ${selectedTheme.border}`}>
                   <div>
                     {settings.logoUrl ? (
-                      <img src={settings.logoUrl} alt="Logo" className="h-16 object-contain mb-3" />
+                      <img src={settings.logoUrl || undefined} alt="Logo" className="h-16 object-contain mb-3" />
                     ) : (
                       <h2 className="text-2xl font-black tracking-tight uppercase mb-2 text-gray-900">
                         {settings.storeName || 'Minha Loja'}

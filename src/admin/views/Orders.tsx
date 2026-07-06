@@ -516,13 +516,13 @@ export function Orders() {
                 <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6 mb-6">
                   <div>
                     {settings.logoUrl ? (
-                      <img src={settings.logoUrl} alt="Logo" className="h-14 object-contain mb-2" />
+                      <img src={settings.logoUrl || undefined} alt="Logo" className="h-14 object-contain mb-2" />
                     ) : (
                       <h2 className="text-xl font-black text-pink-600 tracking-tighter uppercase mb-2">
                         {settings.storeName || 'Minha Loja'}
                       </h2>
                     )}
-                    {settings.supportPhone && <p className="text-xs text-gray-600 font-medium">WhatsApp: {settings.supportPhone}</p>}
+                    {settings.whatsappNumber && <p className="text-xs text-gray-600 font-medium">WhatsApp: {settings.whatsappNumber}</p>}
                   </div>
                   <div className="text-right">
                     <h1 className="text-2xl font-black uppercase tracking-widest text-gray-300 mb-1">

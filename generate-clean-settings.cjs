@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
+const fs = require('fs');
+
+const cleanCode = `import React, { useState, useEffect } from 'react';
 import { CreditCard, Smartphone, Banknote, Save, MessageCircle, Plus, Trash2, Upload, Layout, Palette, Store, Truck, Shield, ShoppingCart, Image, Settings as SettingsIcon } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
-
-import { storage } from '../../lib/firebase';
-
 
 export function AdminSettings() {
   const { settings, updateSettings } = useSettings();
@@ -84,7 +82,7 @@ export function AdminSettings() {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (event) => {
-        const img = new window.Image();
+        const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
           let width = img.width;
@@ -108,7 +106,7 @@ export function AdminSettings() {
           if (!['image/jpeg', 'image/png', 'image/webp'].includes(outputType)) {
             outputType = 'image/png';
           }
-          resolve(canvas.toDataURL('image/jpeg', 0.85));
+          resolve(canvas.toDataURL(outputType, outputType === 'image/jpeg' ? 0.8 : undefined));
         };
         img.onerror = () => reject(new Error('Failed to load image'));
         img.src = event.target?.result as string;
@@ -120,7 +118,7 @@ export function AdminSettings() {
 
   const handleSaveStoreDetails = (e: React.FormEvent) => {
     e.preventDefault();
-    const sanitizedWhatsapp = whatsappNumber?.replace(/\D/g, '') || '';
+    const sanitizedWhatsapp = whatsappNumber?.replace(/\\D/g, '') || '';
     updateSettings({ 
        logoUrl, 
        storeName: storefrontSettings.storeName,
@@ -154,7 +152,7 @@ export function AdminSettings() {
       showToast('A nova senha deve ter no mínimo 6 caracteres.', 'error');
       return;
     }
-    try { localStorage.setItem("inkys-admin-password", newPassword); } catch (e) {}
+    localStorage.setItem('inkys-admin-password', newPassword);
     setNewPassword('');
     showToast('Senha atualizada com sucesso!');
   };
@@ -174,7 +172,7 @@ export function AdminSettings() {
         
         <button 
           onClick={() => setActiveTab('loja')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'loja' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+          className={\`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all \${activeTab === 'loja' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}\`}
         >
           <Store size={20} />
           <span className="font-bold text-sm uppercase tracking-wider">Loja & Marca</span>
@@ -182,7 +180,7 @@ export function AdminSettings() {
 
         <button 
           onClick={() => setActiveTab('vitrine')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'vitrine' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+          className={\`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all \${activeTab === 'vitrine' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}\`}
         >
           <Layout size={20} />
           <span className="font-bold text-sm uppercase tracking-wider">Aparência</span>
@@ -190,7 +188,7 @@ export function AdminSettings() {
 
         <button 
           onClick={() => setActiveTab('pagamento')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'pagamento' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+          className={\`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all \${activeTab === 'pagamento' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}\`}
         >
           <CreditCard size={20} />
           <span className="font-bold text-sm uppercase tracking-wider">Pagamentos</span>
@@ -198,7 +196,7 @@ export function AdminSettings() {
 
         <button 
           onClick={() => setActiveTab('frete')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'frete' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+          className={\`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all \${activeTab === 'frete' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}\`}
         >
           <Truck size={20} />
           <span className="font-bold text-sm uppercase tracking-wider">Frete</span>
@@ -206,7 +204,7 @@ export function AdminSettings() {
 
         <button 
           onClick={() => setActiveTab('seguranca')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'seguranca' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+          className={\`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all \${activeTab === 'seguranca' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}\`}
         >
           <Shield size={20} />
           <span className="font-bold text-sm uppercase tracking-wider">Segurança</span>
@@ -239,7 +237,7 @@ export function AdminSettings() {
                   <div className="flex items-center gap-4">
                     {logoUrl ? (
                       <div className="w-24 h-24 rounded-xl border border-gray-200 overflow-hidden bg-white flex items-center justify-center p-2">
-                        <img src={logoUrl || undefined} alt="Logo" className="w-full h-full object-contain" />
+                        <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
                       </div>
                     ) : (
                       <div className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400">
@@ -256,7 +254,7 @@ export function AdminSettings() {
                             try {
                               const res = await resizeImage(file, 800, 800);
                               setLogoUrl(res);
-                            } catch (error) { console.error("Upload error:", error); toast.error("Erro ao fazer upload da imagem"); }
+                            } catch (error) {}
                           }
                         }} />
                       </label>
@@ -315,152 +313,6 @@ export function AdminSettings() {
               <p className="text-gray-500 text-sm">Configure as cores e banners do seu site.</p>
             </div>
             
-
-            <div className="p-6 border border-gray-100 rounded-xl bg-gray-50/50 space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold uppercase tracking-widest text-gray-700">Banners (Carrossel)</h4>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => {
-                      const newBanners = [...(storefrontSettings.heroBanners || [])];
-                      newBanners.push({
-                        id: Date.now().toString(),
-                        image: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&q=80',
-                        titleHtml: 'Novo Banner',
-                        subtitle: 'Subtítulo',
-                        buttonText: 'Comprar',
-                        buttonColor: '#000000'
-                      });
-                      setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});
-                    }}
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-lg text-xs font-bold uppercase flex items-center"
-                  >
-                    <Plus size={14} className="inline mr-1" /> Adicionar
-                  </button>
-                  <button 
-                    onClick={handleSaveStorefront}
-                    className="bg-[var(--color-primary)] hover:brightness-110 text-white px-3 py-1 rounded-lg text-xs font-bold uppercase flex items-center transition-all"
-                  >
-                    <Save size={14} className="inline mr-1" /> Salvar Banners
-                  </button>
-                </div>
-              </div>
-              
-              <div className="space-y-6">
-                {(storefrontSettings.heroBanners || []).map((banner, index) => (
-                  <div key={banner.id || index} className="p-4 border border-gray-200 rounded-lg bg-white relative group">
-                    <button 
-                      onClick={() => {
-                        const newBanners = [...storefrontSettings.heroBanners];
-                        newBanners.splice(index, 1);
-                        setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});
-                      }}
-                      className="absolute top-2 right-2 text-red-500 bg-red-50 hover:bg-red-100 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Remover Banner"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                    
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Imagem do Banner (Upload ou URL)</label>
-                          <div className="relative aspect-[21/9] bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-                            <img src={banner.image || undefined} alt="Banner Preview" className="w-full h-full object-cover" />
-                            <label className="absolute inset-0 bg-black/40 md:opacity-0 md:hover:opacity-100 flex items-center justify-center text-white cursor-pointer transition-opacity">
-                              <Upload size={24} className="opacity-70 md:opacity-100" />
-                              <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  try {
-                                    
-const res = await resizeImage(file, 2000, 1125);
-
-                                    const newBanners = [...storefrontSettings.heroBanners];
-                                    newBanners[index] = { ...newBanners[index], image: res };
-                                    setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});
-                                  } catch (error) { console.error("Upload error:", error); toast.error("Erro ao fazer upload da imagem"); }
-                                }
-                              }} />
-                            </label>
-                          </div>
-                          
-                          <div className="flex gap-2 mt-2">
-                            <label className="flex-1 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-bold cursor-pointer transition-colors">
-                              <Image size={16} />
-                              Buscar na Galeria
-                              <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  try {
-                                    const res = await resizeImage(file, 2000, 1125);
-
-                                    const newBanners = [...storefrontSettings.heroBanners];
-                                    newBanners[index] = { ...newBanners[index], image: res };
-                                    setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});
-                                  } catch (error) { console.error("Upload error:", error); toast.error("Erro ao fazer upload da imagem"); }
-                                }
-                              }} />
-                            </label>
-                          </div>
-                          
-                          <input type="text" 
-                            placeholder="Ou cole a URL da imagem aqui"
-                            value={banner.image}
-                            onChange={(e) => {
-                              const newBanners = [...storefrontSettings.heroBanners];
-                              newBanners[index] = { ...newBanners[index], image: e.target.value };
-                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});
-                            }}
-                            className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none mt-2"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div className="space-y-1">
-                          <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Título (HTML)</label>
-                          <input type="text" value={banner.titleHtml} onChange={e => {
-                            const newBanners = [...storefrontSettings.heroBanners];
-                            newBanners[index] = { ...newBanners[index], titleHtml: e.target.value };
-                            setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});
-                          }} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" />
-                        <div className="grid grid-cols-3 gap-2 mt-2">                          <div className="space-y-1">                            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor</label>                            <input type="color" value={banner.titleColor || '#e84e70'} onChange={e => {                              const newBanners = [...storefrontSettings.heroBanners];                              newBanners[index] = { ...newBanners[index], titleColor: e.target.value };                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});                            }} className="w-full h-8 cursor-pointer border-0 p-0" />                          </div>                          <div className="space-y-1">                            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Tamanho</label>                            <select value={banner.titleSize || 'text-3xl'} onChange={e => {                              const newBanners = [...storefrontSettings.heroBanners];                              newBanners[index] = { ...newBanners[index], titleSize: e.target.value };                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});                            }} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:border-[var(--color-primary)] outline-none">                              <option value="text-2xl">2xl</option>                              <option value="text-3xl">3xl</option>                              <option value="text-4xl">4xl</option>                              <option value="text-5xl">5xl</option>                              <option value="text-6xl">6xl</option>                            </select>                          </div>                          <div className="space-y-1">                            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Fonte</label>                            <select value={banner.titleFont || 'font-sans'} onChange={e => {                              const newBanners = [...storefrontSettings.heroBanners];                              newBanners[index] = { ...newBanners[index], titleFont: e.target.value };                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});                            }} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:border-[var(--color-primary)] outline-none">                              <option value="font-sans">Sans-serif</option>                              <option value="font-serif">Serif</option>                              <option value="font-mono">Monospace</option>                            </select>                          </div>                        </div>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Subtítulo</label>
-                          <input type="text" value={banner.subtitle} onChange={e => {
-                            const newBanners = [...storefrontSettings.heroBanners];
-                            newBanners[index] = { ...newBanners[index], subtitle: e.target.value };
-                            setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});
-                          }} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" />
-                        <div className="grid grid-cols-3 gap-2 mt-2">                          <div className="space-y-1">                            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor</label>                            <input type="color" value={banner.subtitleColor || '#592c60'} onChange={e => {                              const newBanners = [...storefrontSettings.heroBanners];                              newBanners[index] = { ...newBanners[index], subtitleColor: e.target.value };                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});                            }} className="w-full h-8 cursor-pointer border-0 p-0" />                          </div>                          <div className="space-y-1">                            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Tamanho</label>                            <select value={banner.subtitleSize || 'text-xl'} onChange={e => {                              const newBanners = [...storefrontSettings.heroBanners];                              newBanners[index] = { ...newBanners[index], subtitleSize: e.target.value };                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});                            }} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:border-[var(--color-primary)] outline-none">                              <option value="text-sm">Pequeno</option>                              <option value="text-base">Médio</option>                              <option value="text-lg">Grande (lg)</option>                              <option value="text-xl">Extra (xl)</option>                              <option value="text-2xl">2xl</option>                            </select>                          </div>                          <div className="space-y-1">                            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Fonte</label>                            <select value={banner.subtitleFont || 'font-sans'} onChange={e => {                              const newBanners = [...storefrontSettings.heroBanners];                              newBanners[index] = { ...newBanners[index], subtitleFont: e.target.value };                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});                            }} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:border-[var(--color-primary)] outline-none">                              <option value="font-sans">Sans-serif</option>                              <option value="font-serif">Serif</option>                              <option value="font-mono">Monospace</option>                            </select>                          </div>                        </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <div className="space-y-1 flex-1">
-                            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Texto Botão</label>
-                            <input type="text" value={banner.buttonText} onChange={e => {
-                              const newBanners = [...storefrontSettings.heroBanners];
-                              newBanners[index] = { ...newBanners[index], buttonText: e.target.value };
-                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});
-                            }} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" />
-                          </div>
-                          <div className="space-y-1 w-1/3">
-                            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor Botão</label>
-                            <input type="color" value={banner.buttonColor} onChange={e => {
-                              const newBanners = [...storefrontSettings.heroBanners];
-                              newBanners[index] = { ...newBanners[index], buttonColor: e.target.value };
-                              setStorefrontSettings({...storefrontSettings, heroBanners: newBanners});
-                            }} className="w-full h-9 cursor-pointer border-0 p-0" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             <div className="grid sm:grid-cols-2 gap-6 p-6 border border-gray-100 rounded-xl bg-gray-50/50">
               <h4 className="col-span-full text-sm font-bold uppercase tracking-widest text-gray-700">Cores Globais do Site</h4>
               
@@ -608,14 +460,14 @@ const res = await resizeImage(file, 2000, 1125);
 
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-lg border ${
+          <div className={\`flex items-center gap-3 px-6 py-4 rounded-xl shadow-lg border \${
             toastMessage.type === 'success' 
               ? 'bg-white border-green-100 text-green-800' 
               : 'bg-white border-red-100 text-red-800'
-          }`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+          }\`}>
+            <div className={\`w-8 h-8 rounded-full flex items-center justify-center \${
               toastMessage.type === 'success' ? 'bg-green-100' : 'bg-red-100'
-            }`}>
+            }\`}>
               {toastMessage.type === 'success' ? (
                 <Save size={16} className="text-green-600" />
               ) : (
@@ -632,20 +484,23 @@ const res = await resizeImage(file, 2000, 1125);
 
 function PaymentToggle({ icon: Icon, title, active, onToggle }: { icon: any, title: string, active: boolean, onToggle: () => void }) {
   return (
-    <div className={`p-4 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
+    <div className={\`p-4 rounded-xl border flex items-center justify-between transition-all cursor-pointer \${
       active ? 'bg-gray-50 border-[var(--color-primary)]' : 'bg-transparent border-gray-200 hover:border-gray-300'
-    }`} onClick={onToggle}>
+    }\`} onClick={onToggle}>
       <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${active ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]' : 'bg-gray-50 text-gray-400'}`}>
+        <div className={\`w-10 h-10 rounded-lg flex items-center justify-center \${active ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]' : 'bg-gray-50 text-gray-400'}\`}>
           <Icon size={20} />
         </div>
-        <span className={`font-medium ${active ? 'text-gray-900' : 'text-gray-500'}`}>{title}</span>
+        <span className={\`font-medium \${active ? 'text-gray-900' : 'text-gray-500'}\`}>{title}</span>
       </div>
       
       {/* Custom Switch */}
-      <div className={`w-10 h-5 rounded-full relative transition-colors ${active ? 'bg-[var(--color-primary)]' : 'bg-gray-200'}`}>
-        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${active ? 'left-[22px]' : 'left-[2px]'}`} />
+      <div className={\`w-10 h-5 rounded-full relative transition-colors \${active ? 'bg-[var(--color-primary)]' : 'bg-gray-200'}\`}>
+        <div className={\`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow-sm \${active ? 'left-[22px]' : 'left-[2px]'}\`} />
       </div>
     </div>
   );
 }
+`;
+
+fs.writeFileSync('src/admin/views/Settings.tsx', cleanCode);

@@ -278,7 +278,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
               <h2 className="text-3xl font-bold text-[#783884] mb-8">Descrição</h2>
               <div 
                 className="text-left space-y-4 text-[15px] text-gray-700 italic"
-                dangerouslySetInnerHTML={{ __html: product.description }}
+                dangerouslySetInnerHTML={{ __html: product.description || '' }}
               />
            </div>
         </div>

@@ -81,7 +81,7 @@ export function AdminApp() {
         <div className="h-20 flex items-center justify-between px-6 border-b border-gray-200">
           <div className="flex items-center gap-3 w-full">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="h-12 w-auto max-w-[120px] object-contain" />
+              <img src={logoUrl || undefined} alt="Logo" className="h-12 w-auto max-w-[120px] object-contain" />
             ) : (
               <div className="w-8 h-8 rounded-full" style={{ background: 'var(--color-primary)' }} />
             )}
