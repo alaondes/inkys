@@ -19,6 +19,7 @@ export interface HeroBanner {
 
 export interface AppSettings {
   logoUrl: string;
+  faviconUrl?: string;
   primaryColor: string;
   whatsappNumber: string;
   paymentMethods: {
@@ -30,6 +31,9 @@ export interface AppSettings {
   topBarColor: string;
   headerColor: string;
   headerTextColor: string;
+  navBarColor?: string;
+  navBarTextColor?: string;
+  siteBackgroundColor?: string;
   customButtonBgColor: string;
   customButtonTextColor: string;
   heroBannerImage: string;
@@ -67,6 +71,7 @@ export interface AppSettings {
 
 const defaultSettings: AppSettings = {
   logoUrl: '',
+  faviconUrl: '',
   primaryColor: '#0891b2',
   whatsappNumber: '5561981365428',
   paymentMethods: {

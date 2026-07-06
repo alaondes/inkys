@@ -14,6 +14,7 @@ export function AdminSettings() {
   const [newPassword, setNewPassword] = useState('');
   
   const [logoUrl, setLogoUrl] = useState(settings.logoUrl);
+  const [faviconUrl, setFaviconUrl] = useState(settings.faviconUrl || '');
   const [whatsappNumber, setWhatsappNumber] = useState(settings.whatsappNumber);
   const [paymentMethods, setPaymentMethods] = useState(settings.paymentMethods);
   
@@ -21,6 +22,9 @@ export function AdminSettings() {
     topBarColor: settings.topBarColor || '#d64c71',
     headerColor: settings.headerColor || '#8b3887',
     headerTextColor: settings.headerTextColor || '#ffffff',
+    navBarColor: settings.navBarColor || 'transparent',
+    navBarTextColor: settings.navBarTextColor || '#000000',
+    siteBackgroundColor: settings.siteBackgroundColor || '#f9fafb',
     customButtonBgColor: settings.customButtonBgColor || '#facc15',
     customButtonTextColor: settings.customButtonTextColor || '#713f12',
     buyButtonColor: settings.buyButtonColor || '#5ba324',
@@ -70,6 +74,7 @@ export function AdminSettings() {
   useEffect(() => {
     setPrimaryColor(settings.primaryColor);
     setLogoUrl(settings.logoUrl);
+    setFaviconUrl(settings.faviconUrl || '');
     setWhatsappNumber(settings.whatsappNumber);
     setPaymentMethods(settings.paymentMethods);
     setStoreFeatures(settings.storeFeatures || []);
@@ -108,7 +113,7 @@ export function AdminSettings() {
           if (!['image/jpeg', 'image/png', 'image/webp'].includes(outputType)) {
             outputType = 'image/png';
           }
-          resolve(canvas.toDataURL('image/jpeg', 0.85));
+          resolve(canvas.toDataURL(outputType, 0.85));
         };
         img.onerror = () => reject(new Error('Failed to load image'));
         img.src = event.target?.result as string;
@@ -123,6 +128,7 @@ export function AdminSettings() {
     const sanitizedWhatsapp = whatsappNumber?.replace(/\D/g, '') || '';
     updateSettings({ 
        logoUrl, 
+       faviconUrl,
        storeName: storefrontSettings.storeName,
        whatsappNumber: sanitizedWhatsapp
     });
@@ -264,7 +270,39 @@ export function AdminSettings() {
                     </div>
                   </div>
                 </div>
-                <div className="space-y-2">
+
+                <div className="space-y-2 pt-4 border-t border-gray-100">
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Favicon (Ícone da Aba)</label>
+                  <div className="flex items-center gap-4">
+                    {faviconUrl ? (
+                      <div className="w-12 h-12 rounded-xl border border-gray-200 overflow-hidden bg-white flex items-center justify-center p-2">
+                        <img src={faviconUrl || undefined} alt="Favicon" className="w-full h-full object-contain" />
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400">
+                        <Image size={16} />
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-lg font-medium text-sm cursor-pointer hover:bg-gray-200 transition-colors">
+                        <Upload size={16} />
+                        Escolher Favicon
+                        <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              const res = await resizeImage(file, 128, 128);
+                              setFaviconUrl(res);
+                            } catch (error) { console.error("Upload error:", error); toast.error("Erro ao fazer upload da imagem"); }
+                          }
+                        }} />
+                      </label>
+                      <p className="text-xs text-gray-500">Recomendado: Ícone quadrado pequeno (PNG/ICO)</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-4 border-t border-gray-100">
                   <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Número do WhatsApp</label>
                   <input 
                     type="text" 
@@ -485,6 +523,30 @@ const res = await resizeImage(file, 2000, 1125);
                 <div className="flex items-center gap-3">
                   <input type="color" value={storefrontSettings.headerTextColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, headerTextColor: e.target.value})} className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0" />
                   <input type="text" value={storefrontSettings.headerTextColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, headerTextColor: e.target.value})} className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-mono" />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor de Fundo do Site</label>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={storefrontSettings.siteBackgroundColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, siteBackgroundColor: e.target.value})} className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0" />
+                  <input type="text" value={storefrontSettings.siteBackgroundColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, siteBackgroundColor: e.target.value})} className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-mono" />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor do Fundo do Menu (Categorias)</label>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={storefrontSettings.navBarColor !== 'transparent' ? storefrontSettings.navBarColor : '#ffffff'} onChange={(e) => setStorefrontSettings({...storefrontSettings, navBarColor: e.target.value})} className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0" />
+                  <input type="text" value={storefrontSettings.navBarColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, navBarColor: e.target.value})} placeholder="Ex: #facc15 ou transparent" className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-mono" />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor do Texto do Menu (Categorias)</label>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={storefrontSettings.navBarTextColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, navBarTextColor: e.target.value})} className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0" />
+                  <input type="text" value={storefrontSettings.navBarTextColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, navBarTextColor: e.target.value})} className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-mono" />
                 </div>
               </div>
               

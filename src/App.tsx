@@ -45,10 +45,13 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
+import { FaviconManager } from './components/FaviconManager';
+
 export default function App() {
   return (
     <ErrorBoundary>
       <SettingsProvider>
+        <FaviconManager />
         <ProductProvider>
           <BrowserRouter>
             <Toaster position="top-center" />

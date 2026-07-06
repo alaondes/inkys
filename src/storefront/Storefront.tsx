@@ -245,7 +245,7 @@ export function Storefront() {
   ]));
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen transition-colors duration-300" style={{ backgroundColor: settings.siteBackgroundColor || '#f9fafb' }}>
       {/* Top Header - Purple */}
       <header style={{ backgroundColor: settings.headerColor, color: settings.headerTextColor || '#ffffff' }}>
         <div className="max-w-[1400px] mx-auto px-4">
@@ -329,44 +329,50 @@ export function Storefront() {
                </button>
              </div>
           </div>
-          
-          {/* Dynamic Navigation Menu */}
-          {currentView === 'home' && (
-            <nav className="flex items-center justify-start md:justify-center gap-6 pb-4 overflow-x-auto whitespace-nowrap hide-scrollbar text-sm font-bold px-2 md:px-0">
-              <button 
-                onClick={() => setCurrentView('custom')}
-                className="px-3 py-1 rounded-full hover:brightness-110 transition-colors uppercase flex items-center gap-1 shadow-sm"
-                style={{ backgroundColor: settings.customButtonBgColor || '#facc15', color: settings.customButtonTextColor || '#713f12' }}
-              >
-                Personalizados ✨
-              </button>
-              <button 
-                onClick={() => {
-                  const el = document.getElementById('category-all');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="hover:text-pink-200 transition-colors uppercase"
-              >
-                Todos os Produtos
-              </button>
-              {categories.map(category => (
+        </div>
+        
+        {/* Dynamic Navigation Menu */}
+        {currentView === 'home' && (
+          <div style={{ backgroundColor: settings.navBarColor && settings.navBarColor !== 'transparent' ? settings.navBarColor : 'transparent' }}>
+            <div className="max-w-[1400px] mx-auto px-4">
+              <nav className="flex items-center justify-start md:justify-center gap-6 py-4 overflow-x-auto whitespace-nowrap hide-scrollbar text-sm font-bold px-2 md:px-0">
                 <button 
-                  key={category}
+                  onClick={() => setCurrentView('custom')}
+                  className="px-3 py-1 rounded-full hover:brightness-110 transition-colors uppercase flex items-center gap-1 shadow-sm"
+                  style={{ backgroundColor: settings.customButtonBgColor || '#facc15', color: settings.customButtonTextColor || '#713f12' }}
+                >
+                  Personalizados ✨
+                </button>
+                <button 
                   onClick={() => {
-                    const el = document.getElementById(`category-${category}`);
+                    const el = document.getElementById('category-all');
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
                   }}
-                  className="hover:text-pink-200 transition-colors uppercase"
+                  className="hover:opacity-80 transition-opacity uppercase"
+                  style={{ color: settings.navBarTextColor || 'inherit' }}
                 >
-                  {category}
+                  Todos os Produtos
                 </button>
-              ))}
-            </nav>
-          )}
-        </div>
+                {categories.map(category => (
+                  <button 
+                    key={category}
+                    onClick={() => {
+                      const el = document.getElementById(`category-${category}`);
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="hover:opacity-80 transition-opacity uppercase"
+                    style={{ color: settings.navBarTextColor || 'inherit' }}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
+        )}
       </header>
 
-      <main className="pb-20 bg-[#f9fafb] min-h-[calc(100vh-140px)]">
+      <main className="pb-20 min-h-[calc(100vh-140px)]">
         {currentView === 'custom' ? (
           <CustomProductPage onBack={goHome} />
         ) : currentView === 'checkout' ? (
@@ -415,8 +421,8 @@ export function Storefront() {
                     >
                        <div className="absolute inset-0 bg-white/40" />
                        <div className="relative z-10 text-center flex flex-col items-center">
-                          <div dangerouslySetInnerHTML={{ __html: currentBanner?.titleHtml || '' }} className="text-[#e84e70] font-bold mb-4" style={{ color: settings.topBarColor }} />
-                          <p className="text-[#592c60] text-xl font-medium max-w-lg mb-6">{currentBanner?.subtitle}</p>
+                          <div dangerouslySetInnerHTML={{ __html: currentBanner?.titleHtml || '' }} className={`font-bold mb-4 ${currentBanner?.titleSize || 'text-5xl'} ${currentBanner?.titleFont || 'font-sans'}`} style={{ color: currentBanner?.titleColor || settings.topBarColor }} />
+                          <p className={`font-medium max-w-lg mb-6 ${currentBanner?.subtitleSize || 'text-xl'} ${currentBanner?.subtitleFont || 'font-sans'}`} style={{ color: currentBanner?.subtitleColor || '#592c60' }}>{currentBanner?.subtitle}</p>
                           
                           <div className="flex gap-6 mb-8 text-[#592c60] font-bold text-sm">
                             <div className="flex items-center gap-2"><div className="w-10 h-10 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: settings.topBarColor }}><User size={20}/></div> Personalizada com sua foto</div>
@@ -489,7 +495,7 @@ export function Storefront() {
             )}
 
             {/* Promo Banners */}
-            <section className="max-w-[1400px] mx-auto px-4 py-12 bg-[#f9fafb]">
+            <section className="max-w-[1400px] mx-auto px-4 py-12">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="rounded-3xl overflow-hidden relative h-[200px] md:h-[250px] flex items-center px-6 md:px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner1ColorStart}, ${settings.promoBanner1ColorEnd})` }} onClick={() => {
                     const el = document.getElementById('category-Música');
@@ -515,7 +521,7 @@ export function Storefront() {
             </section>
 
             {/* Category Sections */}
-            <div className="space-y-16 max-w-[1400px] mx-auto px-4 bg-[#f9fafb]">
+            <div className="space-y-16 max-w-[1400px] mx-auto px-4">
               <section id="category-all">
                 <h2 className="text-[#783884] text-3xl font-bold text-center mb-10">Todos os Produtos</h2>
                 <ProductCarousel products={products} onAddToCart={openProduct} />
