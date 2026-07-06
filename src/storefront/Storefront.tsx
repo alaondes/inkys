@@ -424,11 +424,6 @@ export function Storefront() {
                           <div dangerouslySetInnerHTML={{ __html: currentBanner?.titleHtml || '' }} className={`font-bold mb-4 ${currentBanner?.titleSize || 'text-5xl'} ${currentBanner?.titleFont || 'font-sans'}`} style={{ color: currentBanner?.titleColor || settings.topBarColor }} />
                           <p className={`font-medium max-w-lg mb-6 ${currentBanner?.subtitleSameSize ? (currentBanner?.titleSize || 'text-5xl') : (currentBanner?.subtitleSize || 'text-xl')} ${currentBanner?.subtitleFont || 'font-sans'}`} style={{ color: currentBanner?.subtitleColor || '#592c60' }}>{currentBanner?.subtitle}</p>
                           
-                          <div className="flex gap-6 mb-8 text-[#592c60] font-bold text-sm">
-                            <div className="flex items-center gap-2"><div className="w-10 h-10 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: settings.topBarColor }}><User size={20}/></div> Personalizada com sua foto</div>
-                            <div className="flex items-center gap-2"><div className="w-10 h-10 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: settings.topBarColor }}><MessageCircle size={20}/></div> Estampa com sua música</div>
-                          </div>
-                          
                           {currentBanner?.buttonLink ? (
                             <a 
                               href={currentBanner.buttonLink}
