@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Plus, Trash2, Upload, Sparkles } from 'lucide-react';
+import { Save, Plus, Trash2, Upload, Sparkles, Download, FileText, X } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
 
 export function CustomProductsAdmin() {
@@ -7,6 +7,8 @@ export function CustomProductsAdmin() {
 
   const [customPageTitle, setCustomPageTitle] = useState(settings.customPageTitle || '');
   const [customPageDescription, setCustomPageDescription] = useState(settings.customPageDescription || '');
+  const [globalTemplateFile, setGlobalTemplateFile] = useState(settings.globalTemplateFile || '');
+  const [globalTemplateFileName, setGlobalTemplateFileName] = useState(settings.globalTemplateFileName || '');
   const [customProducts, setCustomProducts] = useState(settings.customProducts || []);
 
   const [toastMessage, setToastMessage] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -19,6 +21,8 @@ export function CustomProductsAdmin() {
   useEffect(() => {
     setCustomPageTitle(settings.customPageTitle || '');
     setCustomPageDescription(settings.customPageDescription || '');
+    setGlobalTemplateFile(settings.globalTemplateFile || '');
+    setGlobalTemplateFileName(settings.globalTemplateFileName || '');
     setCustomProducts(settings.customProducts || []);
   }, [settings]);
 
@@ -26,6 +30,8 @@ export function CustomProductsAdmin() {
     updateSettings({
       customPageTitle,
       customPageDescription,
+      globalTemplateFile,
+      globalTemplateFileName,
       customProducts,
     });
     showToast('Página de personalizados atualizada com sucesso!');
@@ -77,6 +83,89 @@ export function CustomProductsAdmin() {
               className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none resize-y min-h-[100px] text-gray-900 transition-all"
               placeholder="Descreva as vantagens de solicitar um produto personalizado..."
             />
+          </div>
+
+          <div className="space-y-2 pt-4 border-t border-gray-100">
+            <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Gabarito/Molde de Arte Padrão (Global)</label>
+            <p className="text-xs text-gray-400 ml-1 mb-2">Disponibilize um arquivo padrão para download (ex: gabarito de caneca, PDF com medidas, arquivo PSD, CDR, etc.) para que seu cliente possa criar a arte dele.</p>
+            
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+              <div className="flex-1 flex gap-2 items-center">
+                <input
+                  type="text"
+                  placeholder="Nome do Arquivo (Ex: gabarito_geral.pdf)"
+                  value={globalTemplateFileName}
+                  onChange={(e) => setGlobalTemplateFileName(e.target.value)}
+                  className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none"
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <label className="cursor-pointer bg-[var(--color-primary)] text-white font-bold px-4 py-2.5 rounded-lg text-xs flex items-center gap-2 hover:brightness-110 transition-all shrink-0">
+                  <Upload size={14} /> Upload Gabarito
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setGlobalTemplateFile(reader.result as string);
+                          setGlobalTemplateFileName(file.name);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </label>
+                
+                {globalTemplateFile && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGlobalTemplateFile('');
+                      setGlobalTemplateFileName('');
+                    }}
+                    className="bg-red-50 text-red-500 hover:bg-red-100 p-2.5 rounded-lg border border-red-100 transition-colors"
+                    title="Excluir Gabarito"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase text-gray-400 font-bold shrink-0">Ou colar Link Direto:</span>
+                <input
+                  type="text"
+                  placeholder="Ex: Link do Google Drive, Dropbox, OneDrive..."
+                  value={globalTemplateFile?.startsWith('data:') ? '' : globalTemplateFile}
+                  onChange={(e) => {
+                    setGlobalTemplateFile(e.target.value);
+                    if (e.target.value && !globalTemplateFileName) {
+                      setGlobalTemplateFileName('Molde_de_Arte_Download');
+                    }
+                  }}
+                  className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs focus:border-[var(--color-primary)] outline-none"
+                />
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">Recomendado para arquivos grandes acima de 1MB (como gabaritos complexos em PSD, CDR, Illustrator, ZIP).</p>
+            </div>
+
+            {globalTemplateFile && (
+              <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50/50 border border-green-100 rounded-lg p-2.5 mt-2">
+                <FileText size={16} />
+                <span className="font-medium">Arquivo salvo: {globalTemplateFileName || "Gabarito Carregado"}</span>
+                {globalTemplateFile.startsWith('data:') ? (
+                  <span className="text-[10px] text-gray-400 font-normal">(Armazenado localmente como Base64)</span>
+                ) : (
+                  <span className="text-[10px] text-gray-400 font-normal">(Link externo)</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -234,6 +323,82 @@ export function CustomProductsAdmin() {
                       }}
                       className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none resize-y min-h-[60px]"
                     />
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-gray-150">
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Gabarito de Arte para este Produto (Opcional)</label>
+                    <p className="text-[10px] text-gray-400">Insira um arquivo específico para que os clientes criem a arte deste produto.</p>
+                    
+                    <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                      <input
+                        type="text"
+                        placeholder="Nome do Arquivo (Ex: gabarito_caneca.psd)"
+                        value={cp.templateFileName || ''}
+                        onChange={(e) => {
+                          const newProds = [...customProducts];
+                          newProds[idx].templateFileName = e.target.value;
+                          setCustomProducts(newProds);
+                        }}
+                        className="flex-1 bg-white border border-gray-200 rounded-lg p-2 text-xs focus:border-[var(--color-primary)] outline-none"
+                      />
+                      
+                      <div className="flex gap-2">
+                        <label className="cursor-pointer bg-gray-100 text-gray-700 font-bold px-3 py-2 rounded-lg text-[11px] flex items-center gap-1.5 hover:bg-gray-200 transition-all shrink-0">
+                          <Upload size={12} /> Upload Arquivo
+                          <input
+                            type="file"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  const newProds = [...customProducts];
+                                  newProds[idx].templateFile = reader.result as string;
+                                  newProds[idx].templateFileName = file.name;
+                                  setCustomProducts(newProds);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                        
+                        {cp.templateFile && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newProds = [...customProducts];
+                              newProds[idx].templateFile = '';
+                              newProds[idx].templateFileName = '';
+                              setCustomProducts(newProds);
+                            }}
+                            className="bg-red-50 text-red-500 hover:bg-red-100 p-2 rounded-lg border border-red-100 transition-colors"
+                            title="Remover Gabarito"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-gray-400 font-bold shrink-0">Ou colar Link Direto:</span>
+                      <input
+                        type="text"
+                        placeholder="Link externo do gabarito (Google Drive, OneDrive, etc.)"
+                        value={cp.templateFile?.startsWith('data:') ? '' : cp.templateFile || ''}
+                        onChange={(e) => {
+                          const newProds = [...customProducts];
+                          newProds[idx].templateFile = e.target.value;
+                          if (e.target.value && !newProds[idx].templateFileName) {
+                            newProds[idx].templateFileName = `Molde_de_Arte_${cp.name || 'Produto'}`;
+                          }
+                          setCustomProducts(newProds);
+                        }}
+                        className="flex-1 bg-white border border-gray-200 rounded-lg p-1.5 text-[11px] focus:border-[var(--color-primary)] outline-none"
+                      />
+                    </div>
                   </div>
                 </div>
 

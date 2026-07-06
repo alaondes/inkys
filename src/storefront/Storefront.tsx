@@ -27,6 +27,7 @@ export function Storefront() {
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartLoaded, setIsCartLoaded] = useState(false);
+  const [isAdminHovered, setIsAdminHovered] = useState(false);
 
   useEffect(() => {
     import('localforage').then((localforage) => {
@@ -270,6 +271,11 @@ export function Storefront() {
     <div className="min-h-screen transition-colors duration-300" style={{ backgroundColor: settings.siteBackgroundColor || '#f9fafb' }}>
       {/* Top Header - Purple */}
       <header style={{ backgroundColor: settings.headerColor, color: settings.headerTextColor || '#ffffff' }}>
+        <style dangerouslySetInnerHTML={{ __html: `
+          .header-hover-item:hover {
+            color: ${settings.headerHoverTextColor || '#ffffff'} !important;
+          }
+        `}} />
         <div className="max-w-[1400px] mx-auto px-4">
           <div className="flex items-center justify-between h-16 sm:h-20 md:h-24 gap-3 md:gap-8">
             {/* Logo */}
@@ -299,7 +305,7 @@ export function Storefront() {
             
             {/* Actions */}
             <div className="flex items-center gap-6">
-              <div className="hidden lg:flex items-center gap-2 cursor-pointer hover:text-pink-200 transition-colors">
+              <div className="hidden lg:flex items-center gap-2 cursor-pointer header-hover-item transition-colors">
                 <MessageCircle size={28} />
                 <div className="flex flex-col text-sm">
                   <span className="font-bold">Central de</span>
@@ -307,7 +313,7 @@ export function Storefront() {
                 </div>
               </div>
               
-              <div className="hidden lg:flex items-center gap-2 cursor-pointer hover:text-pink-200 transition-colors">
+              <div className="hidden lg:flex items-center gap-2 cursor-pointer header-hover-item transition-colors">
                 <User size={28} />
                 <div className="flex flex-col text-sm">
                   <span className="font-bold">Bem-vindo(a)</span>
@@ -317,7 +323,7 @@ export function Storefront() {
 
               <button 
                 onClick={() => setCurrentView('checkout')}
-                className="flex items-center gap-2 relative hover:text-pink-200 transition-colors"
+                className="flex items-center gap-2 relative header-hover-item transition-colors"
               >
                 <ShoppingCart size={28} />
                 <span className="text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full absolute -top-1 -right-2" style={{ backgroundColor: settings.topBarColor }}>
@@ -327,8 +333,15 @@ export function Storefront() {
               
               <Link 
                 to="/admin" 
-                className="text-xs bg-white/15 hover:bg-white/25 font-bold px-3 py-1.5 rounded-full border border-white/10 transition-all flex items-center gap-1 shrink-0"
-                style={{ color: settings.headerTextColor || '#ffffff' }}
+                className="text-xs font-bold px-3 py-1.5 rounded-full border border-white/10 transition-all flex items-center gap-1 shrink-0"
+                style={{ 
+                  backgroundColor: isAdminHovered 
+                    ? (settings.adminButtonBgColorHover || 'rgba(255, 255, 255, 0.25)') 
+                    : (settings.adminButtonBgColor || 'rgba(255, 255, 255, 0.15)'),
+                  color: settings.adminButtonTextColor || settings.headerTextColor || '#ffffff' 
+                }}
+                onMouseEnter={() => setIsAdminHovered(true)}
+                onMouseLeave={() => setIsAdminHovered(false)}
               >
                 <User size={14} />
                 <span>Admin</span>

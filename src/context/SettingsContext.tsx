@@ -37,6 +37,7 @@ export interface AppSettings {
   topBarColor: string;
   headerColor: string;
   headerTextColor: string;
+  headerHoverTextColor?: string;
   navBarColor?: string;
   navBarTextColor?: string;
   siteBackgroundColor?: string;
@@ -71,8 +72,21 @@ export interface AppSettings {
   customPageDescription?: string;
   customPageGuideText?: string;
   customPageGuideImage?: string;
-  customProducts?: { name: string; image: string; guideText?: string; guideImage?: string; price?: number }[];
+  globalTemplateFile?: string;
+  globalTemplateFileName?: string;
+  customProducts?: { 
+    name: string; 
+    image: string; 
+    guideText?: string; 
+    guideImage?: string; 
+    price?: number;
+    templateFile?: string;
+    templateFileName?: string;
+  }[];
   storeFeatures?: { id: string; icon: string; title: string; subtitle: string; enabled: boolean }[];
+  adminButtonBgColor?: string;
+  adminButtonTextColor?: string;
+  adminButtonBgColorHover?: string;
 }
 
 const defaultSettings: AppSettings = {
@@ -89,6 +103,10 @@ const defaultSettings: AppSettings = {
   topBarColor: '#d64c71',
   headerColor: '#8b3887',
   headerTextColor: '#ffffff',
+  headerHoverTextColor: '#ffffff',
+  adminButtonBgColor: 'rgba(255, 255, 255, 0.15)',
+  adminButtonTextColor: '#ffffff',
+  adminButtonBgColorHover: 'rgba(255, 255, 255, 0.25)',
   customButtonBgColor: '#facc15',
   customButtonTextColor: '#713f12',
   heroBannerImage: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&q=80',

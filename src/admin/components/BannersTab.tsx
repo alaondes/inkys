@@ -73,7 +73,7 @@ export function BannersTab({
             });
             setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
           }}
-          className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase flex items-center transition-all shadow-sm cursor-pointer"
+          className="bg-[var(--color-primary)] hover:brightness-110 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase flex items-center transition-all shadow-sm cursor-pointer"
         >
           <Plus size={14} className="inline mr-1" /> Adicionar Banner
         </button>

@@ -23,6 +23,10 @@ export function AdminSettings() {
     topBarColor: settings.topBarColor || '#d64c71',
     headerColor: settings.headerColor || '#8b3887',
     headerTextColor: settings.headerTextColor || '#ffffff',
+    headerHoverTextColor: settings.headerHoverTextColor || '#ffffff',
+    adminButtonBgColor: settings.adminButtonBgColor || 'rgba(255, 255, 255, 0.15)',
+    adminButtonTextColor: settings.adminButtonTextColor || '#ffffff',
+    adminButtonBgColorHover: settings.adminButtonBgColorHover || 'rgba(255, 255, 255, 0.25)',
     navBarColor: settings.navBarColor || 'transparent',
     navBarTextColor: settings.navBarTextColor || '#000000',
     siteBackgroundColor: settings.siteBackgroundColor || '#f9fafb',
@@ -397,6 +401,38 @@ export function AdminSettings() {
                 <div className="flex items-center gap-3">
                   <input type="color" value={storefrontSettings.headerTextColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, headerTextColor: e.target.value})} className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0" />
                   <input type="text" value={storefrontSettings.headerTextColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, headerTextColor: e.target.value})} className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-mono" />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor do Texto ao Passar o Mouse (Hover) no Cabeçalho</label>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={storefrontSettings.headerHoverTextColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, headerHoverTextColor: e.target.value})} className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0" />
+                  <input type="text" value={storefrontSettings.headerHoverTextColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, headerHoverTextColor: e.target.value})} className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-mono" />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor de Fundo do Botão do Admin</label>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={storefrontSettings.adminButtonBgColor?.startsWith('rgba') ? '#ffffff' : storefrontSettings.adminButtonBgColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, adminButtonBgColor: e.target.value})} className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0" />
+                  <input type="text" value={storefrontSettings.adminButtonBgColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, adminButtonBgColor: e.target.value})} className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-mono" />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor do Texto do Botão do Admin</label>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={storefrontSettings.adminButtonTextColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, adminButtonTextColor: e.target.value})} className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0" />
+                  <input type="text" value={storefrontSettings.adminButtonTextColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, adminButtonTextColor: e.target.value})} className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-mono" />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor de Fundo do Botão do Admin (Hover)</label>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={storefrontSettings.adminButtonBgColorHover?.startsWith('rgba') ? '#ffffff' : storefrontSettings.adminButtonBgColorHover} onChange={(e) => setStorefrontSettings({...storefrontSettings, adminButtonBgColorHover: e.target.value})} className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0" />
+                  <input type="text" value={storefrontSettings.adminButtonBgColorHover} onChange={(e) => setStorefrontSettings({...storefrontSettings, adminButtonBgColorHover: e.target.value})} className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-mono" />
                 </div>
               </div>
 
