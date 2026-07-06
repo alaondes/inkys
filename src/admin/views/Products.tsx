@@ -101,12 +101,14 @@ export function Products() {
               canvas.width = width;
               canvas.height = height;
               const ctx = canvas.getContext('2d');
-              ctx?.drawImage(img, 0, 0, width, height);
-              let outputType = file.type;
-              if (!['image/jpeg', 'image/png', 'image/webp'].includes(outputType)) {
-                outputType = 'image/png';
+              if (ctx) {
+                // Pre-fill white background to avoid transparent parts turning black in JPEG compression
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, width, height);
+                ctx.drawImage(img, 0, 0, width, height);
               }
-              resolve(canvas.toDataURL(outputType, outputType === 'image/jpeg' ? 0.8 : undefined));
+              // Force output to jpeg with 0.75 quality for high compression to prevent exceeding Firestore 1MB limits
+              resolve(canvas.toDataURL('image/jpeg', 0.75));
             };
             img.src = event.target?.result as string;
           };
@@ -117,10 +119,16 @@ export function Products() {
       if (isGallery) {
         const promises = files.map(file => resizeImage(file));
         Promise.all(promises).then(results => {
-          setFormData(prev => ({
-            ...prev,
-            gallery: [...(prev.gallery || []), ...results]
-          }));
+          setFormData(prev => {
+            const newGallery = [...(prev.gallery || []), ...results];
+            // If there's no main image currently set, automatically use the first uploaded gallery image
+            const image = prev.image || newGallery[0] || '';
+            return {
+              ...prev,
+              gallery: newGallery,
+              image: image
+            };
+          });
         });
       } else {
         resizeImage(files[0]).then(result => {
@@ -173,10 +181,15 @@ export function Products() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Auto-fallback main image to first gallery image if main image is empty/not set
+    const mainImage = formData.image || (formData.gallery && formData.gallery[0]) || '';
+    const finalFormData = { ...formData, image: mainImage };
+
     if (editingProduct) {
-      setProducts(products.map(p => p.id === editingProduct.id ? { ...p, ...formData } as Product : p));
+      setProducts(products.map(p => p.id === editingProduct.id ? { ...p, ...finalFormData } as Product : p));
     } else {
-      setProducts([...products, { ...formData, id: Date.now().toString() } as Product]);
+      setProducts([...products, { ...finalFormData, id: Date.now().toString() } as Product]);
     }
     setIsModalOpen(false);
   };
@@ -542,6 +555,42 @@ export function Products() {
                       />
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary)]"></div>
                     </label>
+                  </div>
+
+                  <div className="space-y-2 col-span-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] uppercase font-bold text-gray-500">Imagem Principal (Destaque)</label>
+                      <label className="text-[10px] uppercase font-bold bg-[var(--color-primary)] text-white px-3 py-2 rounded-lg hover:brightness-110 cursor-pointer flex items-center gap-1 transition-all">
+                        <PlusCircle size={14} /> Selecionar imagem principal
+                        <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, false)} />
+                      </label>
+                    </div>
+                    <div className="flex gap-2 mb-2">
+                      <input 
+                        type="text" 
+                        placeholder="Adicionar por URL da imagem principal..." 
+                        value={formData.image || ''}
+                        onChange={e => setFormData({...formData, image: e.target.value})}
+                        className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" 
+                      />
+                    </div>
+                    {formData.image && (
+                      <div className="relative group w-20 h-20 rounded border border-gray-200 overflow-hidden bg-white flex items-center justify-center">
+                        <img 
+                          src={formData.image} 
+                          alt="Principal" 
+                          className="w-full h-full object-contain" 
+                          onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setFormData({...formData, image: ''})}
+                          className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2 col-span-2">

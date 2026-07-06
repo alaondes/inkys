@@ -93,7 +93,31 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
 
         <div className="flex flex-col md:flex-row gap-12">
           {/* Gallery */}
-          <div className="w-full md:w-[60%] flex gap-4">
+          <div className="w-full md:w-[60%] flex flex-col-reverse md:flex-row gap-4">
+            {/* Thumbnails list on the left (vertical on desktop, horizontal below on mobile) */}
+            {images.length > 1 && (
+              <div className="flex flex-row md:flex-col gap-3 overflow-auto max-h-[85px] md:max-h-[600px] w-full md:w-20 shrink-0 justify-start pb-2 md:pb-0 scrollbar-none">
+                {images.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentImageIndex(idx)}
+                    className={`w-16 h-16 md:w-20 md:h-20 rounded-lg border-2 overflow-hidden bg-white flex items-center justify-center p-1 transition-all shrink-0 ${
+                      idx === currentImageIndex 
+                        ? 'border-gray-900 shadow-sm' 
+                        : 'border-gray-200 hover:border-gray-400'
+                    }`}
+                  >
+                    <img 
+                      src={img} 
+                      alt={`Thumbnail ${idx + 1}`} 
+                      className="w-full h-full object-contain mix-blend-multiply" 
+                      onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Main Image */}
             <div className="flex-1 relative border border-gray-100 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
                  <button className="absolute top-4 right-4 bg-white border border-gray-200 px-3 py-1 rounded text-sm text-gray-600 flex items-center gap-2 z-10 shadow-sm">
