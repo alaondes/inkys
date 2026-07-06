@@ -120,11 +120,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
 
             {/* Main Image */}
             <div className="flex-1 relative border border-gray-100 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
-                 <button className="absolute top-4 right-4 bg-white border border-gray-200 px-3 py-1 rounded text-sm text-gray-600 flex items-center gap-2 z-10 shadow-sm">
-                   <Video size={16} className="text-red-600" /> Vídeo
-                 </button>
-                 
-                 {images.length > 1 && (
+                  {images.length > 1 && (
                    <>
                      <button 
                        onClick={prevImage}
