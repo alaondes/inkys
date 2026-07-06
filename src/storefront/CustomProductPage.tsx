@@ -1,7 +1,95 @@
 import React, { useState, useRef } from 'react';
 import { useSettings } from '../context/SettingsContext';
-import { Send, Image as ImageIcon, Paintbrush, ArrowLeft, Upload, X, Loader2, Download, FileText } from 'lucide-react';
+import { Send, Image as ImageIcon, Paintbrush, ArrowLeft, Upload, X, Loader2, Download, FileText, ChevronRight, ChevronLeft } from 'lucide-react';
 import { maskCPF, maskPhone, maskCEP, validateCPF, validateEmail } from '../utils/validation';
+
+const getProductPlaceholderIcon = (name: string) => {
+  const lower = name.toLowerCase();
+  if (lower.includes('caneca') || lower.includes('copo') || lower.includes('xícara')) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-1.5">
+        <div className="w-12 h-12 rounded-full bg-cyan-50 border border-cyan-100 flex items-center justify-center text-cyan-600 shadow-xs">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.9 1.9 0 01-2-2V4h10v4z" />
+          </svg>
+        </div>
+        <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">Caneca</span>
+      </div>
+    );
+  }
+  if (lower.includes('camiseta') || lower.includes('camisa') || lower.includes('vestuário') || lower.includes('moletom')) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-1.5">
+        <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shadow-xs">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+          </svg>
+        </div>
+        <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">Camiseta</span>
+      </div>
+    );
+  }
+  if (lower.includes('mousepad') || lower.includes('mouse')) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-1.5">
+        <div className="w-12 h-12 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shadow-xs">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="4" />
+            <path d="M12 3v18M12 12h9" />
+          </svg>
+        </div>
+        <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">Mousepad</span>
+      </div>
+    );
+  }
+  if (lower.includes('almofada') || lower.includes('travesseiro')) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-1.5">
+        <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shadow-xs">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h16v16H4zm0 8h16M12 4v16" strokeDasharray="2 2" />
+          </svg>
+        </div>
+        <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">Almofada</span>
+      </div>
+    );
+  }
+  if (lower.includes('azulejo') || lower.includes('quadro') || lower.includes('placa')) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-1.5">
+        <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-xs">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
+          </svg>
+        </div>
+        <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">Azulejo</span>
+      </div>
+    );
+  }
+  if (lower.includes('garrafa') || lower.includes('squeeze') || lower.includes('copo térmico') || lower.includes('copo termico')) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-1.5">
+        <div className="w-12 h-12 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-xs">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path d="M8.5 2h7M10 2v3M14 2v3M9 5h6v4H9z" />
+            <rect x="8" y="9" width="8" height="13" rx="2" />
+          </svg>
+        </div>
+        <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">Squeeze</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-1.5">
+      <div className="w-12 h-12 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-600 shadow-xs">
+        <Paintbrush className="w-5 h-5 text-slate-500" />
+      </div>
+      <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">Produto</span>
+    </div>
+  );
+};
 
 export function CustomProductPage({ onBack }: { onBack: () => void }) {
   const { settings } = useSettings();
@@ -79,6 +167,8 @@ export function CustomProductPage({ onBack }: { onBack: () => void }) {
   const pixDiscount = settings.pixDiscount || 0;
   const discountAmount = totalPrice * pixDiscount;
   const totalPixPrice = totalPrice - discountAmount;
+
+  const [currentStep, setCurrentStep] = useState(1);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -170,7 +260,7 @@ export function CustomProductPage({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 md:py-12">
+    <div className="max-w-6xl mx-auto px-4 py-8 md:py-12" style={{ '--color-primary': settings.primaryColor || '#0891b2' } as React.CSSProperties}>
       <button 
         onClick={onBack}
         className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-6 font-medium transition-colors group"
@@ -203,67 +293,139 @@ export function CustomProductPage({ onBack }: { onBack: () => void }) {
         {/* Dynamic Two-Column Layout */}
         <div className="p-4 sm:p-8 flex flex-col lg:flex-row gap-8 items-start">
           {/* Left Column: Interactive Guided Forms */}
-          <div className="flex-1 space-y-8 w-full">
+          <div className="flex-1 space-y-6 w-full">
             
-            {/* Step 1: Visual Option Selector */}
-            <div className="bg-white border border-gray-100 rounded-3xl p-6 space-y-5 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2.5 border-b border-gray-50 pb-3">
-                <span className="w-6 h-6 rounded-full bg-[var(--color-primary)] text-white text-xs flex items-center justify-center font-bold">1</span>
-                Selecione o Produto para Personalizar
-              </h3>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {customProducts.map(p => {
-                  const isSelected = p.name === productType;
-                  return (
-                    <button
-                      key={p.name}
-                      type="button"
-                      onClick={() => setProductType(p.name)}
-                      className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all text-center gap-2 cursor-pointer bg-white group relative ${
-                        isSelected 
-                          ? 'border-[var(--color-primary)] bg-purple-50/5 shadow-sm ring-1 ring-[var(--color-primary)]' 
-                          : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                      }`}
-                    >
-                      {isSelected && (
-                        <div className="absolute top-2 right-2 bg-[var(--color-primary)] text-white p-0.5 rounded-full z-10">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        </div>
-                      )}
-                      
-                      <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center relative">
-                        {p.image ? (
-                          <img 
-                            src={p.image} 
-                            alt={p.name} 
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <ImageIcon className="text-gray-400" size={24} />
-                        )}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs sm:text-sm font-bold text-gray-800 leading-tight">{p.name}</span>
-                        {p.price && p.price > 0 ? (
-                          <span className="text-[10px] sm:text-xs text-gray-500 mt-0.5 font-medium">A partir de R$ {p.price.toFixed(2).replace('.', ',')}</span>
-                        ) : (
-                          <span className="text-[10px] sm:text-xs text-gray-400 mt-0.5 font-medium">Preço sob consulta</span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
+            {/* Stepper Navigation */}
+            <div id="configurator-top" className="bg-white border border-gray-100 rounded-3xl p-5 shadow-xs flex items-center justify-between">
+              <div className="flex items-center gap-3 sm:gap-6 w-full">
+                {/* Step 1 Tab Button */}
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className="flex items-center gap-2 text-left cursor-pointer focus:outline-none"
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${
+                    currentStep === 1
+                      ? 'bg-[var(--color-primary)] text-white shadow-xs scale-105 ring-4 ring-purple-100/60'
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {currentStep > 1 ? '✓' : '1'}
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-gray-400 uppercase tracking-widest font-extrabold block leading-none">Passo 1</span>
+                    <span className={`text-xs font-extrabold tracking-tight ${currentStep === 1 ? 'text-gray-900' : 'text-green-700'}`}>
+                      Produto & Arte
+                    </span>
+                  </div>
+                </button>
+
+                {/* Line Separator */}
+                <div className="flex-1 h-0.5 max-w-[60px] bg-gray-100 rounded-full"></div>
+
+                {/* Step 2 Tab Button */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!description.trim()) {
+                      setFormErrors(prev => ({ ...prev, description: true }));
+                      const toast = (await import('react-hot-toast')).default;
+                      toast.error('Por favor, descreva como imagina seu produto antes de avançar.');
+                      return;
+                    }
+                    setCurrentStep(2);
+                  }}
+                  className="flex items-center gap-2 text-left cursor-pointer focus:outline-none"
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all ${
+                    currentStep === 2
+                      ? 'bg-[var(--color-primary)] text-white shadow-xs scale-105 ring-4 ring-purple-100/60'
+                      : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    2
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-gray-400 uppercase tracking-widest font-extrabold block leading-none">Passo 2</span>
+                    <span className={`text-xs font-extrabold tracking-tight ${currentStep === 2 ? 'text-gray-900' : 'text-gray-400'}`}>
+                      Contato & Envio
+                    </span>
+                  </div>
+                </button>
+              </div>
+
+              <div className="hidden sm:flex items-center gap-1.5 shrink-0 bg-gray-50 border border-gray-100/80 px-3 py-1 rounded-full text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)] animate-pulse"></span>
+                {currentStep === 1 ? 'Personalizando' : 'Finalizando'}
               </div>
             </div>
 
-            {/* Step 2: Customization Details */}
-            <div className="bg-white border border-gray-100 rounded-3xl p-6 space-y-5 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2.5 border-b border-gray-50 pb-3">
-                <span className="w-6 h-6 rounded-full bg-[var(--color-primary)] text-white text-xs flex items-center justify-center font-bold">2</span>
-                Como Imagina o seu Produto?
-              </h3>
+            {currentStep === 1 ? (
+              <div className="space-y-6">
+                
+                {/* Step 1: Visual Option Selector */}
+                <div className="bg-white border border-gray-100 rounded-3xl p-6 space-y-5 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-gray-50 pb-3">
+                    <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider flex items-center gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] text-[10px] flex items-center justify-center font-black">1.1</span>
+                      Selecione o Produto para Personalizar
+                    </h3>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">Obrigatório</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {customProducts.map(p => {
+                      const isSelected = p.name === productType;
+                      return (
+                        <button
+                          key={p.name}
+                          type="button"
+                          onClick={() => setProductType(p.name)}
+                          className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all text-center gap-2 cursor-pointer bg-white group relative ${
+                            isSelected 
+                              ? 'border-[var(--color-primary)] bg-purple-50/5 shadow-md ring-1 ring-[var(--color-primary)] scale-[1.02]' 
+                              : 'border-gray-200 hover:border-gray-300 hover:shadow-xs'
+                          }`}
+                        >
+                          {isSelected && (
+                            <div className="absolute top-2 right-2 bg-[var(--color-primary)] text-white p-0.5 rounded-full z-10 shadow-xs">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                          )}
+                          
+                          <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center relative">
+                            {p.image ? (
+                              <img 
+                                src={p.image} 
+                                alt={p.name} 
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : (
+                              getProductPlaceholderIcon(p.name)
+                            )}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs sm:text-sm font-bold text-gray-800 leading-tight">{p.name}</span>
+                            {p.price && p.price > 0 ? (
+                              <span className="text-[10px] sm:text-xs text-gray-500 mt-0.5 font-medium">A partir de R$ {p.price.toFixed(2).replace('.', ',')}</span>
+                            ) : (
+                              <span className="text-[10px] sm:text-xs text-gray-400 mt-0.5 font-medium">Preço sob consulta</span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Step 2: Customization Details */}
+                <div className="bg-white border border-gray-100 rounded-3xl p-6 space-y-5 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-gray-50 pb-3">
+                    <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider flex items-center gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] text-[10px] flex items-center justify-center font-black">1.2</span>
+                      Como Imagina o seu Produto?
+                    </h3>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">Obrigatório</span>
+                  </div>
               
               <div className="space-y-3">
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider ml-1">Descreva a sua ideia *</label>
@@ -281,12 +443,21 @@ export function CustomProductPage({ onBack }: { onBack: () => void }) {
 
               {/* GABARITO / MOLDE DE DOWNLOAD DIRECTLY IN STEP 2 */}
               {(() => {
-                const templateFile = selectedProduct?.templateFile || settings.globalTemplateFile;
-                const templateFileName = selectedProduct?.templateFileName || settings.globalTemplateFileName || 'gabarito.pdf';
+                // Read templates list from selectedProduct
+                let templates: { name: string; file: string; program?: string; }[] = selectedProduct?.templates || [];
                 
-                if (!templateFile) return null;
+                // Backwards compatibility: if empty list but old single properties exist, use them
+                if (templates.length === 0 && selectedProduct?.templateFile) {
+                  templates = [{
+                    name: selectedProduct.templateFileName || 'Gabarito Principal',
+                    file: selectedProduct.templateFile
+                  }];
+                }
                 
-                const isExternal = !templateFile.startsWith('data:');
+                // Filter out any template items that don't have a file
+                templates = templates.filter(t => t.file);
+                
+                if (templates.length === 0) return null;
                 
                 return (
                   <div className="bg-gradient-to-br from-indigo-50/85 to-purple-50/60 border border-purple-100 rounded-2xl p-4 space-y-3">
@@ -296,36 +467,122 @@ export function CustomProductPage({ onBack }: { onBack: () => void }) {
                       </div>
                       <div className="flex-1 text-left min-w-0">
                         <h4 className="font-extrabold text-gray-800 text-xs uppercase tracking-wider leading-tight flex items-center gap-1.5">
-                          <span>Molde / Gabarito de Arte</span>
-                          <span className="text-[9px] bg-purple-100 text-[var(--color-primary)] font-bold px-1.5 py-0.5 rounded">Para Criação</span>
+                          <span>Moldes / Gabaritos de Arte</span>
+                          <span className="text-[9px] bg-purple-100 text-[var(--color-primary)] font-bold px-1.5 py-0.5 rounded">
+                            {templates.length === 1 ? '1 Molde Disponível' : `${templates.length} Moldes Disponíveis`}
+                          </span>
                         </h4>
                         <p className="text-[10px] text-gray-500 mt-1 leading-relaxed">
-                          Se você prefere criar sua própria arte, baixe o nosso molde oficial configurado com as dimensões ideais de impressão.
+                          Se você prefere criar sua própria arte, baixe os nossos moldes oficiais com as dimensões ideais de impressão.
                         </p>
                       </div>
                     </div>
                     
-                    <div className="bg-white border border-purple-100/40 rounded-xl p-2.5 flex items-center justify-between gap-3 shadow-xs">
-                      <div className="flex flex-col overflow-hidden text-left min-w-0 flex-1">
-                        <span className="text-xs font-bold text-gray-700 truncate" title={templateFileName}>
-                          {templateFileName}
-                        </span>
-                        <span className="text-[9px] text-gray-400 font-mono">
-                          {isExternal ? 'Servidor Externo (Drive/OneDrive)' : 'Arquivo de Gabarito Integrado'}
-                        </span>
-                      </div>
-                      
-                      <a
-                        href={templateFile}
-                        download={templateFileName}
-                        target={isExternal ? '_blank' : undefined}
-                        rel={isExternal ? 'noopener noreferrer' : undefined}
-                        className="bg-[var(--color-primary)] text-white hover:brightness-105 px-3.5 py-2 rounded-lg text-[11px] font-extrabold transition-all shadow-sm shrink-0 flex items-center gap-1.5 cursor-pointer"
-                        title="Baixar Gabarito"
-                      >
-                        <Download size={14} />
-                        <span>Baixar</span>
-                      </a>
+                    <div className="space-y-2 mt-2">
+                      {templates.map((tmpl, tIdx) => {
+                        const isExternal = !tmpl.file.startsWith('data:');
+                        
+                        // Map program specific colors and styles for high visual polish
+                        const getProgramInfo = (program?: string) => {
+                          switch (program) {
+                            case 'ps':
+                              return {
+                                label: 'Photoshop',
+                                bg: 'bg-blue-50 border-blue-100/80 text-blue-600',
+                                badge: (
+                                  <span className="w-8 h-8 shrink-0 rounded-lg bg-blue-600 text-white font-black text-xs flex items-center justify-center tracking-tighter shadow-xs" title="Criado no Photoshop">
+                                    Ps
+                                  </span>
+                                )
+                              };
+                            case 'cdr':
+                              return {
+                                label: 'CorelDraw',
+                                bg: 'bg-green-50 border-green-100/80 text-green-700',
+                                badge: (
+                                  <span className="w-8 h-8 shrink-0 rounded-lg bg-emerald-600 text-white font-black text-[10px] flex items-center justify-center tracking-tight shadow-xs" title="Criado no CorelDraw">
+                                    Cdr
+                                  </span>
+                                )
+                              };
+                            case 'ai':
+                              return {
+                                label: 'Illustrator',
+                                bg: 'bg-amber-50 border-amber-100/80 text-amber-600',
+                                badge: (
+                                  <span className="w-8 h-8 shrink-0 rounded-lg bg-amber-500 text-white font-black text-xs flex items-center justify-center tracking-tighter shadow-xs" title="Criado no Illustrator">
+                                    Ai
+                                  </span>
+                                )
+                              };
+                            case 'canva':
+                              return {
+                                label: 'Canva',
+                                bg: 'bg-cyan-50 border-cyan-100/80 text-cyan-600',
+                                badge: (
+                                  <span className="w-8 h-8 shrink-0 rounded-lg bg-gradient-to-tr from-cyan-400 to-indigo-500 text-white font-black text-[8px] flex items-center justify-center shadow-xs" title="Criado no Canva">
+                                    Canva
+                                  </span>
+                                )
+                              };
+                            case 'pdf':
+                              return {
+                                label: 'PDF',
+                                bg: 'bg-red-50 border-red-100/80 text-red-600',
+                                badge: (
+                                  <span className="w-8 h-8 shrink-0 rounded-lg bg-red-600 text-white font-extrabold text-[10px] flex items-center justify-center shadow-xs" title="Formato PDF">
+                                    PDF
+                                  </span>
+                                )
+                              };
+                            default:
+                              return {
+                                label: 'Gabarito',
+                                bg: 'bg-slate-50 border-slate-150 text-slate-600',
+                                badge: (
+                                  <span className="w-8 h-8 shrink-0 rounded-lg bg-slate-600 text-white font-bold text-[10px] flex items-center justify-center shadow-xs" title="Gabarito">
+                                    MOLDE
+                                  </span>
+                                )
+                              };
+                          }
+                        };
+                        
+                        const progInfo = getProgramInfo(tmpl.program);
+                        
+                        return (
+                          <div key={tIdx} className="bg-white border border-purple-100/40 rounded-xl p-2.5 flex items-center justify-between gap-3 shadow-xs">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              {progInfo.badge}
+                              <div className="flex flex-col overflow-hidden text-left min-w-0 flex-1">
+                                <span className="text-xs font-bold text-gray-700 truncate" title={tmpl.name}>
+                                  {tmpl.name || `Molde #${tIdx + 1}`}
+                                </span>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded border uppercase tracking-wider ${progInfo.bg}`}>
+                                    {progInfo.label}
+                                  </span>
+                                  <span className="text-[9px] text-gray-400 font-mono">
+                                    {isExternal ? 'Servidor Externo' : 'Arquivo Integrado'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <a
+                              href={tmpl.file}
+                              download={tmpl.name || 'gabarito.pdf'}
+                              target={isExternal ? '_blank' : undefined}
+                              rel={isExternal ? 'noopener noreferrer' : undefined}
+                              className="bg-[var(--color-primary)] text-white hover:brightness-105 px-3.5 py-2 rounded-lg text-[11px] font-extrabold transition-all shadow-xs shrink-0 flex items-center gap-1.5 cursor-pointer hover:shadow-sm"
+                              title={`Baixar ${tmpl.name}`}
+                            >
+                              <Download size={14} />
+                              <span className="tracking-wide uppercase">BAIXAR</span>
+                            </a>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -399,12 +656,43 @@ export function CustomProductPage({ onBack }: { onBack: () => void }) {
               </div>
             </div>
 
+            {/* Advanced to Step 2 Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!description.trim()) {
+                    setFormErrors(prev => ({ ...prev, description: true }));
+                    const toast = (await import('react-hot-toast')).default;
+                    toast.error('Por favor, descreva como imagina seu produto antes de avançar.');
+                    return;
+                  }
+                  setCurrentStep(2);
+                  // Scroll beautifully to configurator top
+                  const topEl = document.getElementById('configurator-top');
+                  if (topEl) {
+                    topEl.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+                className="w-full bg-[var(--color-primary)] text-white rounded-2xl p-4 font-extrabold text-base hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-md shadow-purple-200 cursor-pointer"
+              >
+                Prosseguir para Contato & Envio
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+
             {/* Step 3: Contact Details */}
             <div className="bg-white border border-gray-100 rounded-3xl p-6 space-y-5 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2.5 border-b border-gray-50 pb-3">
-                <span className="w-6 h-6 rounded-full bg-[var(--color-primary)] text-white text-xs flex items-center justify-center font-bold">3</span>
-                Seus Dados de Contato
-              </h3>
+              <div className="flex items-center justify-between border-b border-gray-50 pb-3">
+                <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] text-[10px] flex items-center justify-center font-black">2.1</span>
+                  Seus Dados de Contato
+                </h3>
+                <span className="text-[10px] font-bold text-gray-400 uppercase">Obrigatório</span>
+              </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -476,10 +764,13 @@ export function CustomProductPage({ onBack }: { onBack: () => void }) {
 
             {/* Step 4: Shipping Address */}
             <div className="bg-white border border-gray-100 rounded-3xl p-6 space-y-5 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2.5 border-b border-gray-50 pb-3">
-                <span className="w-6 h-6 rounded-full bg-[var(--color-primary)] text-white text-xs flex items-center justify-center font-bold">4</span>
-                Endereço de Entrega
-              </h3>
+              <div className="flex items-center justify-between border-b border-gray-50 pb-3">
+                <h3 className="text-sm font-black text-gray-800 uppercase tracking-wider flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] text-[10px] flex items-center justify-center font-black">2.2</span>
+                  Endereço de Entrega
+                </h3>
+                <span className="text-[10px] font-bold text-gray-400 uppercase">Obrigatório</span>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -641,11 +932,26 @@ export function CustomProductPage({ onBack }: { onBack: () => void }) {
             </div>
 
             {/* Send CTA Button */}
-            <div className="space-y-3 pt-2">
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentStep(1);
+                  const topEl = document.getElementById('configurator-top');
+                  if (topEl) {
+                    topEl.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl px-5 py-4 font-bold text-base transition-all flex items-center justify-center gap-2 cursor-pointer sm:w-auto w-full"
+              >
+                <ChevronLeft size={18} />
+                Voltar
+              </button>
+              
               <button 
                 onClick={handleSend}
                 disabled={isUploading}
-                className="w-full bg-[#25D366] text-white rounded-2xl p-4 font-bold text-lg hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-[#25D366]/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="flex-1 bg-[#25D366] text-white rounded-2xl p-4 font-bold text-lg hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-[#25D366]/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isUploading ? (
                   <>
@@ -657,11 +963,13 @@ export function CustomProductPage({ onBack }: { onBack: () => void }) {
                   </>
                 )}
               </button>
-              <p className="text-center text-xs text-gray-400">
-                Você será redirecionado para o nosso WhatsApp para enviar os detalhes e concluir o orçamento com nossa equipe.
-              </p>
             </div>
+            <p className="text-center text-xs text-gray-400 mt-2">
+              Você será redirecionado para o nosso WhatsApp para enviar os detalhes e concluir o orçamento com nossa equipe.
+            </p>
           </div>
+        )}
+      </div>
 
           {/* Right Column: Sticky Resumo / Preview Receipt (Didactic, Elegant) */}
           <div className="w-full lg:w-[320px] xl:w-[360px] flex-shrink-0">

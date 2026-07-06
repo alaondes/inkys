@@ -150,7 +150,7 @@ export function Products() {
   };
 
   const currentProductEmptyTemplate: Partial<Product> = {
-    name: '', category: '', description: '', price: 0, image: '', colors: [], stock: 0
+    name: '', category: '', description: '', price: 0, image: '', colors: []
   };
 
   const [formData, setFormData] = useState<Partial<Product>>(currentProductEmptyTemplate);
@@ -502,9 +502,9 @@ export function Products() {
                       value={formData.stock !== undefined ? formData.stock : ''} 
                       onChange={e => {
                         const val = parseInt(e.target.value);
-                        setFormData({...formData, stock: isNaN(val) ? 0 : val});
+                        setFormData({...formData, stock: isNaN(val) ? undefined : val});
                       }} 
-                      placeholder="Ex: 10"
+                      placeholder="Sem limite (ilimitado)"
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
                     />
                   </div>

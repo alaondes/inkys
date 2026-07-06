@@ -82,6 +82,7 @@ export interface AppSettings {
     price?: number;
     templateFile?: string;
     templateFileName?: string;
+    templates?: { name: string; file: string; program?: string; }[];
   }[];
   storeFeatures?: { id: string; icon: string; title: string; subtitle: string; enabled: boolean }[];
   adminButtonBgColor?: string;
