@@ -17,6 +17,10 @@ export interface HeroBanner {
   subtitleFont?: string;
   subtitleSameSize?: boolean;
   buttonLink?: string;
+  description?: string;
+  descriptionColor?: string;
+  descriptionSize?: string;
+  descriptionFont?: string;
 }
 
 export interface AppSettings {

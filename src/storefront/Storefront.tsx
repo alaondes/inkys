@@ -10,7 +10,7 @@ import { CustomProductPage } from './CustomProductPage';
 import { ProductDetails } from './ProductDetails';
 import { useProducts } from '../context/ProductContext';
 import { useSettings } from '../context/SettingsContext';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 export interface CartItem extends Product {
   quantity: number;
@@ -59,7 +59,28 @@ export function Storefront() {
     }
   }, [cart, isCartLoaded]);
 
-  const [currentView, setCurrentView] = useState<'home' | 'product' | 'cart' | 'checkout' | 'custom'>('home');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewParam = searchParams.get('view');
+
+  const [currentView, setCurrentView] = useState<'home' | 'product' | 'cart' | 'checkout' | 'custom'>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view');
+    if (view === 'custom' || view === 'personalizado' || view === 'personalizados') {
+      return 'custom';
+    }
+    return 'home';
+  });
+
+  useEffect(() => {
+    if (viewParam === 'custom' || viewParam === 'personalizado' || viewParam === 'personalizados') {
+      if (currentView !== 'custom') {
+        setCurrentView('custom');
+      }
+    } else if (!viewParam && currentView === 'custom') {
+      setCurrentView('home');
+    }
+  }, [viewParam, currentView]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
@@ -226,6 +247,7 @@ export function Storefront() {
   };
 
   const goHome = () => {
+    setSearchParams({});
     setCurrentView('home');
     setSelectedProduct(null);
     window.scrollTo(0, 0);
@@ -337,7 +359,7 @@ export function Storefront() {
             <div className="max-w-[1400px] mx-auto px-4">
               <nav className="flex items-center justify-start md:justify-center gap-6 py-4 overflow-x-auto whitespace-nowrap hide-scrollbar text-sm font-bold px-2 md:px-0">
                 <button 
-                  onClick={() => setCurrentView('custom')}
+                  onClick={() => setSearchParams({ view: 'custom' })}
                   className="px-3 py-1 rounded-full hover:brightness-110 transition-colors uppercase flex items-center gap-1 shadow-sm"
                   style={{ backgroundColor: settings.customButtonBgColor || '#facc15', color: settings.customButtonTextColor || '#713f12' }}
                 >
@@ -422,7 +444,10 @@ export function Storefront() {
                        <div className="absolute inset-0 bg-white/40" />
                        <div className="relative z-10 text-center flex flex-col items-center">
                           <div dangerouslySetInnerHTML={{ __html: currentBanner?.titleHtml || '' }} className={`font-bold mb-4 ${currentBanner?.titleSize || 'text-5xl'} ${currentBanner?.titleFont || 'font-sans'}`} style={{ color: currentBanner?.titleColor || settings.topBarColor }} />
-                          <p className={`font-medium max-w-lg mb-6 ${currentBanner?.subtitleSameSize ? (currentBanner?.titleSize || 'text-5xl') : (currentBanner?.subtitleSize || 'text-xl')} ${currentBanner?.subtitleFont || 'font-sans'}`} style={{ color: currentBanner?.subtitleColor || '#592c60' }}>{currentBanner?.subtitle}</p>
+                          <p className={`font-medium max-w-lg ${currentBanner?.description ? 'mb-2' : 'mb-6'} ${currentBanner?.subtitleSameSize ? (currentBanner?.titleSize || 'text-5xl') : (currentBanner?.subtitleSize || 'text-xl')} ${currentBanner?.subtitleFont || 'font-sans'}`} style={{ color: currentBanner?.subtitleColor || '#592c60' }}>{currentBanner?.subtitle}</p>
+                           {currentBanner?.description && (
+                             <p className={`font-medium max-w-lg mb-6 ${currentBanner?.descriptionSize || 'text-xl'} ${currentBanner?.descriptionFont || 'font-sans'}`} style={{ color: currentBanner?.descriptionColor || '#592c60' }}>{currentBanner?.description}</p>
+                           )}
                           
                           {currentBanner?.buttonLink ? (
                             <a 
