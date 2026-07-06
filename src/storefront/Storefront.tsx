@@ -81,6 +81,14 @@ export function Storefront() {
     }).filter(item => item.quantity > 0));
   };
 
+  const removeFromCart = (cartItemId: string) => {
+    setCart(prev => prev.filter(item => item.cartItemId !== cartItemId));
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
+
   const updateItemFile = (cartItemId: string, file: File | undefined) => {
     setCart(prev => prev.map(item => 
       item.cartItemId === cartItemId ? { ...item, file } : item
@@ -347,6 +355,9 @@ export function Storefront() {
           <CheckoutPage 
             cart={cart}
             updateItemFile={updateItemFile}
+            updateQuantity={updateQuantity}
+            removeFromCart={removeFromCart}
+            clearCart={clearCart}
             onComplete={handleWhatsAppRedirect}
             onBack={goHome}
           />

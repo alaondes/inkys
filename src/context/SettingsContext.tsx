@@ -130,6 +130,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setDoc(settingsRef, defaultSettings).catch(console.error);
         setIsLoading(false);
       }
+    }, (error) => {
+      console.error("Failed to load settings from firestore:", error);
+      setIsLoading(false);
     });
 
     return () => unsubscribe();

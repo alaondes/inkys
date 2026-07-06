@@ -10,11 +10,22 @@ import toast from 'react-hot-toast';
 interface CheckoutPageProps {
   cart: CartItem[];
   updateItemFile: (cartItemId: string, file: File | undefined) => void;
+  updateQuantity: (cartItemId: string, delta: number) => void;
+  removeFromCart: (cartItemId: string) => void;
+  clearCart: () => void;
   onComplete: (data: CheckoutData) => Promise<void>;
   onBack: () => void;
 }
 
-export function CheckoutPage({ cart, updateItemFile, onComplete, onBack }: CheckoutPageProps) {
+export function CheckoutPage({ 
+  cart, 
+  updateItemFile, 
+  updateQuantity,
+  removeFromCart,
+  clearCart,
+  onComplete, 
+  onBack 
+}: CheckoutPageProps) {
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   
   const [formData, setFormData] = useState({
@@ -200,7 +211,14 @@ export function CheckoutPage({ cart, updateItemFile, onComplete, onBack }: Check
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-6 items-start">
         <div className="flex flex-col gap-6">
-          <ResumoCarrinho cart={cart} fileInputRefs={fileInputRefs} updateItemFile={updateItemFile} />
+          <ResumoCarrinho 
+            cart={cart} 
+            fileInputRefs={fileInputRefs} 
+            updateItemFile={updateItemFile} 
+            updateQuantity={updateQuantity}
+            removeFromCart={removeFromCart}
+            onClearCart={clearCart}
+          />
 
           <DadosCliente 
             formData={formData} 

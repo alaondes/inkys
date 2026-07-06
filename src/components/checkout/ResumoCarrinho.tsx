@@ -1,15 +1,25 @@
 import React, { MutableRefObject } from 'react';
 import { formatPrice } from '../../data/products';
 import { CartItem } from '../../storefront/Storefront';
-import { Paperclip, FileText, RefreshCw } from 'lucide-react';
+import { Paperclip, FileText, RefreshCw, Trash2, Plus, Minus } from 'lucide-react';
 
 interface ResumoCarrinhoProps {
   cart: CartItem[];
   fileInputRefs: MutableRefObject<{ [key: string]: HTMLInputElement | null }>;
   updateItemFile: (cartItemId: string, file: File | undefined) => void;
+  updateQuantity: (cartItemId: string, delta: number) => void;
+  removeFromCart: (cartItemId: string) => void;
+  onClearCart: () => void;
 }
 
-export function ResumoCarrinho({ cart, fileInputRefs, updateItemFile }: ResumoCarrinhoProps) {
+export function ResumoCarrinho({ 
+  cart, 
+  fileInputRefs, 
+  updateItemFile,
+  updateQuantity,
+  removeFromCart,
+  onClearCart
+}: ResumoCarrinhoProps) {
   return (
     <div className="bg-white border border-gray-200 rounded shadow-sm mb-6">
       <div className="hidden md:grid grid-cols-12 border-b border-gray-100 p-4 text-sm font-bold text-gray-700 bg-gray-50">
@@ -67,19 +77,55 @@ export function ResumoCarrinho({ cart, fileInputRefs, updateItemFile }: ResumoCa
           </div>
           <div className="md:col-span-2 flex items-center justify-between md:justify-center text-gray-700 bg-gray-50 md:bg-transparent p-2 md:p-0 rounded">
             <span className="md:hidden text-xs text-gray-500 uppercase font-bold">Quantidade:</span>
-            <span className="font-medium">{item.quantity}</span>
+            <div className="flex items-center gap-2">
+              <button 
+                type="button" 
+                onClick={() => updateQuantity(item.cartItemId, -1)}
+                className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 text-gray-600 transition-colors font-bold text-base"
+                title="Diminuir quantidade"
+              >
+                <Minus size={12} />
+              </button>
+              <span className="font-semibold text-sm w-6 text-center">{item.quantity}</span>
+              <button 
+                type="button" 
+                onClick={() => updateQuantity(item.cartItemId, 1)}
+                className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 text-gray-600 transition-colors font-bold text-base"
+                title="Aumentar quantidade"
+              >
+                <Plus size={12} />
+              </button>
+            </div>
           </div>
           <div className="md:col-span-2 flex items-center justify-between md:justify-end font-bold text-[#5ba324] bg-green-50 md:bg-transparent p-2 md:p-0 rounded">
             <span className="md:hidden text-xs text-gray-500 uppercase font-bold text-gray-700">Total item:</span>
-            <span>{formatPrice(item.price * item.quantity)}</span>
+            <div className="flex items-center gap-3">
+              <span>{formatPrice(item.price * item.quantity)}</span>
+              <button 
+                type="button" 
+                onClick={() => removeFromCart(item.cartItemId)}
+                className="text-gray-400 hover:text-red-500 transition-colors p-1.5 rounded-full hover:bg-red-50"
+                title="Remover item"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
           </div>
         </div>
       ))}
 
-      <div className="p-4 bg-gray-50 rounded-b flex flex-col items-end justify-center">
-        <div className="flex justify-between w-full md:w-64 mb-1">
+      <div className="p-4 bg-gray-50 rounded-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <button
+          type="button"
+          onClick={onClearCart}
+          className="flex items-center justify-center gap-2 text-red-600 hover:text-red-800 text-xs font-bold uppercase transition-all bg-white hover:bg-red-50 px-4 py-2.5 rounded-lg border border-red-200 hover:border-red-300 shadow-sm w-full sm:w-auto"
+        >
+          <Trash2 size={14} />
+          Limpar Carrinho
+        </button>
+        <div className="flex justify-between items-center w-full sm:w-64 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-200">
           <span className="text-gray-600 font-medium">Subtotal</span>
-          <span className="text-gray-800 font-bold">{formatPrice(cart.reduce((acc, item) => acc + item.price * item.quantity, 0))}</span>
+          <span className="text-gray-800 font-bold text-lg">{formatPrice(cart.reduce((acc, item) => acc + item.price * item.quantity, 0))}</span>
         </div>
       </div>
     </div>

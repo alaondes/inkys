@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, ExternalLink, Users, Ticket, FileText, X } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, ExternalLink, Users, Ticket, FileText, X, Sparkles } from 'lucide-react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 import { Overview } from './views/Overview';
 import { Products } from './views/Products';
+import { CustomProductsAdmin } from './views/CustomProducts';
 import { Orders } from './views/Orders';
 import { AdminSettings } from './views/Settings';
 import { Documents } from './views/Documents';
@@ -57,6 +58,7 @@ export function AdminApp() {
   const navItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Visão Geral' },
     { path: '/admin/products', icon: Package, label: 'Produtos' },
+    { path: '/admin/custom-products', icon: Sparkles, label: 'Personalizados' },
     { path: '/admin/orders', icon: ShoppingBag, label: 'Pedidos' },
     { path: '/admin/customers', icon: Users, label: 'Clientes' },
     { path: '/admin/coupons', icon: Ticket, label: 'Cupons' },
@@ -158,6 +160,7 @@ export function AdminApp() {
           <Routes>
             <Route path="/" element={<Overview />} />
             <Route path="/products" element={<Products />} />
+            <Route path="/custom-products" element={<CustomProductsAdmin />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/customers" element={<Customers />} />
             <Route path="/coupons" element={<Coupons />} />

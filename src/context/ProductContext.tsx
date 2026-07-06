@@ -19,14 +19,18 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     
     // Seed initial products if collection is empty
     const initData = async () => {
-      const snap = await getDocs(productsRef);
-      if (snap.empty) {
-        const batch = writeBatch(db);
-        INITIAL_PRODUCTS.forEach((p, index) => {
-          const docRef = doc(productsRef, p.id);
-          batch.set(docRef, { ...p, order: index });
-        });
-        await batch.commit();
+      try {
+        const snap = await getDocs(productsRef);
+        if (snap.empty) {
+          const batch = writeBatch(db);
+          INITIAL_PRODUCTS.forEach((p, index) => {
+            const docRef = doc(productsRef, p.id);
+            batch.set(docRef, { ...p, order: index });
+          });
+          await batch.commit();
+        }
+      } catch (error) {
+        console.warn("Could not seed initial products offline or due to permissions:", error);
       }
     };
     initData();
