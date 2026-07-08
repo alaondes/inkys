@@ -771,19 +771,68 @@ export function Products() {
               </div>
 
               <div className="space-y-2 mt-4">
-                {settings.categories?.map((cat, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
-                    <span className="text-sm font-medium text-gray-900">{cat}</span>
-                    <button 
-                      onClick={() => {
-                        updateSettings({ categories: settings.categories?.filter(c => c !== cat) });
-                      }}
-                      className="text-red-500 hover:text-red-700 p-1"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
+                {settings.categories?.map((cat, idx) => {
+                  const isFirst = idx === 0;
+                  const isLast = idx === (settings.categories?.length || 0) - 1;
+                  return (
+                    <div key={idx} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 gap-2 hover:border-gray-200 transition-all">
+                      <span className="text-sm font-medium text-gray-900 flex-1 truncate">{cat}</span>
+                      
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          disabled={isFirst}
+                          onClick={() => {
+                            const cats = [...(settings.categories || [])];
+                            if (idx > 0) {
+                              const temp = cats[idx];
+                              cats[idx] = cats[idx - 1];
+                              cats[idx - 1] = temp;
+                              updateSettings({ categories: cats });
+                            }
+                          }}
+                          className={`p-1.5 rounded-md hover:bg-gray-200 text-gray-600 transition-all ${isFirst ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer hover:text-gray-900'}`}
+                          title="Mover para cima"
+                        >
+                          <ChevronUp size={16} />
+                        </button>
+                        
+                        <button
+                          type="button"
+                          disabled={isLast}
+                          onClick={() => {
+                            const cats = [...(settings.categories || [])];
+                            if (idx < cats.length - 1) {
+                              const temp = cats[idx];
+                              cats[idx] = cats[idx + 1];
+                              cats[idx + 1] = temp;
+                              updateSettings({ categories: cats });
+                            }
+                          }}
+                          className={`p-1.5 rounded-md hover:bg-gray-200 text-gray-600 transition-all ${isLast ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer hover:text-gray-900'}`}
+                          title="Mover para baixo"
+                        >
+                          <ChevronDown size={16} />
+                        </button>
+
+                        <div className="w-px h-4 bg-gray-200 mx-1"></div>
+
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`Tem certeza de que deseja excluir a categoria "${cat}"?`)) {
+                              updateSettings({ categories: settings.categories?.filter(c => c !== cat) });
+                            }
+                          }}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-md transition-all cursor-pointer"
+                          title="Excluir categoria"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
                 {(!settings.categories || settings.categories.length === 0) && (
                   <p className="text-sm text-gray-500 text-center py-4">Nenhuma categoria cadastrada.</p>
                 )}

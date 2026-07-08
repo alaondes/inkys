@@ -62,6 +62,7 @@ export function Storefront() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const viewParam = searchParams.get('view');
+  const categoryParam = searchParams.get('category');
 
   const [currentView, setCurrentView] = useState<'home' | 'product' | 'cart' | 'checkout' | 'custom'>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -373,30 +374,40 @@ export function Storefront() {
               <nav className="flex items-center justify-start md:justify-center gap-6 py-4 overflow-x-auto whitespace-nowrap hide-scrollbar text-sm font-bold px-2 md:px-0">
                 <button 
                   onClick={() => setSearchParams({ view: 'custom' })}
-                  className="px-3 py-1 rounded-full hover:brightness-110 transition-colors uppercase flex items-center gap-1 shadow-sm"
+                  className="px-3 py-1 rounded-full hover:brightness-110 transition-colors uppercase flex items-center gap-1 shadow-sm shrink-0"
                   style={{ backgroundColor: settings.customButtonBgColor || '#facc15', color: settings.customButtonTextColor || '#713f12' }}
                 >
                   Personalizados ✨
                 </button>
                 <button 
-                  onClick={() => {
-                    const el = document.getElementById('category-all');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  onClick={goHome}
+                  className={`hover:opacity-100 transition-all uppercase py-1 border-b-2 shrink-0 ${!categoryParam ? 'opacity-100 font-extrabold' : 'opacity-70 border-transparent'}`}
+                  style={{ 
+                    color: settings.navBarTextColor || 'inherit',
+                    borderColor: !categoryParam ? (settings.navBarTextColor || 'currentColor') : 'transparent'
                   }}
-                  className="hover:opacity-80 transition-opacity uppercase"
-                  style={{ color: settings.navBarTextColor || 'inherit' }}
+                >
+                  Início
+                </button>
+                <button 
+                  onClick={() => setSearchParams({ category: 'all' })}
+                  className={`hover:opacity-100 transition-all uppercase py-1 border-b-2 shrink-0 ${categoryParam === 'all' ? 'opacity-100 font-extrabold' : 'opacity-70 border-transparent'}`}
+                  style={{ 
+                    color: settings.navBarTextColor || 'inherit',
+                    borderColor: categoryParam === 'all' ? (settings.navBarTextColor || 'currentColor') : 'transparent'
+                  }}
                 >
                   Todos os Produtos
                 </button>
                 {categories.map(category => (
                   <button 
                     key={category}
-                    onClick={() => {
-                      const el = document.getElementById(`category-${category}`);
-                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    onClick={() => setSearchParams({ category })}
+                    className={`hover:opacity-100 transition-all uppercase py-1 border-b-2 shrink-0 ${categoryParam === category ? 'opacity-100 font-extrabold' : 'opacity-70 border-transparent'}`}
+                    style={{ 
+                      color: settings.navBarTextColor || 'inherit',
+                      borderColor: categoryParam === category ? (settings.navBarTextColor || 'currentColor') : 'transparent'
                     }}
-                    className="hover:opacity-80 transition-opacity uppercase"
-                    style={{ color: settings.navBarTextColor || 'inherit' }}
                   >
                     {category}
                   </button>
@@ -427,171 +438,244 @@ export function Storefront() {
             onAddToCart={addToCart} 
           />
         ) : (
-          <>
-            {/* Hero Banner Carousel */}
-            <section className="w-full bg-[#f9e5e6] overflow-hidden relative" style={{ height: '400px' }}>
-              <AnimatePresence mode="wait">
-                {(() => {
-                  const banners = settings.heroBanners && settings.heroBanners.length > 0 
-                    ? settings.heroBanners 
-                    : [{
-                        id: 'legacy',
-                        image: settings.heroBannerImage,
-                        titleHtml: settings.heroBannerTitleHtml,
-                        subtitle: settings.heroBannerSubtitle,
-                        buttonText: settings.heroBannerButtonText,
-                        buttonColor: settings.heroBannerButtonColor
-                      }];
-                  const currentBanner = banners[currentBannerIdx % banners.length];
+          <div className="max-w-[1400px] mx-auto px-4 pt-6 md:pt-8">
+            {categoryParam ? (
+              // Category View (Dedicated Page)
+              <div>
+                {/* Breadcrumbs */}
+                <div className="flex items-center gap-2 text-sm text-gray-500 mb-6 font-medium">
+                  <button onClick={goHome} className="hover:text-gray-800 hover:underline cursor-pointer transition-all">Início</button>
+                  <span className="text-gray-300">/</span>
+                  <span className="text-gray-400">
+                    {categoryParam === 'all' ? 'Todos os Produtos' : categoryParam}
+                  </span>
+                </div>
+
+                {/* Header Title */}
+                <div className="border-b border-gray-100 pb-6 mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ color: settings.headerColor || '#783884' }}>
+                      {categoryParam === 'all' ? 'Todos os Produtos' : categoryParam}
+                    </h1>
+                    <p className="text-gray-500 text-sm mt-1">
+                      {(() => {
+                        const count = products.filter(p => !p.hidden && (categoryParam === 'all' || (p.category || 'Outros') === categoryParam)).length;
+                        return `${count} ${count === 1 ? 'produto encontrado' : 'produtos encontrados'}`;
+                      })()}
+                    </p>
+                  </div>
                   
+                  <button 
+                    onClick={goHome}
+                    className="text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 px-4 py-2 rounded-full bg-white transition-all w-fit cursor-pointer"
+                  >
+                    ← Voltar para o início
+                  </button>
+                </div>
+
+                {/* Product Grid */}
+                {(() => {
+                  const filteredProducts = visibleProducts.filter(p => {
+                    const matchesCategory = categoryParam === 'all' || (p.category || 'Outros') === categoryParam;
+                    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                          (p.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+                    return matchesCategory && matchesSearch;
+                  });
+
+                  if (filteredProducts.length === 0) {
+                    return (
+                      <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 p-8">
+                        <p className="text-gray-500 text-lg mb-4">Nenhum produto encontrado nesta categoria.</p>
+                        {searchQuery && (
+                          <button 
+                            onClick={() => setSearchQuery('')}
+                            className="text-sm text-purple-600 font-bold hover:underline cursor-pointer"
+                          >
+                            Limpar pesquisa
+                          </button>
+                        )}
+                      </div>
+                    );
+                  }
+
                   return (
-                    <motion.div
-                      key={currentBannerIdx}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.8 }}
-                      className="absolute inset-0 w-full h-full bg-cover bg-center flex items-center justify-center"
-                      style={{ backgroundImage: `url(${currentBanner?.image})` }}
-                    >
-                       <div className="absolute inset-0 bg-white/40" />
-                       <div className="relative z-10 text-center flex flex-col items-center">
-                          <div dangerouslySetInnerHTML={{ __html: currentBanner?.titleHtml || '' }} className={`font-bold mb-4 ${currentBanner?.titleSize || 'text-5xl'} ${currentBanner?.titleFont || 'font-sans'}`} style={{ color: currentBanner?.titleColor || settings.topBarColor }} />
-                          <p className={`font-medium max-w-lg ${currentBanner?.description ? 'mb-2' : 'mb-6'} ${currentBanner?.subtitleSameSize ? (currentBanner?.titleSize || 'text-5xl') : (currentBanner?.subtitleSize || 'text-xl')} ${currentBanner?.subtitleFont || 'font-sans'}`} style={{ color: currentBanner?.subtitleColor || '#592c60' }}>{currentBanner?.subtitle}</p>
-                           {currentBanner?.description && (
-                             <p className={`font-medium max-w-lg mb-6 ${currentBanner?.descriptionSize || 'text-xl'} ${currentBanner?.descriptionFont || 'font-sans'}`} style={{ color: currentBanner?.descriptionColor || '#592c60' }}>{currentBanner?.description}</p>
-                           )}
-                          
-                          {currentBanner?.buttonLink ? (
-                            <a 
-                              href={currentBanner.buttonLink}
-                              onClick={(e) => {
-                                if (currentBanner.buttonLink?.startsWith('#')) {
-                                  e.preventDefault();
-                                  const id = currentBanner.buttonLink.substring(1);
-                                  const el = document.getElementById(id);
-                                  if (el) {
-                                    el.scrollIntoView({ behavior: 'smooth' });
-                                  }
-                                }
-                              }}
-                              className="text-white px-8 py-3 rounded-md font-bold text-lg hover:brightness-90 transition-colors shadow-lg inline-block text-center cursor-pointer"
-                              style={{ backgroundColor: currentBanner?.buttonColor }}
-                            >
-                              {currentBanner?.buttonText}
-                            </a>
-                          ) : (
-                            <button className="text-white px-8 py-3 rounded-md font-bold text-lg hover:brightness-90 transition-colors shadow-lg cursor-pointer" style={{ backgroundColor: currentBanner?.buttonColor }}>
-                              {currentBanner?.buttonText}
-                            </button>
-                          )}
-                       </div>
-                    </motion.div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                      {filteredProducts.map(product => (
+                        <div key={product.id} className="h-full">
+                          <ProductCard product={product} onAddToCart={openProduct} />
+                        </div>
+                      ))}
+                    </div>
                   );
                 })()}
-              </AnimatePresence>
-
-              {/* Dots indicator */}
-              {settings.heroBanners && settings.heroBanners.length > 1 && (
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
-                  {settings.heroBanners.map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentBannerIdx(idx)}
-                      className={`w-3 h-3 rounded-full transition-colors ${
-                        idx === currentBannerIdx % settings.heroBanners.length ? 'bg-white' : 'bg-white/50'
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-            
-            {/* Features Row */}
-            {settings.storeFeatures && settings.storeFeatures.length > 0 && (
-              <section className="border-b border-gray-200 bg-white">
-                <div className="max-w-[1400px] mx-auto px-4 py-8">
-                  <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(settings.storeFeatures.filter(f => f.enabled).length, 4)} gap-6 sm:gap-4 lg:divide-x divide-gray-200`}>
-                    {settings.storeFeatures.filter(f => f.enabled).map((feature, idx) => {
-                      let IconComponent: any = Search;
-                      if (feature.icon === 'Truck') IconComponent = Truck;
-                      else if (feature.icon === 'CreditCard') IconComponent = CreditCard;
-                      else if (feature.icon === 'Zap') IconComponent = ShieldCheck; // We don't have Zap imported, let's use ShieldCheck or something else, or import Zap
-                      else if (feature.icon === 'ShieldCheck') IconComponent = ShieldCheck;
-                      else if (feature.icon === 'User') IconComponent = User;
-                      else if (feature.icon === 'MessageCircle') IconComponent = MessageCircle;
-                      else if (feature.icon === 'ShoppingCart') IconComponent = ShoppingCart;
-                      else if (feature.icon === 'Menu') IconComponent = Menu;
-                      else if (feature.icon === 'Star') IconComponent = Star;
-                      else if (feature.icon === 'Heart') IconComponent = Heart;
-                      else if (feature.icon === 'Gift') IconComponent = Gift;
-
+              </div>
+            ) : (
+              // Standard Homepage View
+              <div className="-mx-4 md:mx-0">
+                {/* Hero Banner Carousel */}
+                <section className="w-full bg-[#f9e5e6] overflow-hidden relative rounded-2xl mb-12" style={{ height: '400px' }}>
+                  <AnimatePresence mode="wait">
+                    {(() => {
+                      const banners = settings.heroBanners && settings.heroBanners.length > 0 
+                        ? settings.heroBanners 
+                        : [{
+                            id: 'legacy',
+                            image: settings.heroBannerImage,
+                            titleHtml: settings.heroBannerTitleHtml,
+                            subtitle: settings.heroBannerSubtitle,
+                            buttonText: settings.heroBannerButtonText,
+                            buttonColor: settings.heroBannerButtonColor
+                          }];
+                      const currentBanner = banners[currentBannerIdx % banners.length];
+                      
                       return (
-                        <div key={feature.id || idx} className="flex items-center justify-center gap-4 px-4">
-                          {feature.icon === 'Zap' ? (
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                          ) : feature.icon === 'Pix' ? (
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700"><path d="M2 12l5.25 5 2.625-3 5.25 5 6.875-10"/></svg>
-                          ) : (
-                            <IconComponent size={32} className="text-gray-700" strokeWidth={1.5} />
-                          )}
-                          <div>
-                            <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>{feature.title}</h4>
-                            <p className="text-gray-500 text-sm">{feature.subtitle}</p>
-                          </div>
-                        </div>
+                        <motion.div
+                          key={currentBannerIdx}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.8 }}
+                          className="absolute inset-0 w-full h-full bg-cover bg-center flex items-center justify-center px-4"
+                          style={{ backgroundImage: `url(${currentBanner?.image})` }}
+                        >
+                           <div className="absolute inset-0 bg-white/40" />
+                           <div className="relative z-10 text-center flex flex-col items-center">
+                              <div dangerouslySetInnerHTML={{ __html: currentBanner?.titleHtml || '' }} className={`font-bold mb-4 ${currentBanner?.titleSize || 'text-5xl'} ${currentBanner?.titleFont || 'font-sans'}`} style={{ color: currentBanner?.titleColor || settings.topBarColor }} />
+                              <p className={`font-medium max-w-lg ${currentBanner?.description ? 'mb-2' : 'mb-6'} ${currentBanner?.subtitleSameSize ? (currentBanner?.titleSize || 'text-5xl') : (currentBanner?.subtitleSize || 'text-xl')} ${currentBanner?.subtitleFont || 'font-sans'}`} style={{ color: currentBanner?.subtitleColor || '#592c60' }}>{currentBanner?.subtitle}</p>
+                               {currentBanner?.description && (
+                                 <p className={`font-medium max-w-lg mb-6 ${currentBanner?.descriptionSize || 'text-xl'} ${currentBanner?.descriptionFont || 'font-sans'}`} style={{ color: currentBanner?.descriptionColor || '#592c60' }}>{currentBanner?.description}</p>
+                               )}
+                              
+                              {currentBanner?.buttonLink ? (
+                                <a 
+                                  href={currentBanner.buttonLink}
+                                  onClick={(e) => {
+                                    if (currentBanner.buttonLink?.startsWith('#')) {
+                                      e.preventDefault();
+                                      const id = currentBanner.buttonLink.substring(1);
+                                      const el = document.getElementById(id);
+                                      if (el) {
+                                        el.scrollIntoView({ behavior: 'smooth' });
+                                      }
+                                    }
+                                  }}
+                                  className="text-white px-8 py-3 rounded-md font-bold text-lg hover:brightness-90 transition-colors shadow-lg inline-block text-center cursor-pointer"
+                                  style={{ backgroundColor: currentBanner?.buttonColor }}
+                                >
+                                  {currentBanner?.buttonText}
+                                </a>
+                              ) : (
+                                <button className="text-white px-8 py-3 rounded-md font-bold text-lg hover:brightness-90 transition-colors shadow-lg cursor-pointer" style={{ backgroundColor: currentBanner?.buttonColor }}>
+                                  {currentBanner?.buttonText}
+                                </button>
+                              )}
+                           </div>
+                        </motion.div>
                       );
-                    })}
-                  </div>
-                </div>
-              </section>
-            )}
+                    })()}
+                  </AnimatePresence>
 
-            {/* Promo Banners */}
-            <section className="max-w-[1400px] mx-auto px-4 py-12">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="rounded-3xl overflow-hidden relative h-[200px] md:h-[250px] flex items-center px-6 md:px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner1ColorStart}, ${settings.promoBanner1ColorEnd})` }} onClick={() => {
-                    const el = document.getElementById('category-Música');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
-                  }}>
-                     <div className="z-10 text-white">
-                       <h3 className="text-3xl font-bold text-yellow-300 mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner1TitleHtml || '' }}></h3>
-                       <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner1SubtitleHtml || '' }}></p>
-                       <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f]">{settings.promoBanner1ButtonText}</button>
-                     </div>
-                  </div>
-                  <div className="rounded-3xl overflow-hidden relative h-[200px] md:h-[250px] flex items-center px-6 md:px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner2ColorStart}, ${settings.promoBanner2ColorEnd})` }} onClick={() => {
-                    const el = document.getElementById('category-Canecas com Foto') || document.getElementById('category-Canecas');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
-                  }}>
-                     <div className="z-10 text-white">
-                       <h3 className="text-3xl font-bold text-white mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner2TitleHtml || '' }}></h3>
-                       <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner2SubtitleHtml || '' }}></p>
-                       <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f]">{settings.promoBanner2ButtonText}</button>
-                     </div>
-                  </div>
-               </div>
-            </section>
+                  {/* Dots indicator */}
+                  {settings.heroBanners && settings.heroBanners.length > 1 && (
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
+                      {settings.heroBanners.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setCurrentBannerIdx(idx)}
+                          className={`w-3 h-3 rounded-full transition-colors ${
+                            idx === currentBannerIdx % settings.heroBanners.length ? 'bg-white' : 'bg-white/50'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+                
+                {/* Features Row */}
+                {settings.storeFeatures && settings.storeFeatures.length > 0 && (
+                  <section className="border-b border-gray-200 bg-white rounded-2xl mb-12 shadow-xs">
+                    <div className="max-w-[1400px] mx-auto px-4 py-8">
+                      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(settings.storeFeatures.filter(f => f.enabled).length, 4)} gap-6 sm:gap-4 lg:divide-x divide-gray-200`}>
+                        {settings.storeFeatures.filter(f => f.enabled).map((feature, idx) => {
+                          let IconComponent: any = Search;
+                          if (feature.icon === 'Truck') IconComponent = Truck;
+                          else if (feature.icon === 'CreditCard') IconComponent = CreditCard;
+                          else if (feature.icon === 'Zap') IconComponent = ShieldCheck;
+                          else if (feature.icon === 'ShieldCheck') IconComponent = ShieldCheck;
+                          else if (feature.icon === 'User') IconComponent = User;
+                          else if (feature.icon === 'MessageCircle') IconComponent = MessageCircle;
+                          else if (feature.icon === 'ShoppingCart') IconComponent = ShoppingCart;
+                          else if (feature.icon === 'Menu') IconComponent = Menu;
+                          else if (feature.icon === 'Star') IconComponent = Star;
+                          else if (feature.icon === 'Heart') IconComponent = Heart;
+                          else if (feature.icon === 'Gift') IconComponent = Gift;
 
-            {/* Category Sections */}
-            <div className="space-y-16 max-w-[1400px] mx-auto px-4">
-              <section id="category-all">
-                <h2 className="text-[#783884] text-3xl font-bold text-center mb-10">Todos os Produtos</h2>
-                <ProductCarousel products={products} onAddToCart={openProduct} />
-              </section>
-
-              {categories.map(category => {
-                const categoryProducts = getProductsByCategory(category);
-                if (categoryProducts.length === 0) return null;
-                return (
-                  <section key={category} id={`category-${category}`}>
-                    <h2 className="text-[#783884] text-3xl font-bold text-center mb-10">{category}</h2>
-                    <ProductCarousel products={categoryProducts} onAddToCart={openProduct} />
+                          return (
+                            <div key={feature.id || idx} className="flex items-center justify-center gap-4 px-4">
+                              {feature.icon === 'Zap' ? (
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                              ) : feature.icon === 'Pix' ? (
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700"><path d="M2 12l5.25 5 2.625-3 5.25 5 6.875-10"/></svg>
+                              ) : (
+                                <IconComponent size={32} className="text-gray-700" strokeWidth={1.5} />
+                              )}
+                              <div>
+                                <h4 className="font-bold leading-tight" style={{ color: settings.topBarColor }}>{feature.title}</h4>
+                                <p className="text-gray-500 text-sm">{feature.subtitle}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </section>
-                );
-              })}
-            </div>
-          </>
+                )}
+
+                {/* Promo Banners */}
+                <section className="max-w-[1400px] mx-auto py-4 mb-12">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="rounded-3xl overflow-hidden relative h-[200px] md:h-[250px] flex items-center px-6 md:px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner1ColorStart}, ${settings.promoBanner1ColorEnd})` }} onClick={() => {
+                        setSearchParams({ category: 'Música' });
+                      }}>
+                         <div className="z-10 text-white">
+                           <h3 className="text-3xl font-bold text-yellow-300 mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner1TitleHtml || '' }}></h3>
+                           <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner1SubtitleHtml || '' }}></p>
+                           <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f] cursor-pointer">{settings.promoBanner1ButtonText}</button>
+                         </div>
+                      </div>
+                      <div className="rounded-3xl overflow-hidden relative h-[200px] md:h-[250px] flex items-center px-6 md:px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner2ColorStart}, ${settings.promoBanner2ColorEnd})` }} onClick={() => {
+                        setSearchParams({ category: 'Canecas' });
+                      }}>
+                         <div className="z-10 text-white">
+                           <h3 className="text-3xl font-bold text-white mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner2TitleHtml || '' }}></h3>
+                           <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner2SubtitleHtml || '' }}></p>
+                           <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f] cursor-pointer">{settings.promoBanner2ButtonText}</button>
+                         </div>
+                      </div>
+                   </div>
+                </section>
+
+                {/* Category Sections */}
+                <div className="space-y-16 max-w-[1400px] mx-auto">
+                  <section id="category-all">
+                    <h2 className="text-[#783884] text-3xl font-bold text-center mb-10">Todos os Produtos</h2>
+                    <ProductCarousel products={products} onAddToCart={openProduct} />
+                  </section>
+
+                  {categories.map(category => {
+                    const categoryProducts = getProductsByCategory(category);
+                    if (categoryProducts.length === 0) return null;
+                    return (
+                      <section key={category} id={`category-${category}`}>
+                        <h2 className="text-[#783884] text-3xl font-bold text-center mb-10">{category}</h2>
+                        <ProductCarousel products={categoryProducts} onAddToCart={openProduct} />
+                      </section>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </main>
     </div>
