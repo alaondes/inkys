@@ -14,6 +14,7 @@ export interface Product {
   installments?: number;
   hidden?: boolean;
   stock?: number;
+  order?: number;
 }
 
 export const INITIAL_PRODUCTS: Product[] = [

@@ -1,11 +1,40 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, INITIAL_PRODUCTS } from '../data/products';
-import { collection, onSnapshot, doc, writeBatch, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { collection, onSnapshot, doc, writeBatch, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
+
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
 
 interface ProductContextType {
   products: Product[];
-  setProducts: (products: Product[]) => void;
+  setProducts: (products: Product[]) => Promise<void>;
+  addProduct: (product: Product) => Promise<void>;
+  updateProduct: (product: Product) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -83,7 +112,19 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(timeoutId);
       setIsLoading(false);
     }, (error) => {
-      console.error("Firestore error:", error);
+      handleFirestoreError(error, OperationType.LIST, 'products', false);
+      
+      // Fallback to local storage or INITIAL_PRODUCTS
+      let fallbackProducts = INITIAL_PRODUCTS;
+      try {
+        const saved = localStorage.getItem('inkys-products');
+        if (saved) {
+           fallbackProducts = JSON.parse(saved);
+        }
+      } catch (e) {
+        // ignore
+      }
+      setProductsState(fallbackProducts);
       setIsLoading(false);
     });
 
@@ -93,40 +134,86 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const handleFirestoreError = (error: unknown, operationType: OperationType, path: string | null, shouldThrow: boolean = true) => {
+    const errInfo: FirestoreErrorInfo = {
+      error: error instanceof Error ? error.message : String(error),
+      authInfo: {
+        userId: auth.currentUser?.uid,
+        email: auth.currentUser?.email,
+        emailVerified: auth.currentUser?.emailVerified,
+        isAnonymous: auth.currentUser?.isAnonymous,
+        tenantId: auth.currentUser?.tenantId,
+        providerInfo: auth.currentUser?.providerData?.map(provider => ({
+          providerId: provider.providerId,
+          email: provider.email,
+        })) || []
+      },
+      operationType,
+      path
+    };
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+    if (shouldThrow) {
+      throw new Error(JSON.stringify(errInfo));
+    }
+  };
+
+  const addProduct = async (product: Product) => {
+    const productsRef = collection(db, 'products');
+    const path = `products/${product.id}`;
+    try {
+      // Find maximum order so we can append this product to the end
+      const currentMaxOrder = products.reduce((max, p) => (p.order !== undefined && p.order > max ? p.order : max), -1);
+      const newOrder = currentMaxOrder + 1;
+      
+      const docRef = doc(productsRef, product.id);
+      await setDoc(docRef, { ...product, order: newOrder });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, path);
+    }
+  };
+
+  const updateProduct = async (product: Product) => {
+    const path = `products/${product.id}`;
+    try {
+      const docRef = doc(db, 'products', product.id);
+      await setDoc(docRef, product, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  };
+
+  const deleteProduct = async (id: string) => {
+    const path = `products/${id}`;
+    try {
+      const docRef = doc(db, 'products', id);
+      await deleteDoc(docRef);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  };
+
   const setProducts = async (newProducts: Product[]) => {
     // Optimistic update
     setProductsState(newProducts);
     
-    // This function will now update Firestore, handling additions, updates, deletions, and ordering
     try {
       const productsRef = collection(db, 'products');
-      const snap = await getDocs(productsRef);
-      const existingIds = snap.docs.map(d => d.id);
-      const newIds = newProducts.map(p => p.id);
-      
       const batch = writeBatch(db);
       
-      // Delete products that are no longer in newProducts
-      existingIds.forEach(id => {
-        if (!newIds.includes(id)) {
-          batch.delete(doc(productsRef, id));
-        }
-      });
-
-      // Update/Add products with their new order
+      // Only update the order field using merge: true to avoid deleting or resetting other fields
       newProducts.forEach((p, index) => {
         const docRef = doc(productsRef, p.id);
-        batch.set(docRef, { ...p, order: index });
+        batch.set(docRef, { order: index }, { merge: true });
       });
       
       await batch.commit();
-    } catch (e) {
-      console.error("Error saving products:", e);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'products (batch)');
     }
   };
 
   return (
-    <ProductContext.Provider value={{ products, setProducts, isLoading }}>
+    <ProductContext.Provider value={{ products, setProducts, addProduct, updateProduct, deleteProduct, isLoading }}>
       {children}
     </ProductContext.Provider>
   );

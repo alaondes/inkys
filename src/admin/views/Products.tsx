@@ -3,6 +3,7 @@ import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, Che
 import { formatPrice, Product } from '../../data/products';
 import { useProducts } from '../../context/ProductContext';
 import { useSettings } from '../../context/SettingsContext';
+import { toast } from 'react-hot-toast';
 
 const maskBRLCurrency = (val: string): string => {
   const digits = val.replace(/\D/g, '');
@@ -25,7 +26,7 @@ const parseBRLCurrency = (val: string): number => {
 };
 
 export function Products() {
-  const { products, setProducts } = useProducts();
+  const { products, setProducts, addProduct, updateProduct, deleteProduct } = useProducts();
   const { settings, updateSettings } = useSettings();
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -102,12 +103,26 @@ export function Products() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteConfirmed = (id: string) => {
-    const updated = localProducts.filter(p => p.id !== id);
-    setLocalProducts(updated);
-    setProducts(updated);
-    setConfirmDeleteId(null);
-    setHasUnsavedOrder(false);
+  const handleDeleteConfirmed = async (id: string) => {
+    const loadToast = toast.loading('Excluindo produto...');
+    try {
+      await deleteProduct(id);
+      setLocalProducts(prev => prev.filter(p => p.id !== id));
+      toast.success('Produto excluído com sucesso!', { id: loadToast });
+      setConfirmDeleteId(null);
+    } catch (err: any) {
+      console.error(err);
+      let errorMsg = 'Erro ao excluir o produto.';
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed && parsed.error) {
+          errorMsg += ` Detalhes: ${parsed.error}`;
+        }
+      } catch (parseErr) {
+        if (err.message) errorMsg += ` Detalhes: ${err.message}`;
+      }
+      toast.error(errorMsg, { id: loadToast });
+    }
   };
 
   const moveProduct = (index: number, direction: 'up' | 'down') => {
@@ -237,24 +252,40 @@ export function Products() {
     setFormData({ ...formData, colors: currentColors });
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Auto-fallback main image to first gallery image if main image is empty/not set
     const mainImage = formData.image || (formData.gallery && formData.gallery[0]) || '';
     const finalFormData = { ...formData, image: mainImage };
 
-    let updatedProducts: Product[];
-    if (editingProduct) {
-      updatedProducts = localProducts.map(p => p.id === editingProduct.id ? { ...p, ...finalFormData } as Product : p);
-    } else {
-      updatedProducts = [...localProducts, { ...finalFormData, id: Date.now().toString() } as Product];
+    const loadToast = toast.loading(editingProduct ? 'Salvando alterações...' : 'Criando produto...');
+    try {
+      if (editingProduct) {
+        const updatedProduct = { ...editingProduct, ...finalFormData } as Product;
+        await updateProduct(updatedProduct);
+        setLocalProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+        toast.success('Produto atualizado com sucesso!', { id: loadToast });
+      } else {
+        const newProduct = { ...finalFormData, id: Date.now().toString() } as Product;
+        await addProduct(newProduct);
+        setLocalProducts(prev => [...prev, newProduct]);
+        toast.success('Produto criado com sucesso!', { id: loadToast });
+      }
+      setIsModalOpen(false);
+    } catch (err: any) {
+      console.error(err);
+      let errorMsg = 'Erro ao salvar o produto no banco de dados.';
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed && parsed.error) {
+          errorMsg += ` Detalhes: ${parsed.error}`;
+        }
+      } catch (parseErr) {
+        if (err.message) errorMsg += ` Detalhes: ${err.message}`;
+      }
+      toast.error(errorMsg, { id: loadToast });
     }
-    
-    setLocalProducts(updatedProducts);
-    setProducts(updatedProducts);
-    setIsModalOpen(false);
-    setHasUnsavedOrder(false);
   };
 
   return (
