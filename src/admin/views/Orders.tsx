@@ -103,7 +103,7 @@ export function Orders() {
         const updated = ordersData.find(o => o.id === selectedOrder.id);
         if (updated) setSelectedOrder(updated);
       }
-    });
+    }, (e) => { console.warn("Firestore snapshot warning:", e.message); });
 
     return () => unsubscribe();
   }, [selectedOrder?.id]);

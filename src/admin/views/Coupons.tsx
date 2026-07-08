@@ -13,7 +13,7 @@ export function Coupons() {
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'coupons'), (snapshot) => {
       setCoupons(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }, (e) => { console.warn("Firestore snapshot warning:", e.message); });
     return () => unsubscribe();
   }, []);
 

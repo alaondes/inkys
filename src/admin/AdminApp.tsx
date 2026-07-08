@@ -39,7 +39,7 @@ export function AdminApp() {
     const q = query(collection(db, 'orders'), where('status', 'in', ['Pendente', 'Pago']));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setPendingCount(snapshot.docs.length);
-    });
+    }, (e) => { console.warn("Firestore snapshot warning:", e.message); });
     return () => unsubscribe();
   }, [isAuthenticated]);
 

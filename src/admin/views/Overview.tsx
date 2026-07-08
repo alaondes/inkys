@@ -16,7 +16,7 @@ export function Overview() {
   useEffect(() => {
     const productsUnsubscribe = onSnapshot(collection(db, 'products'), (snap) => {
       setProductCount(snap.docs.length);
-    });
+    }, () => {});
 
     const ordersUnsubscribe = onSnapshot(collection(db, 'orders'), (snap) => {
       let revenue = 0;
@@ -60,7 +60,7 @@ export function Overview() {
       
       const chartData = Object.entries(days).map(([name, total]) => ({ name, total }));
       setSalesData(chartData);
-    });
+    }, () => {});
 
     return () => {
       productsUnsubscribe();

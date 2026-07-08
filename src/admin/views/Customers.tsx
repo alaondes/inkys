@@ -81,7 +81,7 @@ export function Customers() {
       
       setOrders(ordersList);
       setCustomers(Array.from(customerMap.values()).sort((a, b) => b.totalSpent - a.totalSpent));
-    });
+    }, (e) => { console.warn("Firestore snapshot warning:", e.message); });
     return () => unsubscribe();
   }, []);
 

@@ -151,9 +151,11 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       operationType,
       path
     };
-    console.error('Firestore Error: ', JSON.stringify(errInfo));
     if (shouldThrow) {
+      console.error('Firestore Error: ', JSON.stringify(errInfo));
       throw new Error(JSON.stringify(errInfo));
+    } else {
+      console.warn('Firestore Warning (handled gracefully): ', errInfo.error);
     }
   };
 

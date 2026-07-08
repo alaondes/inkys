@@ -216,7 +216,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     }, (error) => {
-      console.error("Failed to load settings from firestore:", error);
+      // Failed to load settings from firestore due to permissions or quota.
+      // Already fell back to local storage defaults.
       setIsLoading(false);
     });
 
