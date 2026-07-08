@@ -16,6 +16,28 @@ export function Products() {
   
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
+  const [localProducts, setLocalProducts] = useState<Product[]>([]);
+  const [hasUnsavedOrder, setHasUnsavedOrder] = useState(false);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+
+  React.useEffect(() => {
+    if (!hasUnsavedOrder) {
+      setLocalProducts(products);
+    }
+  }, [products, hasUnsavedOrder]);
+
+  const handleSaveOrder = async () => {
+    setIsSavingOrder(true);
+    await setProducts(localProducts);
+    setHasUnsavedOrder(false);
+    setIsSavingOrder(false);
+  };
+
+  const handleDiscardOrder = () => {
+    setLocalProducts(products);
+    setHasUnsavedOrder(false);
+  };
+
   const insertFormatting = (tagStart: string, tagEnd: string) => {
     if (!descriptionRef.current) return;
     const start = descriptionRef.current.selectionStart;
@@ -37,9 +59,9 @@ export function Products() {
     }, 0);
   };
 
-  const filteredProducts = products.filter(p => 
+  const filteredProducts = localProducts.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) || 
-    p.category.toLowerCase().includes(search.toLowerCase())
+    (p.category || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const handleOpenModal = (product?: Product) => {
@@ -49,26 +71,30 @@ export function Products() {
   };
 
   const handleDeleteConfirmed = (id: string) => {
-    setProducts(products.filter(p => p.id !== id));
+    const updated = localProducts.filter(p => p.id !== id);
+    setLocalProducts(updated);
+    setProducts(updated);
     setConfirmDeleteId(null);
+    setHasUnsavedOrder(false);
   };
 
   const moveProduct = (index: number, direction: 'up' | 'down') => {
-    const actualIndex = products.findIndex(p => p.id === filteredProducts[index].id);
+    const actualIndex = localProducts.findIndex(p => p.id === filteredProducts[index].id);
     if (actualIndex < 0) return;
     
+    const newProducts = [...localProducts];
     if (direction === 'up' && actualIndex > 0) {
-      const newProducts = [...products];
       const temp = newProducts[actualIndex];
       newProducts[actualIndex] = newProducts[actualIndex - 1];
       newProducts[actualIndex - 1] = temp;
-      setProducts(newProducts);
-    } else if (direction === 'down' && actualIndex < products.length - 1) {
-      const newProducts = [...products];
+      setLocalProducts(newProducts);
+      setHasUnsavedOrder(true);
+    } else if (direction === 'down' && actualIndex < localProducts.length - 1) {
       const temp = newProducts[actualIndex];
       newProducts[actualIndex] = newProducts[actualIndex + 1];
       newProducts[actualIndex + 1] = temp;
-      setProducts(newProducts);
+      setLocalProducts(newProducts);
+      setHasUnsavedOrder(true);
     }
   };
 
@@ -186,12 +212,17 @@ export function Products() {
     const mainImage = formData.image || (formData.gallery && formData.gallery[0]) || '';
     const finalFormData = { ...formData, image: mainImage };
 
+    let updatedProducts: Product[];
     if (editingProduct) {
-      setProducts(products.map(p => p.id === editingProduct.id ? { ...p, ...finalFormData } as Product : p));
+      updatedProducts = localProducts.map(p => p.id === editingProduct.id ? { ...p, ...finalFormData } as Product : p);
     } else {
-      setProducts([...products, { ...finalFormData, id: Date.now().toString() } as Product]);
+      updatedProducts = [...localProducts, { ...finalFormData, id: Date.now().toString() } as Product];
     }
+    
+    setLocalProducts(updatedProducts);
+    setProducts(updatedProducts);
     setIsModalOpen(false);
+    setHasUnsavedOrder(false);
   };
 
   return (
@@ -213,6 +244,34 @@ export function Products() {
           </button>
         </div>
       </div>
+
+      {hasUnsavedOrder && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+            </span>
+            <span>Você alterou a ordem dos produtos. Deseja salvar ou atualizar a ordenação?</span>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+            <button
+              onClick={handleDiscardOrder}
+              disabled={isSavingOrder}
+              className="flex-1 sm:flex-none text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-gray-800 px-4 py-2 rounded-lg bg-white border border-gray-200 hover:border-gray-300 transition-all cursor-pointer disabled:opacity-50"
+            >
+              Descartar
+            </button>
+            <button
+              onClick={handleSaveOrder}
+              disabled={isSavingOrder}
+              className="flex-1 sm:flex-none text-xs font-bold uppercase tracking-wider text-white bg-green-600 hover:bg-green-700 px-5 py-2.5 rounded-lg shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {isSavingOrder ? 'Salvando...' : 'Salvar Ordem'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white border border-gray-200 p-4 rounded-2xl flex items-center gap-3">
         <Search className="text-gray-400" size={20} />
