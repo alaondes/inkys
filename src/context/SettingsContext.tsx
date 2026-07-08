@@ -166,6 +166,7 @@ const defaultSettings: AppSettings = {
 interface SettingsContextType {
   settings: AppSettings;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
+  isLoading: boolean;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -188,16 +189,15 @@ const getInitialSettings = (): AppSettings => {
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(getInitialSettings);
-  const [isLoading, setIsLoading] = useState(() => {
-    try {
-      return !localStorage.getItem('inkys-settings');
-    } catch {
-      return true;
-    }
-  });
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const settingsRef = doc(db, 'config', 'settings');
+    
+    const timeoutId = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+
     const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
       if (docSnap.exists()) {
         const newSettings = { ...defaultSettings, ...docSnap.data() as AppSettings };
@@ -207,10 +207,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         } catch (e) {
           // ignore
         }
+        clearTimeout(timeoutId);
         setIsLoading(false);
       } else {
         // Initialize settings if they don't exist
         setDoc(settingsRef, defaultSettings).catch(console.error);
+        clearTimeout(timeoutId);
         setIsLoading(false);
       }
     }, (error) => {
@@ -218,7 +220,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(timeoutId);
+      unsubscribe();
+    };
   }, []);
 
   const updateSettings = (newSettings: Partial<AppSettings>) => {
@@ -226,17 +231,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setDoc(settingsRef, newSettings, { merge: true }).catch(console.error);
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-gray-500 font-medium">Carregando...</p>
-      </div>
-    );
-  }
-
   return (
-    <SettingsContext.Provider value={{ settings, updateSettings }}>
+    <SettingsContext.Provider value={{ settings, updateSettings, isLoading }}>
       {children}
     </SettingsContext.Provider>
   );

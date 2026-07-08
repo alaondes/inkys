@@ -1,18 +1,35 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, INITIAL_PRODUCTS } from '../data/products';
-import { collection, onSnapshot, setDoc, doc, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, doc, writeBatch, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 interface ProductContextType {
   products: Product[];
   setProducts: (products: Product[]) => void;
+  isLoading: boolean;
 }
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
+const getInitialProducts = (): Product[] => {
+  try {
+    const cached = localStorage.getItem('inkys-products');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.error('Failed to parse cached products', e);
+      }
+    }
+  } catch (err) {
+    console.warn('localStorage access denied', err);
+  }
+  return INITIAL_PRODUCTS;
+};
+
 export function ProductProvider({ children }: { children: React.ReactNode }) {
-  const [products, setProductsState] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [initialized, setInitialized] = useState(false);
+  const [products, setProductsState] = useState<Product[]>(getInitialProducts);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const productsRef = collection(db, 'products');
@@ -35,6 +52,10 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     };
     initData();
 
+    const timeoutId = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+
     const unsubscribe = onSnapshot(productsRef, (snapshot) => {
       const fbProducts = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product));
       
@@ -46,15 +67,30 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       
       if (fbProducts.length > 0) {
         setProductsState(fbProducts);
+        try {
+          localStorage.setItem('inkys-products', JSON.stringify(fbProducts));
+        } catch (e) {
+          // ignore
+        }
       } else {
         setProductsState([]);
+        try {
+          localStorage.setItem('inkys-products', JSON.stringify([]));
+        } catch (e) {
+          // ignore
+        }
       }
-      setInitialized(true);
+      clearTimeout(timeoutId);
+      setIsLoading(false);
     }, (error) => {
       console.error("Firestore error:", error);
+      setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(timeoutId);
+      unsubscribe();
+    };
   }, []);
 
   const setProducts = async (newProducts: Product[]) => {
@@ -90,7 +126,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ProductContext.Provider value={{ products, setProducts }}>
+    <ProductContext.Provider value={{ products, setProducts, isLoading }}>
       {children}
     </ProductContext.Provider>
   );
