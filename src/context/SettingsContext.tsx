@@ -227,9 +227,24 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const updateSettings = (newSettings: Partial<AppSettings>) => {
+  const updateSettings = async (newSettings: Partial<AppSettings>) => {
+    // Optimistic local update
+    setSettings(prev => {
+      const updated = { ...prev, ...newSettings };
+      try {
+        localStorage.setItem('inkys-settings', JSON.stringify(updated));
+      } catch (e) {
+        // ignore
+      }
+      return updated;
+    });
+
     const settingsRef = doc(db, 'config', 'settings');
-    setDoc(settingsRef, newSettings, { merge: true }).catch(console.error);
+    try {
+      await setDoc(settingsRef, newSettings, { merge: true });
+    } catch (error) {
+      console.warn('Failed to update settings in Firestore, but updated locally:', error);
+    }
   };
 
   return (

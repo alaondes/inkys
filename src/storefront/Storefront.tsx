@@ -164,7 +164,7 @@ export function Storefront() {
         // Deduct stock
         if (item.stock !== undefined) {
           try {
-            await updateDoc(doc(db, 'products', item.id), {
+            updateDoc(doc(db, 'products', item.id), {
               stock: increment(-item.quantity)
             });
           } catch(e) {
@@ -227,9 +227,15 @@ export function Storefront() {
         shippingInfo: cleanShippingInfo
       };
 
-      const docRef = await addDoc(collection(db, 'orders'), orderData);
-      
-      const url = generateWhatsAppLink(updatedCart, data, settings.whatsappNumber, docRef.id);
+      const { withTimeout } = await import('../lib/firestoreUtils');
+      let orderId = "";
+      try {
+        const docRef = await withTimeout(addDoc(collection(db, 'orders'), orderData));
+        orderId = docRef.id;
+      } catch (dbError) {
+        console.warn("Could not save order to db, proceeding with WhatsApp only:", dbError);
+      }
+      const url = generateWhatsAppLink(updatedCart, data, settings.whatsappNumber, orderId);
       window.open(url, '_blank');
       setCart([]);
       setCurrentView('home');

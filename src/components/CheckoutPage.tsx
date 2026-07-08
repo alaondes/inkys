@@ -113,7 +113,8 @@ export function CheckoutPage({
       const { collection, getDocs, query, where } = await import('firebase/firestore');
       const { db } = await import('../lib/firebase');
       const q = query(collection(db, 'coupons'), where('code', '==', couponCode.toUpperCase()));
-      const snap = await getDocs(q);
+      const { withTimeout } = await import('../lib/firestoreUtils');
+      const snap = await withTimeout(getDocs(q));
       
       if (snap.empty) {
         toast.error('Cupom inválido ou não encontrado.');

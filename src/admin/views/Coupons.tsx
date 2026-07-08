@@ -28,9 +28,9 @@ export function Coupons() {
       };
 
       if (editingId) {
-        await updateDoc(doc(db, 'coupons', editingId), dataToSave);
+        updateDoc(doc(db, 'coupons', editingId), dataToSave).catch(e => console.warn(e));
       } else {
-        await addDoc(collection(db, 'coupons'), dataToSave);
+        addDoc(collection(db, 'coupons'), dataToSave).catch(e => console.warn(e));
       }
       setIsModalOpen(false);
       setEditingId(null);
@@ -49,7 +49,7 @@ export function Coupons() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza?')) {
-      await deleteDoc(doc(db, 'coupons', id));
+      deleteDoc(doc(db, 'coupons', id)).catch(e => console.warn(e));
     }
   };
 

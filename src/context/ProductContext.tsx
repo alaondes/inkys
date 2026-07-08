@@ -160,58 +160,62 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addProduct = async (product: Product) => {
+    // Find maximum order so we can append this product to the end
+    const currentMaxOrder = products.reduce((max, p) => (p.order !== undefined && p.order > max ? p.order : max), -1);
+    const newOrder = currentMaxOrder + 1;
+    const finalProduct = { ...product, order: newOrder };
+
+    // Optimistic local update
+    setProductsState(prev => {
+      const newProducts = [...prev, finalProduct];
+      localStorage.setItem('inkys-products', JSON.stringify(newProducts));
+      return newProducts;
+    });
+
     const productsRef = collection(db, 'products');
     const path = `products/${product.id}`;
-    try {
-      // Find maximum order so we can append this product to the end
-      const currentMaxOrder = products.reduce((max, p) => (p.order !== undefined && p.order > max ? p.order : max), -1);
-      const newOrder = currentMaxOrder + 1;
-      
-      const docRef = doc(productsRef, product.id);
-      await setDoc(docRef, { ...product, order: newOrder });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, path);
-    }
+    const docRef = doc(productsRef, product.id);
+    setDoc(docRef, finalProduct).catch(error => handleFirestoreError(error, OperationType.CREATE, path, false));
   };
 
   const updateProduct = async (product: Product) => {
+    // Optimistic local update
+    setProductsState(prev => {
+      const newProducts = prev.map(p => p.id === product.id ? product : p);
+      localStorage.setItem('inkys-products', JSON.stringify(newProducts));
+      return newProducts;
+    });
+
     const path = `products/${product.id}`;
-    try {
-      const docRef = doc(db, 'products', product.id);
-      await setDoc(docRef, product, { merge: true });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, path);
-    }
+    const docRef = doc(db, 'products', product.id);
+    setDoc(docRef, product, { merge: true }).catch(error => handleFirestoreError(error, OperationType.UPDATE, path, false));
   };
 
   const deleteProduct = async (id: string) => {
+    // Optimistic local update
+    setProductsState(prev => {
+      const newProducts = prev.filter(p => p.id !== id);
+      localStorage.setItem('inkys-products', JSON.stringify(newProducts));
+      return newProducts;
+    });
+
     const path = `products/${id}`;
-    try {
-      const docRef = doc(db, 'products', id);
-      await deleteDoc(docRef);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, path);
-    }
+    const docRef = doc(db, 'products', id);
+    deleteDoc(docRef).catch(error => handleFirestoreError(error, OperationType.DELETE, path, false));
   };
 
   const setProducts = async (newProducts: Product[]) => {
     // Optimistic update
     setProductsState(newProducts);
+    localStorage.setItem('inkys-products', JSON.stringify(newProducts));
     
-    try {
-      const productsRef = collection(db, 'products');
-      const batch = writeBatch(db);
-      
-      // Only update the order field using merge: true to avoid deleting or resetting other fields
-      newProducts.forEach((p, index) => {
-        const docRef = doc(productsRef, p.id);
-        batch.set(docRef, { order: index }, { merge: true });
-      });
-      
-      await batch.commit();
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'products (batch)');
-    }
+    const productsRef = collection(db, 'products');
+    const batch = writeBatch(db);
+    newProducts.forEach((p, index) => {
+      const docRef = doc(productsRef, p.id);
+      batch.set(docRef, { order: index }, { merge: true });
+    });
+    batch.commit().catch(error => handleFirestoreError(error, OperationType.WRITE, 'products (batch)', false));
   };
 
   return (

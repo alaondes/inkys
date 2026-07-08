@@ -187,7 +187,7 @@ export function Orders() {
         };
       }
 
-      await updateDoc(orderRef, updateData);
+      updateDoc(orderRef, updateData).catch(e => console.warn(e));
       toast.success('Pedido salvo com sucesso!');
       if (localStatus === 'Enviado') {
         toast.success('Recibo gerado e anexado ao pedido!');

@@ -21,7 +21,8 @@ export function Customers() {
       const customerOrders = orders.filter(o => o.email?.toLowerCase().trim() === customer.email);
       
       // Delete each order
-      const deletePromises = customerOrders.map(o => deleteDoc(doc(db, 'orders', o.id)));
+      const { withTimeout } = await import('../../lib/firestoreUtils');
+      const deletePromises = customerOrders.map(o => withTimeout(deleteDoc(doc(db, 'orders', o.id))));
       await Promise.all(deletePromises);
 
       toast.success('Cliente e seus pedidos foram excluídos com sucesso!');

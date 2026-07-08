@@ -24,6 +24,7 @@ import { useSettings } from '../../context/SettingsContext';
 import { formatPrice } from '../../data/products';
 import { useProducts } from '../../context/ProductContext';
 import { db, auth } from '../../lib/firebase';
+import { withTimeout } from '../../lib/firestoreUtils';
 import { 
   collection, 
   query, 
@@ -460,10 +461,10 @@ export function Documents() {
 
     try {
       if (selectedSavedDocId) {
-        await updateDoc(doc(db, 'documents', selectedSavedDocId), docPayload);
+        await withTimeout(updateDoc(doc(db, 'documents', selectedSavedDocId), docPayload));
         toast.success('Documento atualizado no histórico!');
       } else {
-        const ref = await addDoc(collection(db, 'documents'), docPayload);
+        const ref = await withTimeout(addDoc(collection(db, 'documents'), docPayload));
         setSelectedSavedDocId(ref.id);
         toast.success('Documento salvo no histórico de emissões!');
       }
@@ -528,7 +529,7 @@ export function Documents() {
     delete convertedPayload.id;
 
     try {
-      await addDoc(collection(db, 'documents'), convertedPayload);
+      await withTimeout(addDoc(collection(db, 'documents'), convertedPayload));
       toast.success('Convertido em Recibo de Pagamento com sucesso!');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'documents');
@@ -545,7 +546,7 @@ export function Documents() {
     }
 
     try {
-      await deleteDoc(doc(db, 'documents', id));
+      await withTimeout(deleteDoc(doc(db, 'documents', id)));
       if (selectedSavedDocId === id) {
         setSelectedSavedDocId(null);
       }
