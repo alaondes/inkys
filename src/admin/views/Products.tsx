@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft, Tags } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft, Tags, CheckCircle, Loader2 } from 'lucide-react';
 import { formatPrice, Product } from '../../data/products';
 import { useProducts } from '../../context/ProductContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -39,6 +39,7 @@ export function Products() {
   const [localProducts, setLocalProducts] = useState<Product[]>([]);
   const [hasUnsavedOrder, setHasUnsavedOrder] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
 
   React.useEffect(() => {
     if (!hasUnsavedOrder) {
@@ -48,14 +49,25 @@ export function Products() {
 
   const handleSaveOrder = async () => {
     setIsSavingOrder(true);
-    await setProducts(localProducts);
-    setHasUnsavedOrder(false);
-    setIsSavingOrder(false);
+    setSaveStatus('saving');
+    try {
+      await setProducts(localProducts);
+      setHasUnsavedOrder(false);
+      setSaveStatus('success');
+      setTimeout(() => {
+        setSaveStatus('idle');
+      }, 3000);
+    } catch (err) {
+      setSaveStatus('error');
+    } finally {
+      setIsSavingOrder(false);
+    }
   };
 
   const handleDiscardOrder = () => {
     setLocalProducts(products);
     setHasUnsavedOrder(false);
+    setSaveStatus('idle');
   };
 
   const insertFormatting = (tagStart: string, tagEnd: string) => {
@@ -398,6 +410,54 @@ export function Products() {
             </tbody>
           </table>
         </div>
+        
+        <div className="border-t border-gray-200 bg-gray-50/50 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-inner">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            {hasUnsavedOrder ? (
+              <div className="flex items-center gap-2 text-amber-900">
+                <span className="flex h-2 w-2 relative shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+                <span>Você alterou a ordem dos produtos. Deseja salvar a nova ordenação?</span>
+              </div>
+            ) : saveStatus === 'success' ? (
+              <div className="flex items-center gap-2 text-green-700">
+                <CheckCircle size={16} className="text-green-600 animate-bounce" />
+                <span>Alterações salvas e publicadas no site com sucesso!</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-gray-500">
+                <CheckCircle size={16} className="text-gray-400" />
+                <span>Todas as alterações e ordenações estão sincronizadas com o site.</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+            {hasUnsavedOrder && (
+              <button
+                onClick={handleDiscardOrder}
+                disabled={isSavingOrder || saveStatus === 'saving'}
+                className="flex-1 sm:flex-none text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-gray-800 px-4 py-2.5 rounded-lg bg-white border border-gray-200 hover:border-gray-300 transition-all cursor-pointer disabled:opacity-50"
+              >
+                Descartar
+              </button>
+            )}
+            <button
+              onClick={handleSaveOrder}
+              disabled={isSavingOrder || saveStatus === 'saving'}
+              className="flex-1 sm:flex-none text-xs font-bold uppercase tracking-wider text-white bg-green-600 hover:bg-green-700 disabled:opacity-75 px-5 py-2.5 rounded-lg shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              {isSavingOrder || saveStatus === 'saving' ? (
+                <>
+                  <Loader2 className="animate-spin" size={14} /> Salvando...
+                </>
+              ) : (
+                'Salvar / Atualizar Site'
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Visualização em Cards para Mobile */}
@@ -479,6 +539,54 @@ export function Products() {
             Nenhum produto encontrado.
           </div>
         )}
+
+        <div className="bg-white border border-gray-200 p-4 rounded-2xl flex flex-col items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2 text-sm font-medium text-center">
+            {hasUnsavedOrder ? (
+              <div className="flex items-center justify-center gap-2 text-amber-900">
+                <span className="flex h-2 w-2 relative shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+                <span>Você alterou a ordem dos produtos. Deseja salvar a nova ordenação?</span>
+              </div>
+            ) : saveStatus === 'success' ? (
+              <div className="flex items-center justify-center gap-2 text-green-700">
+                <CheckCircle size={16} className="text-green-600 animate-bounce shrink-0" />
+                <span>Alterações salvas e publicadas com sucesso!</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-gray-500">
+                <CheckCircle size={16} className="text-gray-400 shrink-0" />
+                <span>Sincronizado com o site</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 w-full shrink-0">
+            {hasUnsavedOrder && (
+              <button
+                onClick={handleDiscardOrder}
+                disabled={isSavingOrder || saveStatus === 'saving'}
+                className="flex-1 text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-gray-800 px-4 py-2.5 rounded-xl bg-white border border-gray-200 hover:border-gray-300 transition-all cursor-pointer disabled:opacity-50"
+              >
+                Descartar
+              </button>
+            )}
+            <button
+              onClick={handleSaveOrder}
+              disabled={isSavingOrder || saveStatus === 'saving'}
+              className="flex-1 text-xs font-bold uppercase tracking-wider text-white bg-green-600 hover:bg-green-700 disabled:opacity-75 px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              {isSavingOrder || saveStatus === 'saving' ? (
+                <>
+                  <Loader2 className="animate-spin" size={14} /> Salvando...
+                </>
+              ) : (
+                'Salvar / Atualizar Site'
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Modal */}
