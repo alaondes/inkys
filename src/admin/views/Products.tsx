@@ -4,6 +4,26 @@ import { formatPrice, Product } from '../../data/products';
 import { useProducts } from '../../context/ProductContext';
 import { useSettings } from '../../context/SettingsContext';
 
+const maskBRLCurrency = (val: string): string => {
+  const digits = val.replace(/\D/g, '');
+  if (!digits) return '';
+  
+  const cents = parseInt(digits, 10);
+  if (isNaN(cents)) return '';
+  
+  const integerPart = Math.floor(cents / 100);
+  const decimalPart = (cents % 100).toString().padStart(2, '0');
+  
+  const formattedInteger = new Intl.NumberFormat('pt-BR').format(integerPart);
+  return `${formattedInteger},${decimalPart}`;
+};
+
+const parseBRLCurrency = (val: string): number => {
+  const digits = val.replace(/\D/g, '');
+  if (!digits) return 0;
+  return parseInt(digits, 10) / 100;
+};
+
 export function Products() {
   const { products, setProducts } = useProducts();
   const { settings, updateSettings } = useSettings();
@@ -497,11 +517,10 @@ export function Products() {
                     <input 
                       required 
                       type="text" 
-                      value={formData.price?.toString().replace('.', ',') || ''} 
+                      value={formData.price !== undefined ? maskBRLCurrency(Math.round(formData.price * 100).toString()) : ''} 
                       onChange={e => {
-                        const val = e.target.value.replace(',', '.');
-                        const parsed = parseFloat(val);
-                        setFormData({...formData, price: isNaN(parsed) ? (val === '' ? 0 : formData.price) : parsed});
+                        const numericValue = parseBRLCurrency(e.target.value);
+                        setFormData({...formData, price: numericValue});
                       }} 
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
                     />
@@ -511,11 +530,15 @@ export function Products() {
                     <label className="text-[10px] uppercase font-bold text-gray-500">Preço Original / Sem Desconto (R$)</label>
                     <input 
                       type="text" 
-                      value={formData.compareAtPrice?.toString().replace('.', ',') || ''} 
+                      value={formData.compareAtPrice !== undefined ? maskBRLCurrency(Math.round(formData.compareAtPrice * 100).toString()) : ''} 
                       onChange={e => {
-                        const val = e.target.value.replace(',', '.');
-                        const parsed = parseFloat(val);
-                        setFormData({...formData, compareAtPrice: isNaN(parsed) ? (val === '' ? undefined : formData.compareAtPrice) : parsed});
+                        const raw = e.target.value;
+                        if (raw === '') {
+                          setFormData({...formData, compareAtPrice: undefined});
+                        } else {
+                          const numericValue = parseBRLCurrency(raw);
+                          setFormData({...formData, compareAtPrice: numericValue});
+                        }
                       }} 
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
                       placeholder="Opcional"
