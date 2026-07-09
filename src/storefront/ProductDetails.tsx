@@ -10,11 +10,8 @@ interface ProductDetailsProps {
 }
 
 
-const ProductBannerCarousel = () => {
-  const banners = [
-    'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=2000&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=2000&auto=format&fit=crop'
-  ];
+const ProductBannerCarousel = ({ banners }: { banners: string[] }) => {
+
   
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -340,7 +337,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
       </div>
       
       {/* Banner Carousel */}
-      <ProductBannerCarousel />
+      {product.banners && product.banners.length > 0 && <ProductBannerCarousel banners={product.banners} />}
       
       {/* Description */}
       {product.description && (

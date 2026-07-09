@@ -7,6 +7,7 @@ export interface Product {
   compareAtPrice?: number;
   image: string;
   gallery?: string[];
+  banners?: string[];
   colors?: { name: string; hex: string }[];
   rating?: number;
   reviews?: number;
