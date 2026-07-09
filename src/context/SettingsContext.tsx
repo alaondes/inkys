@@ -245,7 +245,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       await setDoc(settingsRef, newSettings, { merge: true });
     } catch (error) {
       console.warn('Failed to update settings in Firestore, but updated locally:', error);
-      toast.error('Erro ao salvar configurações no banco online. Salvo apenas localmente.');
     }
   };
 

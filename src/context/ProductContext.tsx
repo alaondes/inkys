@@ -157,7 +157,6 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       throw new Error(JSON.stringify(errInfo));
     } else {
       console.warn('Firestore Warning (handled gracefully): ', errInfo.error);
-      toast.error('Erro ao salvar no banco online. Suas alterações foram salvas apenas localmente.');
     }
   };
 
