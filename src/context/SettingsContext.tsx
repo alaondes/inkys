@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import toast from 'react-hot-toast';
 
 export interface HeroBanner {
   id: string;
@@ -244,6 +245,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       await setDoc(settingsRef, newSettings, { merge: true });
     } catch (error) {
       console.warn('Failed to update settings in Firestore, but updated locally:', error);
+      toast.error('Erro ao salvar configurações no banco online. Salvo apenas localmente.');
     }
   };
 

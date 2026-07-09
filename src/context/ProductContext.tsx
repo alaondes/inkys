@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, INITIAL_PRODUCTS } from '../data/products';
 import { collection, onSnapshot, doc, writeBatch, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
+import toast from 'react-hot-toast';
 
 export enum OperationType {
   CREATE = 'create',
@@ -156,6 +157,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       throw new Error(JSON.stringify(errInfo));
     } else {
       console.warn('Firestore Warning (handled gracefully): ', errInfo.error);
+      toast.error('Erro ao salvar no banco online. Suas alterações foram salvas apenas localmente.');
     }
   };
 
