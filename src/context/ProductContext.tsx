@@ -176,7 +176,11 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     const productsRef = collection(db, 'products');
     const path = `products/${product.id}`;
     const docRef = doc(productsRef, product.id);
-    setDoc(docRef, finalProduct).catch(error => handleFirestoreError(error, OperationType.CREATE, path, false));
+    try {
+      await setDoc(docRef, finalProduct);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, path, true);
+    }
   };
 
   const updateProduct = async (product: Product) => {
@@ -189,7 +193,11 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
 
     const path = `products/${product.id}`;
     const docRef = doc(db, 'products', product.id);
-    setDoc(docRef, product, { merge: true }).catch(error => handleFirestoreError(error, OperationType.UPDATE, path, false));
+    try {
+      await setDoc(docRef, product, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path, true);
+    }
   };
 
   const deleteProduct = async (id: string) => {
@@ -202,7 +210,11 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
 
     const path = `products/${id}`;
     const docRef = doc(db, 'products', id);
-    deleteDoc(docRef).catch(error => handleFirestoreError(error, OperationType.DELETE, path, false));
+    try {
+      await deleteDoc(docRef);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path, true);
+    }
   };
 
   const setProducts = async (newProducts: Product[]) => {
