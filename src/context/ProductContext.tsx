@@ -169,7 +169,11 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     // Optimistic local update
     setProductsState(prev => {
       const newProducts = [...prev, finalProduct];
-      localStorage.setItem('inkys-products', JSON.stringify(newProducts));
+      try {
+        localStorage.setItem('inkys-products', JSON.stringify(newProducts));
+      } catch (e) {
+        console.warn('Could not save to localStorage:', e);
+      }
       return newProducts;
     });
 
@@ -187,7 +191,11 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     // Optimistic local update
     setProductsState(prev => {
       const newProducts = prev.map(p => p.id === product.id ? product : p);
-      localStorage.setItem('inkys-products', JSON.stringify(newProducts));
+      try {
+        localStorage.setItem('inkys-products', JSON.stringify(newProducts));
+      } catch (e) {
+        console.warn('Could not save to localStorage:', e);
+      }
       return newProducts;
     });
 
@@ -204,7 +212,11 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     // Optimistic local update
     setProductsState(prev => {
       const newProducts = prev.filter(p => p.id !== id);
-      localStorage.setItem('inkys-products', JSON.stringify(newProducts));
+      try {
+        localStorage.setItem('inkys-products', JSON.stringify(newProducts));
+      } catch (e) {
+        console.warn('Could not save to localStorage:', e);
+      }
       return newProducts;
     });
 
@@ -220,7 +232,11 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
   const setProducts = async (newProducts: Product[]) => {
     // Optimistic update
     setProductsState(newProducts);
-    localStorage.setItem('inkys-products', JSON.stringify(newProducts));
+    try {
+      localStorage.setItem('inkys-products', JSON.stringify(newProducts));
+    } catch (e) {
+      console.warn('Could not save to localStorage:', e);
+    }
     
     const productsRef = collection(db, 'products');
     const batch = writeBatch(db);
