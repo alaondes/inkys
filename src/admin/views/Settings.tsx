@@ -34,6 +34,7 @@ export function AdminSettings() {
     customButtonTextColor: settings.customButtonTextColor || '#713f12',
     buyButtonColor: settings.buyButtonColor || '#5ba324',
     
+    productBanners: settings.productBanners || [],
     heroBanners: (settings.heroBanners && settings.heroBanners.length > 0) ? settings.heroBanners : [{
       id: 'legacy',
       image: settings.heroBannerImage || 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&q=80',

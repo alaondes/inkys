@@ -50,6 +50,7 @@ export interface AppSettings {
   heroBannerButtonText: string;
   heroBannerButtonColor: string;
   heroBanners?: HeroBanner[];
+  productBanners?: any[];
   promoBanner1TitleHtml: string;
   promoBanner1SubtitleHtml: string;
   promoBanner1ButtonText: string;
@@ -116,6 +117,7 @@ const defaultSettings: AppSettings = {
   heroBannerSubtitle: 'O presente perfeito para transformar lembranças em emoção.',
   heroBannerButtonText: 'Peça a sua agora ♥',
   heroBannerButtonColor: '#b44e68',
+  productBanners: [],
   heroBanners: [
     {
       id: 'default-1',

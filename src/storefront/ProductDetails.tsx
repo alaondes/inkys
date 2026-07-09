@@ -337,7 +337,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
       </div>
       
       {/* Banner Carousel */}
-      {product.banners && product.banners.length > 0 && <ProductBannerCarousel banners={product.banners} />}
+      {settings?.productBanners && settings.productBanners.length > 0 && <ProductBannerCarousel banners={settings.productBanners} />}
       
       {/* Description */}
       {product.description && (
