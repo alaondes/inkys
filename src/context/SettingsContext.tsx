@@ -201,6 +201,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }, 1500);
 
+    let hasAttemptedInit = false;
+
     const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
       if (docSnap.exists()) {
         const newSettings = { ...defaultSettings, ...docSnap.data() as AppSettings };
@@ -214,7 +216,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       } else {
         // Initialize settings if they don't exist
-        setDoc(settingsRef, defaultSettings).catch(console.error);
+        if (!hasAttemptedInit) {
+          hasAttemptedInit = true;
+          setDoc(settingsRef, defaultSettings).catch(console.error);
+        }
         clearTimeout(timeoutId);
         setIsLoading(false);
       }

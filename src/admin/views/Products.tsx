@@ -42,6 +42,31 @@ export function Products() {
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
 
+  const [localBanners, setLocalBanners] = useState<any[]>([]);
+  const [isSavingBanners, setIsSavingBanners] = useState(false);
+
+  React.useEffect(() => {
+    if (settings?.productBanners) {
+      setLocalBanners(settings.productBanners);
+    }
+  }, [settings]);
+
+  const hasUnsavedBanners = JSON.stringify(localBanners) !== JSON.stringify(settings?.productBanners || []);
+
+  const handleSaveBanners = async () => {
+    setIsSavingBanners(true);
+    const loadToast = toast.loading('Salvando banners...');
+    try {
+      await updateSettings({ productBanners: localBanners });
+      toast.success('Banners salvos com sucesso!', { id: loadToast });
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erro ao salvar os banners no banco de dados.', { id: loadToast });
+    } finally {
+      setIsSavingBanners(false);
+    }
+  };
+
   React.useEffect(() => {
     if (!hasUnsavedOrder) {
       setLocalProducts(products);
@@ -191,9 +216,9 @@ export function Products() {
 
       const loadToast = toast.loading('Processando imagens...');
       Promise.all(files.map(f => resizeImage(f))).then(results => {
-        const newBanners = [...(settings.productBanners || []), ...results.map(r => ({ image: r, link: "" }))];
-        updateSettings({ productBanners: newBanners });
-        toast.success('Banners adicionados!', { id: loadToast });
+        const newBanners = [...localBanners, ...results.map(r => ({ image: r, link: "" }))];
+        setLocalBanners(newBanners);
+        toast.success('Banners adicionados localmente! Clique em salvar para confirmar.', { id: loadToast });
       }).catch(err => {
         toast.error('Erro ao processar imagens', { id: loadToast });
       });
@@ -249,7 +274,7 @@ export function Products() {
         const promises = files.map(file => resizeImage(file));
         Promise.all(promises).then(results => {
           setFormData(prev => {
-            const newItems = [...(prev[target] || []), ...results];
+            const newGallery = [...(prev[target] || []), ...results];
             // If there's no main image currently set, automatically use the first uploaded gallery image
             const image = prev.image || newGallery[0] || '';
             return {
@@ -348,92 +373,162 @@ export function Products() {
     <div className="space-y-6">
       
       {/* Banners dos Produtos (Detalhes do Produto) */}
-      <div className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
-        <div className="mb-6">
-          <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wider mb-1">Banners dos Produtos (Detalhes)</h3>
-          <p className="text-gray-500 text-sm">Estes banners aparecerão em formato de carrossel na página de detalhes de todos os produtos.</p>
+      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm animate-in fade-in duration-300">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-gray-50 pb-4">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wider mb-1">Banners dos Produtos (Detalhes)</h3>
+            <p className="text-gray-500 text-sm">Estes banners aparecerão em formato de carrossel na página de detalhes de todos os produtos.</p>
+          </div>
+          <button
+            type="button"
+            disabled={isSavingBanners || !hasUnsavedBanners}
+            onClick={handleSaveBanners}
+            className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98] ${
+              hasUnsavedBanners 
+                ? 'bg-amber-500 text-white hover:bg-amber-600 animate-pulse' 
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            {isSavingBanners ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                <CheckCircle size={14} />
+                Salvar Alterações
+              </>
+            )}
+          </button>
         </div>
 
         <div>
-          <div className="flex flex-col sm:flex-row gap-2 mb-4">
-            <label className="flex items-center justify-center gap-2 bg-[var(--color-primary)] text-white px-4 py-2 rounded-lg text-sm font-bold cursor-pointer hover:brightness-110 transition-colors shadow-sm whitespace-nowrap">
-              <PlusCircle size={16} />
-              Fazer Upload
-              <input type="file" className="hidden" multiple accept="image/*" onChange={handleProductBannerUpload} />
-            </label>
-            <div className="flex-1 flex gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 mb-6">
+            <div className="sm:col-span-3">
+              <label className="flex items-center justify-center gap-2 bg-[var(--color-primary)] text-white w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer hover:brightness-110 transition-all shadow-sm active:scale-[0.98] h-full min-h-[44px]">
+                <PlusCircle size={16} />
+                Fazer Upload
+                <input type="file" className="hidden" multiple accept="image/*" onChange={handleProductBannerUpload} />
+              </label>
+            </div>
+            <div className="sm:col-span-9 flex flex-col sm:flex-row gap-2">
               <input 
                 type="text" 
+                id="banner-url-input"
                 placeholder="Ou adicionar por URL da imagem..." 
-                className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" 
+                className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs focus:border-[var(--color-primary)] focus:bg-white focus:ring-2 focus:ring-[var(--color-primary)]/10 outline-none transition-all min-h-[44px]" 
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    const val = e.currentTarget.value;
+                    const val = e.currentTarget.value.trim();
                     if (val) {
-                      updateSettings({ productBanners: [...(settings.productBanners || []), { image: val, link: "" }] });
+                      setLocalBanners(prev => [...prev, { image: val, link: "" }]);
                       e.currentTarget.value = '';
-                      toast.success('Banner adicionado!');
+                      toast.success('Banner adicionado! Não se esqueça de salvar.');
                     }
                   }
                 }}
               />
               <button 
                 type="button"
-                onClick={(e) => {
-                  const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                  const val = input.value;
+                onClick={() => {
+                  const input = document.getElementById('banner-url-input') as HTMLInputElement;
+                  const val = input?.value.trim();
                   if (val) {
-                    updateSettings({ productBanners: [...(settings.productBanners || []), { image: val, link: "" }] });
+                    setLocalBanners(prev => [...prev, { image: val, link: "" }]);
                     input.value = '';
-                    toast.success('Banner adicionado!');
+                    toast.success('Banner adicionado! Não se esqueça de salvar.');
                   }
                 }}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-bold uppercase tracking-wider transition-colors whitespace-nowrap"
+                className="w-full sm:w-auto px-5 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 text-xs font-bold uppercase tracking-wider transition-all active:scale-[0.98] shadow-sm whitespace-nowrap min-h-[44px]"
               >
                 Adicionar URL
               </button>
             </div>
           </div>
 
-          {(settings.productBanners && settings.productBanners.length > 0) ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {settings.productBanners.map((item: any, index: number) => {
+          {(localBanners && localBanners.length > 0) ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+              {localBanners.map((item: any, index: number) => {
                 const img = typeof item === 'string' ? item : item.image;
                 const link = typeof item === 'string' ? '' : (item.link || '');
                 return (
-                  <div key={index} className="flex flex-col gap-2 p-3 border border-gray-100 rounded-xl bg-gray-50/50">
-                    <div className="relative group w-full h-24 rounded border border-gray-200 overflow-hidden shadow-sm">
+                  <div key={index} className="flex flex-col gap-3 p-4 border border-gray-100 rounded-2xl bg-gray-50/30 shadow-sm relative group">
+                    <div className="relative w-full h-32 rounded-xl border border-gray-150 overflow-hidden shadow-inner bg-gray-100">
                       <img 
                         src={img} 
-                        alt={`Banner Produto ${index}`} 
+                        alt={`Banner Produto ${index + 1}`} 
                         className="w-full h-full object-cover" 
                         onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
                       />
                       <button 
                         type="button" 
                         onClick={() => {
-                          const newBanners = [...(settings.productBanners || [])];
+                          const newBanners = [...localBanners];
                           newBanners.splice(index, 1);
-                          updateSettings({ productBanners: newBanners });
-                          toast.success('Banner removido!');
+                          setLocalBanners(newBanners);
+                          toast.success('Banner removido localmente!');
                         }}
-                        className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-lg transition-colors shadow-md"
+                        title="Remover banner"
                       >
-                        <Trash2 size={20} />
+                        <Trash2 size={16} />
                       </button>
+                      <span className="absolute top-2 left-2 bg-gray-900/80 backdrop-blur-sm text-white px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-sm">
+                        #{index + 1}
+                      </span>
+                      
+                      {/* Order Controls */}
+                      <div className="absolute bottom-2 left-2 flex gap-1 bg-black/60 backdrop-blur-sm p-1 rounded-lg shadow-md">
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() => {
+                            if (index > 0) {
+                              const newBanners = [...localBanners];
+                              const temp = newBanners[index];
+                              newBanners[index] = newBanners[index - 1];
+                              newBanners[index - 1] = temp;
+                              setLocalBanners(newBanners);
+                            }
+                          }}
+                          className="text-white p-1 rounded hover:bg-white/20 disabled:opacity-30 transition-colors cursor-pointer"
+                          title="Mover para cima"
+                        >
+                          <ChevronUp size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={index === localBanners.length - 1}
+                          onClick={() => {
+                            if (index < localBanners.length - 1) {
+                              const newBanners = [...localBanners];
+                              const temp = newBanners[index];
+                              newBanners[index] = newBanners[index + 1];
+                              newBanners[index + 1] = temp;
+                              setLocalBanners(newBanners);
+                            }
+                          }}
+                          className="text-white p-1 rounded hover:bg-white/20 disabled:opacity-30 transition-colors cursor-pointer"
+                          title="Mover para baixo"
+                        >
+                          <ChevronDown size={14} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">Link do Banner</span>
                       <input 
                         type="text" 
-                        placeholder="Link do banner (opcional)..." 
+                        placeholder="Link do banner (ex: /produto/id ou URL)..." 
                         value={link}
                         onChange={(e) => {
-                          const newBanners = [...(settings.productBanners || [])];
+                          const newBanners = [...localBanners];
                           newBanners[index] = { image: img, link: e.target.value };
-                          updateSettings({ productBanners: newBanners });
+                          setLocalBanners(newBanners);
                         }}
-                        className="flex-1 bg-white border border-gray-200 rounded-lg p-2 text-xs focus:border-[var(--color-primary)] outline-none" 
+                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs focus:border-[var(--color-primary)] outline-none shadow-sm transition-all" 
                       />
                     </div>
                   </div>
@@ -441,8 +536,50 @@ export function Products() {
               })}
             </div>
           ) : (
-            <div className="text-center py-8 bg-gray-50 border border-dashed border-gray-200 rounded-lg text-gray-500 text-sm">
+            <div className="text-center py-12 bg-gray-50 border border-dashed border-gray-200 rounded-2xl text-gray-500 text-xs mb-6">
               Nenhum banner adicionado. Adicione URLs ou faça upload de imagens.
+            </div>
+          )}
+
+          {hasUnsavedBanners && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-900 px-5 py-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex items-center gap-2.5 text-xs font-medium">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+                <span>Você fez alterações nos banners. Clique no botão "Salvar Alterações" para aplicar as mudanças!</span>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLocalBanners(settings?.productBanners || []);
+                    toast.success('Alterações descartadas!');
+                  }}
+                  className="flex-1 sm:flex-none text-center bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-gray-50 transition-all"
+                >
+                  Descartar
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingBanners}
+                  onClick={handleSaveBanners}
+                  className="flex-1 sm:flex-none text-center bg-amber-500 text-white px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-amber-600 disabled:opacity-50 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  {isSavingBanners ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={12} />
+                      Salvar Alterações
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           )}
         </div>
