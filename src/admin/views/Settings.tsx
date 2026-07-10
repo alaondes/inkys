@@ -119,7 +119,7 @@ export function AdminSettings() {
           if (!['image/jpeg', 'image/png', 'image/webp'].includes(outputType)) {
             outputType = 'image/png';
           }
-          resolve(canvas.toDataURL(outputType, 0.85));
+          resolve(canvas.toDataURL(outputType, 1.0));
         };
         img.onerror = () => reject(new Error('Failed to load image'));
         img.src = event.target?.result as string;
