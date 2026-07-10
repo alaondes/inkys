@@ -66,6 +66,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     
     // Seed initial products if collection is empty
     const initData = async () => {
+      if (localStorage.getItem('inkys_seeded') === 'true') return;
       try {
         const snap = await getDocs(productsRef);
         if (snap.empty) {
@@ -75,6 +76,9 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
             batch.set(docRef, { ...p, order: index });
           });
           await batch.commit();
+          localStorage.setItem('inkys_seeded', 'true');
+        } else {
+          localStorage.setItem('inkys_seeded', 'true');
         }
       } catch (error) {
         console.warn("Could not seed initial products offline or due to permissions:", error);

@@ -216,9 +216,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       } else {
         // Initialize settings if they don't exist
-        if (!hasAttemptedInit) {
+        if (!hasAttemptedInit && localStorage.getItem('inkys_settings_seeded') !== 'true') {
           hasAttemptedInit = true;
-          setDoc(settingsRef, defaultSettings).catch(console.error);
+          setDoc(settingsRef, defaultSettings).then(() => {
+            localStorage.setItem('inkys_settings_seeded', 'true');
+          }).catch(console.error);
+        } else {
+          localStorage.setItem('inkys_settings_seeded', 'true');
         }
         clearTimeout(timeoutId);
         setIsLoading(false);
