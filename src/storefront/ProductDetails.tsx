@@ -22,9 +22,8 @@ const formatDescription = (desc: string) => {
     .replace(/(Especificações|Cuidados|Muito mais do que uma caneca|Por que escolher)/g, '<br/><br/><strong class="text-gray-900 text-xl block mb-2">$1</strong>');
 };
 
-const ProductBannerCarousel = ({ banners }: { banners: string[] }) => {
+const ProductBannerCarousel = ({ banners }: { banners: any[] }) => {
 
-  
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
@@ -39,17 +38,36 @@ const ProductBannerCarousel = ({ banners }: { banners: string[] }) => {
   return (
     <div className="w-full mt-8 mb-4 max-w-[1200px] mx-auto px-4">
       <div className="relative w-full h-[150px] md:h-[250px] rounded-2xl overflow-hidden group shadow-sm">
-        {banners.map((img, idx) => (
-          <img
-            key={idx}
-            src={img}
-            alt={`Banner ${idx + 1}`}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-              idx === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
-            }`}
-          />
-        ))}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+        {banners.map((item, idx) => {
+          const imgSrc = typeof item === 'string' ? item : item?.image;
+          const link = typeof item === 'string' ? '' : item?.link;
+          
+          const imgEl = (
+            <img
+              src={imgSrc}
+              alt={`Banner ${idx + 1}`}
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+                idx === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+              }`}
+            />
+          );
+          
+          return (
+            <div key={idx}>
+              {link ? (
+                <a 
+                  href={link} 
+                  target={link.startsWith('http') ? "_blank" : "_self"} 
+                  rel="noopener noreferrer"
+                  className={`absolute inset-0 ${idx === currentIndex ? 'z-20' : '-z-10'}`}
+                >
+                  {imgEl}
+                </a>
+              ) : imgEl}
+            </div>
+          );
+        })}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-30">
           {banners.map((_, idx) => (
             <button
               key={idx}

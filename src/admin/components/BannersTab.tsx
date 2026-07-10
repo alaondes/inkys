@@ -138,7 +138,7 @@ export function BannersTab({
                         const file = e.target.files?.[0];
                         if (file) {
                           try {
-                            const res = await resizeImage(file, 2000, 1125);
+                            const res = await resizeImage(file, 1200, 800);
                             const newBanners = [...heroBanners];
                             newBanners[index] = { ...newBanners[index], image: res };
                             setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
@@ -160,7 +160,7 @@ export function BannersTab({
                         const file = e.target.files?.[0];
                         if (file) {
                           try {
-                            const res = await resizeImage(file, 2000, 1125);
+                            const res = await resizeImage(file, 1200, 800);
                             const newBanners = [...heroBanners];
                             newBanners[index] = { ...newBanners[index], image: res };
                             setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
@@ -180,7 +180,7 @@ export function BannersTab({
                         const file = e.target.files?.[0];
                         if (file) {
                           try {
-                            const res = await resizeImage(file, 2000, 1125);
+                            const res = await resizeImage(file, 1200, 800);
                             const newBanners = [...heroBanners];
                             newBanners[index] = { ...newBanners[index], image: res };
                             setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });

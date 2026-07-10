@@ -191,8 +191,8 @@ export function Products() {
             const img = new Image();
             img.onload = () => {
               const canvas = document.createElement('canvas');
-              const MAX_WIDTH = 2000;
-              const MAX_HEIGHT = 1125;
+              const MAX_WIDTH = 1200;
+              const MAX_HEIGHT = 800;
               let width = img.width;
               let height = img.height;
               
@@ -216,7 +216,7 @@ export function Products() {
                 ctx.fillRect(0, 0, width, height);
                 ctx.drawImage(img, 0, 0, width, height);
               }
-              resolve(canvas.toDataURL('image/webp', 0.92));
+              resolve(canvas.toDataURL('image/webp', 0.7));
             };
             img.src = event.target?.result as string;
           };
@@ -272,7 +272,7 @@ export function Products() {
                 ctx.drawImage(img, 0, 0, width, height);
               }
               // Force output to jpeg with 0.75 quality for high compression to prevent exceeding Firestore 1MB limits
-              resolve(canvas.toDataURL('image/webp', 0.92));
+              resolve(canvas.toDataURL('image/webp', 0.7));
             };
             img.src = event.target?.result as string;
           };
