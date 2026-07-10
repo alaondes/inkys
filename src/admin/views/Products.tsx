@@ -122,6 +122,15 @@ export function Products() {
     (p.category || '').toLowerCase().includes(search.toLowerCase())
   );
 
+  const groupedProducts = filteredProducts.reduce((acc, product) => {
+    const cat = product.category || 'Sem Categoria';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(product);
+    return acc;
+  }, {} as Record<string, typeof filteredProducts[0]>);
+
+  const productCategories = Object.keys(groupedProducts).sort();
+
   const handleOpenModal = (product?: Product) => {
     if (product) setEditingProduct(product);
     else setEditingProduct(null);
@@ -656,7 +665,16 @@ export function Products() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredProducts.map((product, index) => (
+              {productCategories.map(category => (
+                <React.Fragment key={category}>
+                  <tr className="bg-gray-100/60 border-y border-gray-200">
+                    <td colSpan={5} className="px-4 py-2.5 font-bold text-gray-800 text-xs tracking-wider uppercase">
+                      {category}
+                    </td>
+                  </tr>
+                  {groupedProducts[category].map((product) => {
+                    const index = filteredProducts.indexOf(product);
+                    return (
                 <tr key={product.id} className="hover:bg-gray-50 transition-colors group">
                   <td className="p-4 flex items-center gap-3">
                     {product.image || (product.gallery && product.gallery.length > 0) ? (
@@ -727,7 +745,10 @@ export function Products() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+            })}
+          </React.Fragment>
+        ))}
               {filteredProducts.length === 0 && (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-gray-400 text-sm">Nenhum produto encontrado.</td>
@@ -788,7 +809,14 @@ export function Products() {
 
       {/* Visualização em Cards para Mobile */}
       <div className="block md:hidden space-y-4">
-        {filteredProducts.map((product, index) => (
+        {productCategories.map(category => (
+          <React.Fragment key={category}>
+            <div className="bg-gray-100/60 px-4 py-2 -mx-2 rounded border border-gray-200 shadow-sm mt-6 mb-2 flex items-center">
+              <span className="font-bold text-gray-800 text-xs tracking-wider uppercase">{category}</span>
+            </div>
+            {groupedProducts[category].map((product) => {
+              const index = filteredProducts.indexOf(product);
+              return (
           <div key={product.id} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-4 relative overflow-hidden">
             {product.hidden && (
               <span className="absolute top-3 right-3 bg-gray-100 text-gray-600 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border border-gray-250">
@@ -858,7 +886,10 @@ export function Products() {
               )}
             </div>
           </div>
-        ))}
+        );
+      })}
+    </React.Fragment>
+  ))}
 
         {filteredProducts.length === 0 && (
           <div className="bg-white border border-gray-200 p-8 text-center text-gray-400 text-sm rounded-2xl shadow-sm">
