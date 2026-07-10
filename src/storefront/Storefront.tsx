@@ -291,7 +291,16 @@ export function Storefront() {
                 <img src={logoUrl || undefined} alt="Logo" className="h-10 sm:h-12 md:h-16 w-auto object-contain" />
               ) : (
                 <div className="text-xl sm:text-2xl md:text-3xl font-extrabold italic tracking-tighter" style={{ color: settings.topBarColor || '#f9a8d4' }}>
-                  Amo<span style={{ color: settings.headerTextColor || '#ffffff' }}>Canecas</span><span className="text-sm font-normal">.com</span>
+                  {settings.storeName ? (
+                    <>
+                      {settings.storeName.substring(0, Math.ceil(settings.storeName.length / 2))}
+                      <span style={{ color: settings.headerTextColor || '#ffffff' }}>
+                        {settings.storeName.substring(Math.ceil(settings.storeName.length / 2))}
+                      </span>
+                    </>
+                  ) : (
+                    <>Amo<span style={{ color: settings.headerTextColor || '#ffffff' }}>Canecas</span></>
+                  )}
                 </div>
               )}
             </div>

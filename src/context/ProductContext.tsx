@@ -64,33 +64,28 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const productsRef = collection(db, 'products');
     
-    // Seed initial products if collection is empty
-    const initData = async () => {
-      if (localStorage.getItem('inkys_seeded') === 'true') return;
-      try {
-        const snap = await getDocs(productsRef);
-        if (snap.empty) {
+    const timeoutId = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+
+    let hasAttemptedInit = false;
+    const unsubscribe = onSnapshot(productsRef, (snapshot) => {
+      if (snapshot.empty) {
+        if (!hasAttemptedInit && localStorage.getItem('inkys_seeded') !== 'true') {
+          hasAttemptedInit = true;
           const batch = writeBatch(db);
           INITIAL_PRODUCTS.forEach((p, index) => {
             const docRef = doc(productsRef, p.id);
             batch.set(docRef, { ...p, order: index });
           });
-          await batch.commit();
-          localStorage.setItem('inkys_seeded', 'true');
+          batch.commit().then(() => {
+             localStorage.setItem('inkys_seeded', 'true');
+          }).catch(console.error);
         } else {
-          localStorage.setItem('inkys_seeded', 'true');
+           localStorage.setItem('inkys_seeded', 'true');
         }
-      } catch (error) {
-        console.warn("Could not seed initial products offline or due to permissions:", error);
       }
-    };
-    initData();
 
-    const timeoutId = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-
-    const unsubscribe = onSnapshot(productsRef, (snapshot) => {
       const fbProducts = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product));
       
       // Sort by order field if available, else fallback to id
