@@ -119,7 +119,8 @@ export function Products() {
 
   const filteredProducts = localProducts.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) || 
-    (p.category || '').toLowerCase().includes(search.toLowerCase())
+    (p.category || '').toLowerCase().includes(search.toLowerCase()) ||
+    (p.sku || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const groupedProducts = filteredProducts.reduce((acc, product) => {
@@ -313,7 +314,7 @@ export function Products() {
   };
 
   const currentProductEmptyTemplate: Partial<Product> = {
-    name: '', category: '', description: '', price: 0, image: '', colors: []
+    name: '', category: '', sku: '', description: '', price: 0, image: '', colors: []
   };
 
   const [formData, setFormData] = useState<Partial<Product>>(currentProductEmptyTemplate);
@@ -689,6 +690,7 @@ export function Products() {
                     )}
                     <div className="flex flex-col">
                       <span className="font-bold text-sm text-gray-900 group-hover:text-[var(--color-primary)] transition-colors">{product.name}</span>
+                      {product.sku && <span className="text-[10px] text-gray-500 font-mono mt-0.5">{product.sku}</span>}
                       {product.hidden && <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Oculto</span>}
                     </div>
                   </td>
@@ -835,7 +837,10 @@ export function Products() {
                 <div className="w-16 h-16 rounded-xl bg-gray-100 border border-gray-200 shrink-0"></div>
               )}
               <div className="flex-1 min-w-0">
-                <span className="text-xs uppercase tracking-wider text-gray-400 font-bold block mb-0.5">{product.category}</span>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-xs uppercase tracking-wider text-gray-400 font-bold block">{product.category}</span>
+                  {product.sku && <span className="text-[9px] uppercase tracking-wider text-gray-500 font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">{product.sku}</span>}
+                </div>
                 <h4 className="font-bold text-gray-950 text-base truncate">{product.name}</h4>
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className="text-base font-extrabold text-[var(--color-primary)]">{formatPrice(product.price)}</span>
@@ -963,7 +968,12 @@ export function Products() {
                     <input required type="text" value={formData.name || ""} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
                   </div>
                   
-                  <div className="space-y-1">
+                  <div className="space-y-1 col-span-2 md:col-span-1">
+                    <label className="text-[10px] uppercase font-bold text-gray-500">Código / SKU</label>
+                    <input type="text" value={formData.sku || ""} onChange={e => setFormData({...formData, sku: e.target.value})} placeholder="Ex: CAN-001" className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
+                  </div>
+
+                  <div className="space-y-1 col-span-2 md:col-span-1">
                     <label className="text-[10px] uppercase font-bold text-gray-500">Categoria</label>
                     <select 
                       value={formData.category || ""} 

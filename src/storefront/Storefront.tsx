@@ -550,11 +550,19 @@ export function Storefront() {
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
                           transition={{ duration: 0.8 }}
-                          className="absolute inset-0 w-full h-full bg-cover bg-center flex items-center justify-center px-4"
+                          className={`absolute inset-0 w-full h-full bg-cover bg-center flex items-center px-4 ${
+                            currentBanner?.textAlign === 'left' ? 'justify-start md:px-16' : 
+                            currentBanner?.textAlign === 'right' ? 'justify-end md:px-16' : 
+                            'justify-center'
+                          }`}
                           style={{ backgroundImage: `url(${currentBanner?.image})` }}
                         >
                            <div className="absolute inset-0 bg-white/40" />
-                           <div className="relative z-10 text-center flex flex-col items-center">
+                           <div className={`relative z-10 flex flex-col ${
+                            currentBanner?.textAlign === 'left' ? 'text-left items-start' : 
+                            currentBanner?.textAlign === 'right' ? 'text-right items-end' : 
+                            'text-center items-center'
+                           }`}>
                               <div dangerouslySetInnerHTML={{ __html: currentBanner?.titleHtml || '' }} className={`font-bold mb-4 ${currentBanner?.titleSize || 'text-5xl'} ${currentBanner?.titleFont || 'font-sans'}`} style={{ color: currentBanner?.titleColor || settings.topBarColor }} />
                               <p className={`font-medium max-w-lg ${currentBanner?.description ? 'mb-2' : 'mb-6'} ${currentBanner?.subtitleSameSize ? (currentBanner?.titleSize || 'text-5xl') : (currentBanner?.subtitleSize || 'text-xl')} ${currentBanner?.subtitleFont || 'font-sans'}`} style={{ color: currentBanner?.subtitleColor || '#592c60' }}>{currentBanner?.subtitle}</p>
                                {currentBanner?.description && (

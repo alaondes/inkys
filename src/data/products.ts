@@ -5,6 +5,7 @@ export interface Product {
   description: string;
   price: number;
   compareAtPrice?: number;
+  sku?: string;
   image: string;
   gallery?: string[];
   colors?: { name: string; hex: string }[];

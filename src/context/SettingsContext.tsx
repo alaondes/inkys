@@ -22,6 +22,7 @@ export interface HeroBanner {
   descriptionColor?: string;
   descriptionSize?: string;
   descriptionFont?: string;
+  textAlign?: string;
 }
 
 export interface AppSettings {
