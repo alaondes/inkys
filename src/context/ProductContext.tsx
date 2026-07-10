@@ -71,7 +71,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     let hasAttemptedInit = false;
     const unsubscribe = onSnapshot(productsRef, (snapshot) => {
       if (snapshot.empty) {
-        if (!hasAttemptedInit && localStorage.getItem('inkys_seeded') !== 'true') {
+        if (!hasAttemptedInit && (() => { try { return localStorage.getItem('inkys_seeded') !== 'true'; } catch(e) { return true; } })()) {
           hasAttemptedInit = true;
           const batch = writeBatch(db);
           INITIAL_PRODUCTS.forEach((p, index) => {
@@ -79,10 +79,10 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
             batch.set(docRef, { ...p, order: index });
           });
           batch.commit().then(() => {
-             localStorage.setItem('inkys_seeded', 'true');
+             try { localStorage.setItem('inkys_seeded', 'true'); } catch(e) {};
           }).catch(console.error);
         } else {
-           localStorage.setItem('inkys_seeded', 'true');
+           try { localStorage.setItem('inkys_seeded', 'true'); } catch(e) {};
         }
       }
 

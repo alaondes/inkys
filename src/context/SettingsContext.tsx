@@ -216,13 +216,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       } else {
         // Initialize settings if they don't exist
-        if (!hasAttemptedInit && localStorage.getItem('inkys_settings_seeded') !== 'true') {
+        if (!hasAttemptedInit && (() => { try { return localStorage.getItem('inkys_settings_seeded') !== 'true'; } catch(e) { return true; } })()) {
           hasAttemptedInit = true;
           setDoc(settingsRef, defaultSettings).then(() => {
-            localStorage.setItem('inkys_settings_seeded', 'true');
+            try { localStorage.setItem('inkys_settings_seeded', 'true'); } catch(e) {};
           }).catch(console.error);
         } else {
-          localStorage.setItem('inkys_settings_seeded', 'true');
+          try { localStorage.setItem('inkys_settings_seeded', 'true'); } catch(e) {};
         }
         clearTimeout(timeoutId);
         setIsLoading(false);

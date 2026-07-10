@@ -10,6 +10,18 @@ interface ProductDetailsProps {
 }
 
 
+const formatDescription = (desc: string) => {
+  if (!desc) return '';
+  // Se já tiver HTML, renderiza direto
+  if (desc.includes('<p>') || desc.includes('<br>')) return desc;
+  
+  // Formatação inteligente para textos longos (quebra de linha em marcadores)
+  return desc
+    .replace(/ ✨ /g, '<br/><br/><span class="inline-block">✨</span> ')
+    .replace(/ • /g, '<br/><span class="inline-block mt-1">•</span> ')
+    .replace(/(Especificações|Cuidados|Muito mais do que uma caneca|Por que escolher)/g, '<br/><br/><strong class="text-gray-900 text-xl block mb-2">$1</strong>');
+};
+
 const ProductBannerCarousel = ({ banners }: { banners: string[] }) => {
 
   
@@ -341,13 +353,26 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
       
       {/* Description */}
       {product.description && (
-        <div className="bg-[#fcfafc] py-16 border-t border-b border-gray-100 mt-12">
-           <div className="max-w-6xl mx-auto px-4 text-center">
-              <h2 className="text-3xl font-bold text-[#783884] mb-8">Descrição</h2>
-              <div 
-                className="text-left space-y-4 text-[15px] text-gray-700 italic"
-                dangerouslySetInnerHTML={{ __html: product.description || '' }}
-              />
+        <div className="py-16 bg-white border-t border-gray-100 mt-12 relative overflow-hidden">
+           {/* Decorative background elements */}
+           <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+             <div className="absolute -top-24 -right-24 w-96 h-96 bg-purple-50 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
+             <div className="absolute top-1/2 -left-24 w-72 h-72 bg-pink-50 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
+           </div>
+
+           <div className="max-w-[1200px] mx-auto px-4 relative z-10">
+              <div className="flex items-center justify-center gap-4 mb-10">
+                <div className="w-16 h-[2px] bg-gradient-to-r from-transparent to-[#783884]/40"></div>
+                <h2 className="text-3xl md:text-4xl font-bold text-[#783884] tracking-tight text-center">Descrição do Produto</h2>
+                <div className="w-16 h-[2px] bg-gradient-to-l from-transparent to-[#783884]/40"></div>
+              </div>
+
+              <div className="bg-white/80 backdrop-blur-sm p-8 md:p-12 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-purple-100/50">
+                <div 
+                  className="text-left space-y-4 text-[16px] md:text-lg text-gray-700 leading-relaxed whitespace-pre-wrap font-medium"
+                  dangerouslySetInnerHTML={{ __html: formatDescription(product.description) }}
+                />
+              </div>
            </div>
         </div>
       )}
