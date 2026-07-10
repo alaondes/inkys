@@ -596,7 +596,12 @@ export function Products() {
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold uppercase tracking-widest">Produtos</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold uppercase tracking-widest">Produtos</h2>
+          <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full text-xs font-bold border border-gray-200 shadow-sm">
+            Total: {localProducts.length}
+          </span>
+        </div>
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setIsCategoriesModalOpen(true)}
@@ -669,8 +674,15 @@ export function Products() {
               {productCategories.map(category => (
                 <React.Fragment key={category}>
                   <tr className="bg-gray-100/60 border-y border-gray-200">
-                    <td colSpan={5} className="px-4 py-2.5 font-bold text-gray-800 text-xs tracking-wider uppercase">
-                      {category}
+                    <td colSpan={5} className="px-4 py-2.5">
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-gray-800 text-xs tracking-wider uppercase">
+                          {category}
+                        </span>
+                        <span className="bg-white px-2 py-0.5 rounded text-[10px] font-bold text-gray-500 border border-gray-200 shadow-sm">
+                          {groupedProducts[category].length} {groupedProducts[category].length === 1 ? 'produto' : 'produtos'}
+                        </span>
+                      </div>
                     </td>
                   </tr>
                   {groupedProducts[category].map((product) => {
@@ -813,8 +825,11 @@ export function Products() {
       <div className="block md:hidden space-y-4">
         {productCategories.map(category => (
           <React.Fragment key={category}>
-            <div className="bg-gray-100/60 px-4 py-2 -mx-2 rounded border border-gray-200 shadow-sm mt-6 mb-2 flex items-center">
+            <div className="bg-gray-100/60 px-4 py-2 -mx-2 rounded border border-gray-200 shadow-sm mt-6 mb-2 flex items-center justify-between">
               <span className="font-bold text-gray-800 text-xs tracking-wider uppercase">{category}</span>
+              <span className="bg-white px-2 py-0.5 rounded text-[10px] font-bold text-gray-500 border border-gray-200 shadow-sm">
+                {groupedProducts[category].length} {groupedProducts[category].length === 1 ? 'produto' : 'produtos'}
+              </span>
             </div>
             {groupedProducts[category].map((product) => {
               const index = filteredProducts.indexOf(product);
