@@ -26,7 +26,7 @@ export const resizeImage = (file: File, maxWidth: number, maxHeight: number): Pr
         if (!['image/jpeg', 'image/png', 'image/webp'].includes(outputType)) {
           outputType = 'image/png';
         }
-        const dataUrl = canvas.toDataURL(outputType, 1.0);
+        const dataUrl = canvas.toDataURL('image/webp', 0.92);
         resolve(dataUrl);
       };
       img.onerror = () => reject(new Error('Failed to load image'));

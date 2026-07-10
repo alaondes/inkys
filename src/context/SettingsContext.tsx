@@ -254,9 +254,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     const settingsRef = doc(db, 'config', 'settings');
     try {
-      await setDoc(settingsRef, newSettings, { merge: true });
+      await Promise.race([
+        setDoc(settingsRef, newSettings, { merge: true }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout ao salvar: A imagem pode ser muito grande (limite de 1MB).')), 12000))
+      ]);
     } catch (error) {
       console.warn('Failed to update settings in Firestore, but updated locally:', error);
+      throw error;
     }
   };
 
