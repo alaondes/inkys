@@ -62,7 +62,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
               transition={{ duration: 0.2 }}
               src={images[currentImageIndex] || undefined} 
               alt={product.name} 
-              className="absolute inset-0 w-full h-full object-contain p-2 sm:p-4 mix-blend-multiply"
+              className="absolute inset-0 w-full h-full object-cover mix-blend-multiply"
             />
           )}
         </AnimatePresence>

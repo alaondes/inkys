@@ -211,7 +211,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
                    </>
                  )}
 
-                 <img src={images[currentImageIndex] || undefined} alt={product.name} className="w-full h-auto max-h-[600px] object-contain mix-blend-multiply" />
+                 <img src={images[currentImageIndex] || undefined} alt={product.name} className="w-full h-auto max-h-[600px] object-contain mix-blend-multiply p-8 md:p-12" />
             </div>
           </div>
           
