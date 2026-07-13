@@ -200,7 +200,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     
     const timeoutId = setTimeout(() => {
       setIsLoading(false);
-    }, 1500);
+    }, 10000);
 
     let hasAttemptedInit = false;
 

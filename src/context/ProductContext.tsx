@@ -66,7 +66,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     
     const timeoutId = setTimeout(() => {
       setIsLoading(false);
-    }, 1500);
+    }, 10000);
 
     let hasAttemptedInit = false;
     const unsubscribe = onSnapshot(productsRef, (snapshot) => {
@@ -115,7 +115,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       handleFirestoreError(error, OperationType.LIST, 'products', false);
       
       // Fallback to local storage or INITIAL_PRODUCTS
-      let fallbackProducts = INITIAL_PRODUCTS;
+      let fallbackProducts: Product[] = [];
       try {
         const saved = localStorage.getItem('inkys-products');
         if (saved) {
