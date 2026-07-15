@@ -106,7 +106,7 @@ export function Storefront() {
     return () => clearInterval(interval);
   }, [settings.heroBanners]);
 
-  const addToCart = (product: any, selectedColor?: string, customData?: { text?: string, music?: string, image?: string }) => {
+  const addToCart = (product: any, selectedColor?: string, customData?: { text?: string, music?: string, image?: string }, initialQuantity: number = 1) => {
     // Generate unique ID based on customization to separate items
     const customHash = customData ? btoa(JSON.stringify(customData)).slice(0, 10) : 'default';
     const cartItemId = `${product.id}-${selectedColor || 'default'}-${customHash}`;
@@ -115,12 +115,12 @@ export function Storefront() {
       const existing = prev.find(item => item.cartItemId === cartItemId);
       if (existing) {
         return prev.map(item => 
-          item.cartItemId === cartItemId ? { ...item, quantity: item.quantity + 1 } : item
+          item.cartItemId === cartItemId ? { ...item, quantity: item.quantity + initialQuantity } : item
         );
       }
       return [...prev, { 
         ...product, 
-        quantity: 1, 
+        quantity: initialQuantity, 
         selectedColor, 
         cartItemId,
         customText: customData?.text,
@@ -580,7 +580,7 @@ export function Storefront() {
 
       <main className="pb-20 min-h-[calc(100vh-140px)]">
         {currentView === 'custom' ? (
-          <CustomProductPage onBack={goHome} />
+          <CustomProductPage onBack={goHome} onAddToCart={addToCart} />
         ) : currentView === 'checkout' ? (
           <CheckoutPage 
             cart={cart}
