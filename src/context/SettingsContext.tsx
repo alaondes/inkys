@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import toast from 'react-hot-toast';
 
 export interface HeroBanner {
@@ -91,6 +91,7 @@ export interface AppSettings {
   adminButtonBgColor?: string;
   adminButtonTextColor?: string;
   adminButtonBgColorHover?: string;
+  showClearCartButton?: boolean;
 }
 
 const defaultSettings: AppSettings = {
@@ -111,31 +112,23 @@ const defaultSettings: AppSettings = {
   adminButtonBgColor: '#facc15',
   adminButtonTextColor: '#111827',
   adminButtonBgColorHover: '#eab308',
+  showClearCartButton: true,
   customButtonBgColor: '#facc15',
   customButtonTextColor: '#111827',
-  heroBannerImage: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&q=80',
-  heroBannerTitleHtml: 'Canecas<br/><span class="text-5xl italic font-serif mt-2 block">Personalizadas</span>',
-  heroBannerSubtitle: 'Crie canecas únicas com fotos, mensagens, nomes, frases e muito mais!',
+  heroBannerImage: '',
+  heroBannerTitleHtml: '',
+  heroBannerSubtitle: '',
   heroBannerButtonText: 'Comprar',
   heroBannerButtonColor: '#000000',
   productBanners: [],
-  heroBanners: [
-    {
-      id: 'default-1',
-      image: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&q=80',
-      titleHtml: 'Canecas<br/><span class="text-5xl italic font-serif mt-2 block">Personalizadas</span>',
-      subtitle: 'Crie canecas únicas com fotos, mensagens, nomes, frases e muito mais!',
-      buttonText: 'Comprar',
-      buttonColor: '#000000'
-    }
-  ],
-  promoBanner1TitleHtml: 'CANECAS COM SUA<br/>MÚSICA FAVORITA!',
-  promoBanner1SubtitleHtml: 'Modelos prontos com código<br/>de música para adicionar.',
+  heroBanners: [],
+  promoBanner1TitleHtml: '',
+  promoBanner1SubtitleHtml: '',
   promoBanner1ButtonText: 'COMPRAR',
   promoBanner1ColorStart: '#4a8bf5',
   promoBanner1ColorEnd: '#68abfa',
-  promoBanner2TitleHtml: 'CANECAS COM SUA<br/>FOTO PREFERIDA!',
-  promoBanner2SubtitleHtml: 'Modelos prontos com espaço<br/>para adicionar as fotos.',
+  promoBanner2TitleHtml: '',
+  promoBanner2SubtitleHtml: '',
   promoBanner2ButtonText: 'COMPRAR',
   promoBanner2ColorStart: '#b861ff',
   promoBanner2ColorEnd: '#c37aff',
@@ -206,7 +199,38 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
       if (docSnap.exists()) {
-        const newSettings = { ...defaultSettings, ...docSnap.data() as AppSettings };
+        const data = docSnap.data() as AppSettings;
+        let needsCleanup = false;
+        const cleaned: Partial<AppSettings> = {};
+
+        if (data.promoBanner1TitleHtml === 'CANECAS COM SUA<br/>MÚSICA FAVORITA!') {
+          cleaned.promoBanner1TitleHtml = '';
+          cleaned.promoBanner1SubtitleHtml = '';
+          needsCleanup = true;
+        }
+        if (data.promoBanner2TitleHtml === 'CANECAS COM SUA<br/>FOTO PREFERIDA!') {
+          cleaned.promoBanner2TitleHtml = '';
+          cleaned.promoBanner2SubtitleHtml = '';
+          needsCleanup = true;
+        }
+        if (data.heroBannerTitleHtml === 'Canecas<br/><span class="text-5xl italic font-serif mt-2 block">Personalizadas</span>') {
+          cleaned.heroBannerTitleHtml = '';
+          cleaned.heroBannerSubtitle = '';
+          cleaned.heroBannerImage = '';
+          needsCleanup = true;
+        }
+        if (data.heroBanners && data.heroBanners.length === 1 && data.heroBanners[0].id === 'default-1') {
+          cleaned.heroBanners = [];
+          needsCleanup = true;
+        }
+
+        const isGuestSession = !auth.currentUser && !window.location.pathname.includes('/admin');
+
+        if (needsCleanup && !isGuestSession) {
+          setDoc(settingsRef, cleaned, { merge: true }).catch(console.error);
+        }
+
+        const newSettings = { ...defaultSettings, ...data, ...cleaned };
         setSettings(newSettings);
         try {
           localStorage.setItem('inkys-settings', JSON.stringify(newSettings));
@@ -217,7 +241,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       } else {
         // Initialize settings if they don't exist
-        if (!hasAttemptedInit && (() => { try { return localStorage.getItem('inkys_settings_seeded') !== 'true'; } catch(e) { return true; } })()) {
+        const isGuestSession = !auth.currentUser && !window.location.pathname.includes('/admin');
+        if (!isGuestSession && !hasAttemptedInit && (() => { try { return localStorage.getItem('inkys_settings_seeded') !== 'true'; } catch(e) { return true; } })()) {
           hasAttemptedInit = true;
           setDoc(settingsRef, defaultSettings).then(() => {
             try { localStorage.setItem('inkys_settings_seeded', 'true'); } catch(e) {};

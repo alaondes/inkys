@@ -94,7 +94,14 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     path
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  
+  if (errInfo.error.includes('Quota')) {
+    toast.error('Limite de cota excedido. Tente novamente mais tarde.', { duration: 6000 });
+  } else if (errInfo.error.includes('permission')) {
+    toast.error('Sem permissão para acessar os dados.', { duration: 6000 });
+  } else {
+    toast.error(`Erro ao acessar dados: ${errInfo.error.substring(0, 50)}`, { duration: 6000 });
+  }
 }
 
 const THEMES = {

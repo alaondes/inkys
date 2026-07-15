@@ -20,10 +20,14 @@ export function Customers() {
       // Find orders to delete
       const customerOrders = orders.filter(o => o.email?.toLowerCase().trim() === customer.email);
       
-      // Delete each order
-      const { withTimeout } = await import('../../lib/firestoreUtils');
-      const deletePromises = customerOrders.map(o => withTimeout(deleteDoc(doc(db, 'orders', o.id))));
-      await Promise.all(deletePromises);
+      const { writeBatch } = await import('firebase/firestore');
+      const batch = writeBatch(db);
+      
+      customerOrders.forEach(o => {
+        batch.delete(doc(db, 'orders', o.id));
+      });
+      
+      await batch.commit();
 
       toast.success('Cliente e seus pedidos foram excluídos com sucesso!');
       setSelectedCustomer(null);

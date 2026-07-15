@@ -30,6 +30,7 @@ interface Banner {
   descriptionColor?: string;
   descriptionSize?: string;
   descriptionFont?: string;
+  textAlign?: string;
 }
 
 interface BannersTabProps {

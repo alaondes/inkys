@@ -128,7 +128,7 @@ export function Products() {
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(product);
     return acc;
-  }, {} as Record<string, typeof filteredProducts[0]>);
+  }, {} as Record<string, typeof filteredProducts>);
 
   const productCategories = Object.keys(groupedProducts).sort();
 

@@ -80,12 +80,23 @@ export function OpcoesPagamento({
         )}
       </button>
 
-      <div className="flex items-center justify-center gap-2">
-        <ShieldCheck size={28} className="text-[#5ba324]" strokeWidth={1.5} />
-        <div className="leading-tight">
-          <div className="text-[8px] font-bold text-gray-500 uppercase tracking-wider">Compra segura</div>
-          <div className="text-[11px] font-bold text-gray-800 uppercase tracking-tighter">Site protegido</div>
-          <div className="text-[7px] text-gray-400 uppercase tracking-wider">Certificado SSL</div>
+      <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col gap-3">
+        <div className="flex items-center justify-center gap-2 bg-green-50 p-2 rounded-md">
+          <ShieldCheck size={24} className="text-green-600" />
+          <div className="text-xs font-bold text-green-800">
+            Compra 100% Segura <br/>
+            <span className="font-normal text-green-700 text-[10px]">Ambiente protegido por certificado SSL</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-center gap-4">
+          <div className="flex flex-col items-center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 mb-1"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            <span className="text-[10px] text-gray-500 font-bold">Entrega Garantida</span>
+          </div>
+          <div className="flex flex-col items-center">
+             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 mb-1"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <span className="text-[10px] text-gray-500 font-bold">Privacidade Protegida</span>
+          </div>
         </div>
       </div>
     </div>

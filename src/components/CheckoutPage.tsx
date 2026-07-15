@@ -88,20 +88,6 @@ export function CheckoutPage({
     }
   };
 
-  if (cart.length === 0) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Seu carrinho está vazio</h2>
-        <button 
-          onClick={onBack}
-          className="bg-[var(--color-primary)] text-white px-8 py-3 rounded-md font-bold hover:brightness-90 transition-all shadow-lg"
-        >
-          Continuar Comprando
-        </button>
-      </div>
-    );
-  }
-
   const cartTotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   const [couponCode, setCouponCode] = useState('');
@@ -143,6 +129,20 @@ export function CheckoutPage({
     setAppliedCoupon(null);
     setCouponCode('');
   };
+
+  if (cart.length === 0) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Seu carrinho está vazio</h2>
+        <button 
+          onClick={onBack}
+          className="bg-[var(--color-primary)] text-white px-8 py-3 rounded-md font-bold hover:brightness-90 transition-all shadow-lg"
+        >
+          Continuar Comprando
+        </button>
+      </div>
+    );
+  }
 
   const cartTotalWithDiscount = appliedCoupon 
     ? (appliedCoupon.type === 'percentage' 

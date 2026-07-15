@@ -33,28 +33,22 @@ export function AdminSettings() {
     customButtonBgColor: settings.customButtonBgColor || '#facc15',
     customButtonTextColor: settings.customButtonTextColor || '#713f12',
     buyButtonColor: settings.buyButtonColor || '#5ba324',
+    showClearCartButton: settings.showClearCartButton ?? true,
     
     productBanners: settings.productBanners || [],
-    heroBanners: (settings.heroBanners && settings.heroBanners.length > 0) ? settings.heroBanners : [{
-      id: 'legacy',
-      image: settings.heroBannerImage || 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&q=80',
-      titleHtml: settings.heroBannerTitleHtml || 'Caneca com<br/><span class="text-5xl italic font-serif mt-2 block">Foto e Música</span>',
-      subtitle: settings.heroBannerSubtitle || 'O presente perfeito para transformar lembranças em emoção.',
-      buttonText: settings.heroBannerButtonText || 'Peça a sua agora ♥',
-      buttonColor: settings.heroBannerButtonColor || '#b44e68'
-    }],
+    heroBanners: settings.heroBanners || [],
     
-    promoBanner1TitleHtml: settings.promoBanner1TitleHtml || 'CANECAS COM SUA<br/>MÚSICA FAVORITA!',
-    promoBanner1SubtitleHtml: settings.promoBanner1SubtitleHtml || 'Modelos prontos com código<br/>de música para adicionar.',
-    promoBanner1ButtonText: settings.promoBanner1ButtonText || 'COMPRAR',
-    promoBanner1ColorStart: settings.promoBanner1ColorStart || '#4a8bf5',
-    promoBanner1ColorEnd: settings.promoBanner1ColorEnd || '#68abfa',
+    promoBanner1TitleHtml: settings.promoBanner1TitleHtml ?? '',
+    promoBanner1SubtitleHtml: settings.promoBanner1SubtitleHtml ?? '',
+    promoBanner1ButtonText: settings.promoBanner1ButtonText ?? 'COMPRAR',
+    promoBanner1ColorStart: settings.promoBanner1ColorStart ?? '#4a8bf5',
+    promoBanner1ColorEnd: settings.promoBanner1ColorEnd ?? '#68abfa',
     
-    promoBanner2TitleHtml: settings.promoBanner2TitleHtml || 'CANECAS COM SUA<br/>FOTO PREFERIDA!',
-    promoBanner2SubtitleHtml: settings.promoBanner2SubtitleHtml || 'Modelos prontos com espaço<br/>para adicionar as fotos.',
-    promoBanner2ButtonText: settings.promoBanner2ButtonText || 'COMPRAR',
-    promoBanner2ColorStart: settings.promoBanner2ColorStart || '#b861ff',
-    promoBanner2ColorEnd: settings.promoBanner2ColorEnd || '#c37aff',
+    promoBanner2TitleHtml: settings.promoBanner2TitleHtml ?? '',
+    promoBanner2SubtitleHtml: settings.promoBanner2SubtitleHtml ?? '',
+    promoBanner2ButtonText: settings.promoBanner2ButtonText ?? 'COMPRAR',
+    promoBanner2ColorStart: settings.promoBanner2ColorStart ?? '#b861ff',
+    promoBanner2ColorEnd: settings.promoBanner2ColorEnd ?? '#c37aff',
     
     storeName: settings.storeName || 'inkys',
     productRating: settings.productRating || 5,
@@ -84,6 +78,45 @@ export function AdminSettings() {
     setWhatsappNumber(settings.whatsappNumber);
     setPaymentMethods(settings.paymentMethods);
     setStoreFeatures(settings.storeFeatures || []);
+    setStorefrontSettings(prev => ({
+      ...prev,
+      topBarColor: settings.topBarColor || prev.topBarColor,
+      headerColor: settings.headerColor || prev.headerColor,
+      headerTextColor: settings.headerTextColor || prev.headerTextColor,
+      headerHoverTextColor: settings.headerHoverTextColor || prev.headerHoverTextColor,
+      adminButtonBgColor: settings.adminButtonBgColor || prev.adminButtonBgColor,
+      adminButtonTextColor: settings.adminButtonTextColor || prev.adminButtonTextColor,
+      adminButtonBgColorHover: settings.adminButtonBgColorHover || prev.adminButtonBgColorHover,
+      navBarColor: settings.navBarColor || prev.navBarColor,
+      navBarTextColor: settings.navBarTextColor || prev.navBarTextColor,
+      siteBackgroundColor: settings.siteBackgroundColor || prev.siteBackgroundColor,
+      customButtonBgColor: settings.customButtonBgColor || prev.customButtonBgColor,
+      customButtonTextColor: settings.customButtonTextColor || prev.customButtonTextColor,
+      buyButtonColor: settings.buyButtonColor || prev.buyButtonColor,
+      showClearCartButton: settings.showClearCartButton ?? prev.showClearCartButton,
+      productBanners: settings.productBanners || prev.productBanners,
+      heroBanners: settings.heroBanners || prev.heroBanners,
+      promoBanner1TitleHtml: settings.promoBanner1TitleHtml ?? prev.promoBanner1TitleHtml,
+      promoBanner1SubtitleHtml: settings.promoBanner1SubtitleHtml ?? prev.promoBanner1SubtitleHtml,
+      promoBanner1ButtonText: settings.promoBanner1ButtonText ?? prev.promoBanner1ButtonText,
+      promoBanner1ColorStart: settings.promoBanner1ColorStart ?? prev.promoBanner1ColorStart,
+      promoBanner1ColorEnd: settings.promoBanner1ColorEnd ?? prev.promoBanner1ColorEnd,
+      promoBanner2TitleHtml: settings.promoBanner2TitleHtml ?? prev.promoBanner2TitleHtml,
+      promoBanner2SubtitleHtml: settings.promoBanner2SubtitleHtml ?? prev.promoBanner2SubtitleHtml,
+      promoBanner2ButtonText: settings.promoBanner2ButtonText ?? prev.promoBanner2ButtonText,
+      promoBanner2ColorStart: settings.promoBanner2ColorStart ?? prev.promoBanner2ColorStart,
+      promoBanner2ColorEnd: settings.promoBanner2ColorEnd ?? prev.promoBanner2ColorEnd,
+      storeName: settings.storeName || prev.storeName,
+      productRating: settings.productRating || prev.productRating,
+      productReviews: settings.productReviews || prev.productReviews,
+      pixDiscount: settings.pixDiscount !== undefined ? settings.pixDiscount : prev.pixDiscount,
+      installments: settings.installments || prev.installments,
+      customPageTitle: settings.customPageTitle ?? prev.customPageTitle,
+      customPageDescription: settings.customPageDescription ?? prev.customPageDescription,
+      customPageGuideText: settings.customPageGuideText ?? prev.customPageGuideText,
+      customPageGuideImage: settings.customPageGuideImage ?? prev.customPageGuideImage,
+      customProducts: settings.customProducts ?? prev.customProducts,
+    }));
   }, [settings]);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -142,7 +175,10 @@ export function AdminSettings() {
   };
 
   const handleSaveStorefront = () => {
-    updateSettings(storefrontSettings);
+    updateSettings({
+      ...storefrontSettings,
+      storeFeatures: storeFeatures
+    });
     showToast('Aparência atualizada com sucesso!');
   };
 
@@ -469,6 +505,21 @@ export function AdminSettings() {
                 </div>
               </div>
 
+              <div className="space-y-1 col-span-full">
+                <label className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input 
+                    type="checkbox" 
+                    checked={storefrontSettings.showClearCartButton} 
+                    onChange={(e) => setStorefrontSettings({...storefrontSettings, showClearCartButton: e.target.checked})}
+                    className="w-5 h-5 text-[var(--color-primary)] border-gray-300 rounded focus:ring-[var(--color-primary)]"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-gray-900">Exibir botão "Limpar Carrinho"</span>
+                    <span className="text-xs text-gray-500">Permite que o cliente esvazie o carrinho de uma só vez.</span>
+                  </div>
+                </label>
+              </div>
+
               <div className="space-y-1">
                 <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor de Fundo do Botão Personalizados</label>
                 <div className="flex items-center gap-3">
@@ -483,6 +534,164 @@ export function AdminSettings() {
                   <input type="color" value={storefrontSettings.customButtonTextColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, customButtonTextColor: e.target.value})} className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0" />
                   <input type="text" value={storefrontSettings.customButtonTextColor} onChange={(e) => setStorefrontSettings({...storefrontSettings, customButtonTextColor: e.target.value})} className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-mono" />
                 </div>
+              </div>
+            </div>
+
+            <div className="p-6 border border-gray-100 rounded-xl bg-gray-50/50 space-y-6">
+              <div>
+                <h4 className="text-sm font-bold uppercase tracking-widest text-gray-700 mb-1">Banners Promocionais</h4>
+                <p className="text-xs text-gray-500">Configure as duas caixas de promoção na página inicial. Para ocultar um banner promocional, deixe o título correspondente em branco.</p>
+              </div>
+
+              {/* Promo Banner 1 */}
+              <div className="space-y-4 p-4 border border-gray-200 bg-white rounded-lg">
+                <h5 className="text-xs font-bold uppercase text-gray-600">Banner Promocional 1</h5>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Título (Aceita HTML, ex: CANECAS COM SUA&lt;br/&gt;MÚSICA FAVORITA!)</label>
+                    <input type="text" value={storefrontSettings.promoBanner1TitleHtml} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner1TitleHtml: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none" placeholder="Deixe em branco para ocultar este banner" />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Subtítulo (Aceita HTML)</label>
+                    <input type="text" value={storefrontSettings.promoBanner1SubtitleHtml} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner1SubtitleHtml: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Texto do Botão</label>
+                    <input type="text" value={storefrontSettings.promoBanner1ButtonText} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner1ButtonText: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor Inicial</label>
+                      <div className="flex gap-1.5">
+                        <input type="color" value={storefrontSettings.promoBanner1ColorStart} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner1ColorStart: e.target.value})} className="w-8 h-8 rounded cursor-pointer border-0 p-0 shrink-0" />
+                        <input type="text" value={storefrontSettings.promoBanner1ColorStart} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner1ColorStart: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-1.5 text-xs outline-none font-mono" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor Final</label>
+                      <div className="flex gap-1.5">
+                        <input type="color" value={storefrontSettings.promoBanner1ColorEnd} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner1ColorEnd: e.target.value})} className="w-8 h-8 rounded cursor-pointer border-0 p-0 shrink-0" />
+                        <input type="text" value={storefrontSettings.promoBanner1ColorEnd} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner1ColorEnd: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-1.5 text-xs outline-none font-mono" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Promo Banner 2 */}
+              <div className="space-y-4 p-4 border border-gray-200 bg-white rounded-lg">
+                <h5 className="text-xs font-bold uppercase text-gray-600">Banner Promocional 2</h5>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Título (Aceita HTML, ex: CANECAS COM SUA&lt;br/&gt;FOTO PREFERIDA!)</label>
+                    <input type="text" value={storefrontSettings.promoBanner2TitleHtml} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner2TitleHtml: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none" placeholder="Deixe em branco para ocultar este banner" />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Subtítulo (Aceita HTML)</label>
+                    <input type="text" value={storefrontSettings.promoBanner2SubtitleHtml} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner2SubtitleHtml: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Texto do Botão</label>
+                    <input type="text" value={storefrontSettings.promoBanner2ButtonText} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner2ButtonText: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor Inicial</label>
+                      <div className="flex gap-1.5">
+                        <input type="color" value={storefrontSettings.promoBanner2ColorStart} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner2ColorStart: e.target.value})} className="w-8 h-8 rounded cursor-pointer border-0 p-0 shrink-0" />
+                        <input type="text" value={storefrontSettings.promoBanner2ColorStart} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner2ColorStart: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-1.5 text-xs outline-none font-mono" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor Final</label>
+                      <div className="flex gap-1.5">
+                        <input type="color" value={storefrontSettings.promoBanner2ColorEnd} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner2ColorEnd: e.target.value})} className="w-8 h-8 rounded cursor-pointer border-0 p-0 shrink-0" />
+                        <input type="text" value={storefrontSettings.promoBanner2ColorEnd} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner2ColorEnd: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-1.5 text-xs outline-none font-mono" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border border-gray-100 rounded-xl bg-gray-50/50 space-y-6">
+              <div>
+                <h4 className="text-sm font-bold uppercase tracking-widest text-gray-700 mb-1">Destaques / Diferenciais da Loja</h4>
+                <p className="text-xs text-gray-500">Configure as faixas informativas (até 4) que aparecem abaixo do carrossel principal. Desmarque uma faixa para ocultá-la do site.</p>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                {storeFeatures.map((feature: any, idx: number) => (
+                  <div key={feature.id || idx} className="p-4 bg-white border border-gray-200 rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-500 uppercase">Faixa #{idx + 1}</span>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={feature.enabled}
+                          onChange={(e) => {
+                            const newFeatures = [...storeFeatures];
+                            newFeatures[idx] = { ...newFeatures[idx], enabled: e.target.checked };
+                            setStoreFeatures(newFeatures);
+                          }}
+                          className="w-4 h-4 text-[var(--color-primary)] border-gray-300 rounded focus:ring-[var(--color-primary)]"
+                        />
+                        <span className="text-xs font-semibold text-gray-700">Ativo</span>
+                      </label>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="space-y-0.5">
+                        <label className="text-[9px] uppercase tracking-wider text-gray-400 font-bold">Título</label>
+                        <input
+                          type="text"
+                          value={feature.title}
+                          onChange={(e) => {
+                            const newFeatures = [...storeFeatures];
+                            newFeatures[idx] = { ...newFeatures[idx], title: e.target.value };
+                            setStoreFeatures(newFeatures);
+                          }}
+                          className="w-full bg-gray-50 border border-gray-200 rounded p-2 text-xs focus:border-[var(--color-primary)] outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <label className="text-[9px] uppercase tracking-wider text-gray-400 font-bold">Subtítulo</label>
+                        <input
+                          type="text"
+                          value={feature.subtitle}
+                          onChange={(e) => {
+                            const newFeatures = [...storeFeatures];
+                            newFeatures[idx] = { ...newFeatures[idx], subtitle: e.target.value };
+                            setStoreFeatures(newFeatures);
+                          }}
+                          className="w-full bg-gray-50 border border-gray-200 rounded p-2 text-xs focus:border-[var(--color-primary)] outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <label className="text-[9px] uppercase tracking-wider text-gray-400 font-bold">Ícone</label>
+                        <select
+                          value={feature.icon}
+                          onChange={(e) => {
+                            const newFeatures = [...storeFeatures];
+                            newFeatures[idx] = { ...newFeatures[idx], icon: e.target.value };
+                            setStoreFeatures(newFeatures);
+                          }}
+                          className="w-full bg-gray-50 border border-gray-200 rounded p-2 text-xs focus:border-[var(--color-primary)] outline-none"
+                        >
+                          <option value="Truck">Caminhão (Entrega)</option>
+                          <option value="CreditCard">Cartão de Crédito</option>
+                          <option value="Zap">Raio (PIX/Rápido)</option>
+                          <option value="ShieldCheck">Escudo (Segurança)</option>
+                          <option value="User">Usuário</option>
+                          <option value="MessageCircle">Mensagem (Suporte)</option>
+                          <option value="ShoppingCart">Carrinho</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 

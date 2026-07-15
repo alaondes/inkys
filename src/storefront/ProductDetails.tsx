@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Product, formatPrice } from '../data/products';
 import { Star, ChevronLeft, ChevronRight, Share2, Heart, Video } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
+import { useProducts } from '../context/ProductContext';
+import { ProductCarousel } from '../components/ProductCarousel';
 
 interface ProductDetailsProps {
   product: Product;
   onBack: () => void;
-  onAddToCart: (product: Product) => void;
+  onAddToCart: (product: Product, selectedColor?: string, customData?: { text?: string, music?: string, image?: string }) => void;
 }
 
 
@@ -85,6 +87,7 @@ const ProductBannerCarousel = ({ banners }: { banners: any[] }) => {
 
 export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsProps) {
   const { settings } = useSettings();
+  const { products } = useProducts();
   const rawImages = [product.image, ...(product.gallery || [])].filter(Boolean);
   const images = rawImages.length > 0 ? rawImages : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop'];
   
@@ -104,6 +107,23 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
   const pixPrice = product.price * (1 - pixDiscount);
   const installments = product.installments !== undefined ? product.installments : (settings.installments || 2);
   const installmentPrice = product.price / installments;
+
+  const [selectedColor, setSelectedColor] = useState<string | undefined>(product.colors?.[0]?.name);
+  
+  const isPersonalized = product.name.toLowerCase().includes('personalizad') || product.name.toLowerCase().includes('foto') || product.name.toLowerCase().includes('música');
+  const [customText, setCustomText] = useState('');
+  const [customMusic, setCustomMusic] = useState('');
+  const [customImage, setCustomImage] = useState<string | null>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setCustomImage(event.target?.result as string);
+      };
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  };
 
   const handleWhatsapp = () => {
     const message = encodeURIComponent(`Olá! Gostaria de tirar uma dúvida sobre o produto ${product.name}.`);
@@ -138,21 +158,42 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingOptions, setShippingOptions] = useState<{name: string, price: number, days: number}[] | null>(null);
 
-  const calculateShipping = () => {
+  const calculateShipping = async () => {
     if (!cep || cep.replace(/\D/g, '').length !== 8) {
       alert("Por favor, insira um CEP válido com 8 dígitos.");
       return;
     }
     
     setShippingLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Simulate API call to fetch state from CEP
+      const response = await fetch(`https://viacep.com.br/ws/${cep.replace(/\D/g, '')}/json/`);
+      const data = await response.json();
+      
+      let pacPrice = 15.90;
+      let sedexPrice = 32.50;
+      
+      const hasFreeShipping = settings.freeShippingThreshold !== undefined && settings.freeShippingThreshold > 0 && product.price >= settings.freeShippingThreshold;
+
+      if (hasFreeShipping) {
+        pacPrice = 0;
+      } else if (settings.fixedShippingRates && data.uf && settings.fixedShippingRates[data.uf]) {
+        pacPrice = settings.fixedShippingRates[data.uf];
+        sedexPrice = pacPrice + 16.60;
+      } else {
+        // default mock if no state matches or settings not defined
+        sedexPrice = pacPrice + 12.60;
+      }
+
       setShippingOptions([
-        { name: 'PAC', price: 15.90, days: 7 },
-        { name: 'SEDEX', price: 28.50, days: 3 }
+        { name: 'PAC', price: pacPrice, days: 7 },
+        { name: 'SEDEX', price: sedexPrice, days: 3 }
       ]);
+    } catch (error) {
+      alert("Erro ao calcular o frete. Tente novamente.");
+    } finally {
       setShippingLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -184,7 +225,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
                     <img 
                       src={img} 
                       alt={`Thumbnail ${idx + 1}`} 
-                      className="w-full h-full object-contain mix-blend-multiply" 
+                      className="w-full h-full object-cover mix-blend-multiply" 
                       onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
                     />
                   </button>
@@ -211,13 +252,20 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
                    </>
                  )}
 
-                 <img src={images[currentImageIndex] || undefined} alt={product.name} className="w-full h-auto max-h-[600px] object-contain mix-blend-multiply p-8 md:p-12" />
+                 <img src={images[currentImageIndex] || undefined} alt={product.name} className="w-full h-full object-cover mix-blend-multiply" />
             </div>
           </div>
           
           {/* Info */}
           <div className="w-full md:w-[40%]">
             <div className="text-gray-500 text-sm mb-1">{settings.storeName || 'inkys'}</div>
+            
+            {product.stock !== undefined && product.stock > 0 && product.stock <= 5 && (
+              <div className="bg-red-100 text-red-600 text-xs font-bold px-3 py-1 rounded-full inline-block mb-2 animate-pulse shadow-sm">
+                Corra, restam apenas {product.stock} unidades!
+              </div>
+            )}
+            
             <h1 className="text-2xl font-normal text-gray-800 mb-2">{product.name}</h1>
             
             <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
@@ -252,6 +300,24 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
               )}
             </div>
             
+            {/* Variations (Colors) */}
+            {product.colors && product.colors.length > 0 && (
+              <div className="mb-6 border-b border-gray-100 pb-6">
+                <h3 className="text-sm font-bold text-gray-700 mb-3">Cor: <span className="font-normal">{selectedColor}</span></h3>
+                <div className="flex gap-3">
+                  {product.colors.map(color => (
+                    <button
+                      key={color.name}
+                      onClick={() => setSelectedColor(color.name)}
+                      className={`w-10 h-10 rounded-full border-2 transition-all ${selectedColor === color.name ? 'border-purple-600 shadow-md scale-110' : 'border-gray-200 hover:scale-105'}`}
+                      style={{ backgroundColor: color.hex }}
+                      title={color.name}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Payment methods */}
             <div className="border border-gray-200 rounded-lg p-4 mb-6">
                {settings.paymentMethods?.credit && (
@@ -296,14 +362,84 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
                </div>
             </div>
 
+            {/* Personalization Fields */}
+            {isPersonalized && (
+              <div className="mb-6 p-4 border border-purple-100 bg-purple-50 rounded-xl">
+                 <h3 className="text-sm font-bold text-gray-800 mb-2">Personalize o seu produto</h3>
+                 <p className="text-xs text-gray-600 mb-4">Passo 1: Envie sua foto e música. Passo 2: Nossa equipe cria sua arte com carinho!</p>
+                 
+                 <div className="space-y-4">
+                   {/* Image Upload */}
+                   {product.name.toLowerCase().includes('foto') || product.name.toLowerCase().includes('personalizad') ? (
+                     <div>
+                       <label className="block text-xs font-bold text-gray-700 mb-1">1. Envie uma foto clara (obrigatório)</label>
+                       <input 
+                         type="file" 
+                         accept="image/*"
+                         onChange={handleImageUpload}
+                         className="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 transition-colors"
+                       />
+                       {customImage && (
+                         <div className="mt-2 relative w-16 h-16 rounded-md overflow-hidden border border-gray-200">
+                           <img src={customImage} alt="Preview" className="w-full h-full object-cover" />
+                         </div>
+                       )}
+                     </div>
+                   ) : null}
+
+                   {/* Music Link */}
+                   {product.name.toLowerCase().includes('música') || product.name.toLowerCase().includes('spotify') ? (
+                     <div>
+                       <label className="block text-xs font-bold text-gray-700 mb-1">2. Link da Música no Spotify (obrigatório)</label>
+                       <input 
+                         type="url" 
+                         placeholder="Ex: https://open.spotify.com/track/..."
+                         value={customMusic}
+                         onChange={(e) => setCustomMusic(e.target.value)}
+                         className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                       />
+                     </div>
+                   ) : null}
+
+                   {/* Custom Text */}
+                   <div>
+                     <label className="block text-xs font-bold text-gray-700 mb-1">3. Mensagem ou Nome (opcional)</label>
+                     <input 
+                       type="text" 
+                       placeholder="Máximo 50 caracteres"
+                       maxLength={50}
+                       value={customText}
+                       onChange={(e) => setCustomText(e.target.value)}
+                       className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                     />
+                   </div>
+                 </div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-3 w-full mb-6">
               <button 
-                onClick={() => product.stock !== undefined && product.stock <= 0 ? null : onAddToCart(product)}
+                onClick={() => {
+                  if (product.stock !== undefined && product.stock <= 0) return;
+                  if (isPersonalized) {
+                    const needsPhoto = product.name.toLowerCase().includes('foto') || product.name.toLowerCase().includes('personalizad');
+                    const needsMusic = product.name.toLowerCase().includes('música') || product.name.toLowerCase().includes('spotify');
+                    if (needsPhoto && !customImage) {
+                      alert("Por favor, envie uma foto para personalizar o produto.");
+                      return;
+                    }
+                    if (needsMusic && !customMusic) {
+                      alert("Por favor, informe o link da música do Spotify.");
+                      return;
+                    }
+                  }
+                  onAddToCart(product, selectedColor, isPersonalized ? { text: customText, music: customMusic, image: customImage || undefined } : undefined);
+                }}
                 disabled={product.stock !== undefined && product.stock <= 0}
                 className={`w-full text-white py-4 rounded font-bold text-xl transition-all ${product.stock !== undefined && product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : 'hover:brightness-110'}`}
                 style={{ backgroundColor: product.stock !== undefined && product.stock <= 0 ? '#9CA3AF' : settings.buyButtonColor }}
               >
-                {product.stock !== undefined && product.stock <= 0 ? 'Esgotado' : 'Comprar'}
+                {product.stock !== undefined && product.stock <= 0 ? 'Esgotado' : (isPersonalized ? 'Comprar e Personalizar' : 'Comprar')}
               </button>
               <button 
                 onClick={handleWhatsapp}
@@ -427,6 +563,17 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
                  })}
                </div>
             </div>
+         </div>
+      </div>
+
+      {/* Related Products */}
+      <div className="py-16 bg-gray-50 border-t border-gray-100">
+         <div className="max-w-[1400px] mx-auto px-4">
+            <h2 className="text-2xl font-bold text-gray-800 mb-8 text-center">Você também pode gostar</h2>
+            <ProductCarousel 
+              products={products.filter(p => p.id !== product.id && p.category === product.category).slice(0, 10)} 
+              title="" 
+            />
          </div>
       </div>
     </div>

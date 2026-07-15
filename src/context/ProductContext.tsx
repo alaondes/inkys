@@ -46,7 +46,10 @@ const getInitialProducts = (): Product[] => {
     const cached = localStorage.getItem('inkys-products');
     if (cached) {
       try {
-        return JSON.parse(cached);
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
       } catch (e) {
         console.error('Failed to parse cached products', e);
       }
@@ -71,19 +74,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     let hasAttemptedInit = false;
     const unsubscribe = onSnapshot(productsRef, (snapshot) => {
       if (snapshot.empty) {
-        if (!hasAttemptedInit && (() => { try { return localStorage.getItem('inkys_seeded') !== 'true'; } catch(e) { return true; } })()) {
-          hasAttemptedInit = true;
-          const batch = writeBatch(db);
-          INITIAL_PRODUCTS.forEach((p, index) => {
-            const docRef = doc(productsRef, p.id);
-            batch.set(docRef, { ...p, order: index });
-          });
-          batch.commit().then(() => {
-             try { localStorage.setItem('inkys_seeded', 'true'); } catch(e) {};
-          }).catch(console.error);
-        } else {
-           try { localStorage.setItem('inkys_seeded', 'true'); } catch(e) {};
-        }
+        // Do nothing, just let it be empty
       }
 
       const fbProducts = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product));
@@ -115,11 +106,14 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       handleFirestoreError(error, OperationType.LIST, 'products', false);
       
       // Fallback to local storage or INITIAL_PRODUCTS
-      let fallbackProducts: Product[] = [];
+      let fallbackProducts: Product[] = INITIAL_PRODUCTS;
       try {
         const saved = localStorage.getItem('inkys-products');
         if (saved) {
-           fallbackProducts = JSON.parse(saved);
+           const parsed = JSON.parse(saved);
+           if (Array.isArray(parsed) && parsed.length > 0) {
+             fallbackProducts = parsed;
+           }
         }
       } catch (e) {
         // ignore
@@ -239,11 +233,20 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     
     const productsRef = collection(db, 'products');
     const batch = writeBatch(db);
+    let hasChanges = false;
+    
     newProducts.forEach((p, index) => {
-      const docRef = doc(productsRef, p.id);
-      batch.set(docRef, { order: index }, { merge: true });
+      if (p.order !== index) {
+        const docRef = doc(productsRef, p.id);
+        batch.set(docRef, { order: index }, { merge: true });
+        p.order = index;
+        hasChanges = true;
+      }
     });
-    batch.commit().catch(error => handleFirestoreError(error, OperationType.WRITE, 'products (batch)', false));
+    
+    if (hasChanges) {
+      batch.commit().catch(error => handleFirestoreError(error, OperationType.WRITE, 'products (batch)', false));
+    }
   };
 
   return (

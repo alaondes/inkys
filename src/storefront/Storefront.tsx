@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Menu, MessageCircle, CreditCard, Truck, ShieldCheck, User, Star, Heart, Gift } from 'lucide-react';
+import { ShoppingCart, Search, Menu, MessageCircle, CreditCard, Truck, ShieldCheck, User, Star, Heart, Gift, X, Plus, Minus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatPrice, Product } from '../data/products';
 import { generateWhatsAppLink, CheckoutData } from '../utils/whatsapp';
@@ -18,6 +18,9 @@ export interface CartItem extends Product {
   cartItemId: string;
   file?: File;
   fileUrl?: string;
+  customText?: string;
+  customMusic?: string;
+  customImage?: string;
 }
 
 export function Storefront() {
@@ -87,6 +90,12 @@ export function Storefront() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
   const [currentBannerIdx, setCurrentBannerIdx] = useState(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [sortBy, setSortBy] = useState('newest');
+  const [filterInStock, setFilterInStock] = useState(false);
+  const [filterPriceRange, setFilterPriceRange] = useState('all');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   
   useEffect(() => {
     const banners = settings.heroBanners || [];
@@ -97,8 +106,11 @@ export function Storefront() {
     return () => clearInterval(interval);
   }, [settings.heroBanners]);
 
-  const addToCart = (product: any, selectedColor?: string) => {
-    const cartItemId = `${product.id}-${selectedColor || 'default'}`;
+  const addToCart = (product: any, selectedColor?: string, customData?: { text?: string, music?: string, image?: string }) => {
+    // Generate unique ID based on customization to separate items
+    const customHash = customData ? btoa(JSON.stringify(customData)).slice(0, 10) : 'default';
+    const cartItemId = `${product.id}-${selectedColor || 'default'}-${customHash}`;
+    
     setCart(prev => {
       const existing = prev.find(item => item.cartItemId === cartItemId);
       if (existing) {
@@ -106,10 +118,17 @@ export function Storefront() {
           item.cartItemId === cartItemId ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [...prev, { ...product, quantity: 1, selectedColor, cartItemId }];
+      return [...prev, { 
+        ...product, 
+        quantity: 1, 
+        selectedColor, 
+        cartItemId,
+        customText: customData?.text,
+        customMusic: customData?.music,
+        customImage: customData?.image
+      }];
     });
-    setCurrentView('checkout');
-    window.scrollTo(0, 0);
+    setIsCartOpen(true);
   };
 
   const updateQuantity = (cartItemId: string, delta: number) => {
@@ -146,11 +165,13 @@ export function Storefront() {
     
     const toast = (await import('react-hot-toast')).default;
     const { db } = await import('../lib/firebase');
-    const { collection, addDoc, doc, updateDoc, increment, serverTimestamp } = await import('firebase/firestore');
+    const { collection, addDoc, doc, writeBatch, increment, serverTimestamp } = await import('firebase/firestore');
 
     try {
       const updatedCart = [...cart];
-      // Upload files
+      const batch = writeBatch(db);
+      
+      // Upload files and queue stock deduction
       for (let i = 0; i < updatedCart.length; i++) {
         const item = updatedCart[i];
         if (item.file) {
@@ -162,16 +183,15 @@ export function Storefront() {
         }
         
         // Deduct stock
-        if (item.stock !== undefined) {
-          try {
-            updateDoc(doc(db, 'products', item.id), {
-              stock: increment(-item.quantity)
-            });
-          } catch(e) {
-            console.error('Failed to deduct stock', e);
-          }
+        if (item.id && item.stock !== undefined) {
+          batch.update(doc(db, 'products', item.id), {
+            stock: increment(-item.quantity)
+          });
         }
       }
+      
+      // Execute all stock deductions atomically
+      batch.commit().catch(e => console.error('Failed to deduct stock in batch', e));
 
       const subtotal = updatedCart.reduce((acc, item) => acc + item.price * item.quantity, 0);
       const discount = data.couponDiscount || 0;
@@ -194,6 +214,15 @@ export function Storefront() {
         }
         if (item.fileUrl !== undefined && item.fileUrl !== null) {
           cleanItem.fileUrl = item.fileUrl;
+        }
+        if (item.customText !== undefined && item.customText !== null) {
+          cleanItem.customText = item.customText;
+        }
+        if (item.customMusic !== undefined && item.customMusic !== null) {
+          cleanItem.customMusic = item.customMusic;
+        }
+        if (item.customImage !== undefined && item.customImage !== null) {
+          cleanItem.customImage = item.customImage;
         }
         return cleanItem;
       });
@@ -276,8 +305,116 @@ export function Storefront() {
 
   return (
     <div className="min-h-screen transition-colors duration-300" style={{ backgroundColor: settings.siteBackgroundColor || '#f9fafb' }}>
+      
+      {/* Cart Drawer */}
+      <AnimatePresence>
+        {isCartOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-[60]" onClick={() => setIsCartOpen(false)} />
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'tween', duration: 0.3 }} className="fixed top-0 right-0 h-full w-full max-w-md bg-white z-[70] shadow-xl flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                <h2 className="text-xl font-bold text-gray-800">Seu Carrinho</h2>
+                <button onClick={() => setIsCartOpen(false)} className="text-gray-500 hover:text-gray-800"><X size={24} /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+                {cart.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">Seu carrinho está vazio.</p>
+                ) : (
+                  cart.map(item => (
+                    <div key={item.cartItemId} className="flex gap-4 border-b border-gray-50 pb-4">
+                      <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-md" />
+                      <div className="flex-1">
+                        <h4 className="font-bold text-sm text-gray-800 line-clamp-2">{item.name}</h4>
+                        {item.selectedColor && <p className="text-xs text-gray-500 mt-1">Cor: {item.selectedColor}</p>}
+                        {item.customText && <p className="text-xs text-gray-500 mt-1 italic line-clamp-1">Texto: "{item.customText}"</p>}
+                        {item.customMusic && <p className="text-xs text-blue-500 mt-1 line-clamp-1 truncate hover:underline"><a href={item.customMusic} target="_blank" rel="noreferrer">Música (Link)</a></p>}
+                        {item.customImage && (
+                          <div className="mt-2 flex items-center gap-2 border border-gray-100 p-1 rounded-md w-fit bg-gray-50">
+                             <img src={item.customImage} alt="Custom upload" className="w-8 h-8 object-cover rounded shadow-sm" />
+                             <span className="text-[10px] text-gray-500 font-bold uppercase pr-2">Foto enviada</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between mt-2">
+                           <span className="font-bold text-[#783884]">{formatPrice(item.price)}</span>
+                           <div className="flex items-center gap-3 bg-gray-50 rounded-full px-2 py-1">
+                             <button onClick={() => updateQuantity(item.cartItemId, -1)} className="text-gray-500 hover:text-gray-800"><Minus size={14}/></button>
+                             <span className="text-sm font-bold">{item.quantity}</span>
+                             <button onClick={() => updateQuantity(item.cartItemId, 1)} className="text-gray-500 hover:text-gray-800"><Plus size={14}/></button>
+                           </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              {cart.length > 0 && (
+                <div className="p-4 border-t border-gray-100 bg-gray-50">
+                  <div className="flex justify-between font-bold text-lg mb-4 text-gray-800">
+                    <span>Total:</span>
+                    <span>{formatPrice(cart.reduce((acc, item) => acc + item.price * item.quantity, 0))}</span>
+                  </div>
+                  <button onClick={() => { setIsCartOpen(false); setCurrentView('checkout'); window.scrollTo(0,0); }} className="w-full text-white py-3 rounded-md font-bold hover:brightness-110 transition-all text-center" style={{ backgroundColor: settings.buyButtonColor || '#5ba324' }}>
+                    Finalizar Compra
+                  </button>
+                  <button onClick={() => setIsCartOpen(false)} className="w-full text-center mt-3 text-sm text-gray-500 hover:text-gray-800 font-medium cursor-pointer">
+                    Continuar Comprando
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Menu Drawer */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-[60] md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+             <motion.div initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'tween', duration: 0.3 }} className="fixed top-0 left-0 h-full w-full max-w-[280px] bg-white z-[70] shadow-xl flex flex-col md:hidden">
+                <div className="flex items-center justify-between p-4 border-b border-gray-100" style={{ backgroundColor: settings.headerColor }}>
+                  <span className="text-white font-bold">Menu</span>
+                  <button onClick={() => setIsMobileMenuOpen(false)} className="text-white hover:text-white/80"><X size={24} /></button>
+                </div>
+                <div className="flex-1 overflow-y-auto flex flex-col">
+                  {/* Categorias */}
+                  <div className="p-4 border-b border-gray-100">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Categorias</h3>
+                    <div className="flex flex-col gap-3">
+                      <button onClick={() => { setSearchParams({ view: 'custom' }); setIsMobileMenuOpen(false); }} className="text-left font-bold text-[#713f12]">Personalizados ✨</button>
+                      <button onClick={() => { goHome(); setIsMobileMenuOpen(false); }} className="text-left font-medium text-gray-800">Início</button>
+                      <button onClick={() => { setSearchParams({ category: 'all' }); setIsMobileMenuOpen(false); }} className="text-left font-medium text-gray-800">Todos os Produtos</button>
+                      {categories.map(cat => (
+                        <button key={cat} onClick={() => { setSearchParams({ category: cat }); setIsMobileMenuOpen(false); }} className="text-left font-medium text-gray-600">{cat}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Atalhos */}
+                  <div className="p-4">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Atalhos</h3>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center gap-3 text-gray-700">
+                        <MessageCircle size={20} />
+                        <span className="font-medium text-sm">Central de Atendimento</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-gray-700">
+                        <User size={20} />
+                        <span className="font-medium text-sm">Entrar ou Cadastrar</span>
+                      </div>
+                      <Link to="/admin" className="flex items-center gap-3 text-gray-700" onClick={() => setIsMobileMenuOpen(false)}>
+                        <User size={20} />
+                        <span className="font-medium text-sm">Painel Admin</span>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+             </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Top Header - Purple */}
-      <header style={{ backgroundColor: settings.headerColor, color: settings.headerTextColor || '#ffffff' }}>
+      <header className="sticky top-0 z-50 shadow-sm" style={{ backgroundColor: settings.headerColor, color: settings.headerTextColor || '#ffffff' }}>
         <style dangerouslySetInnerHTML={{ __html: `
           .header-hover-item:hover {
             color: ${settings.headerHoverTextColor || '#ffffff'} !important;
@@ -285,6 +422,14 @@ export function Storefront() {
         `}} />
         <div className="max-w-[1400px] mx-auto px-4">
           <div className="flex items-center justify-between h-16 sm:h-20 md:h-24 gap-3 md:gap-8">
+            {/* Hamburger (Mobile) */}
+            <button 
+              className="md:hidden text-inherit hover:opacity-80 p-1 -ml-2"
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <Menu size={28} />
+            </button>
+
             {/* Logo */}
             <div className="flex-shrink-0 cursor-pointer" onClick={goHome}>
               {logoUrl ? (
@@ -338,7 +483,7 @@ export function Storefront() {
               </div>
 
               <button 
-                onClick={() => setCurrentView('checkout')}
+                onClick={() => setIsCartOpen(true)}
                 className="flex items-center gap-2 relative header-hover-item transition-colors"
               >
                 <ShoppingCart size={28} />
@@ -480,22 +625,78 @@ export function Storefront() {
                     </p>
                   </div>
                   
-                  <button 
-                    onClick={goHome}
-                    className="text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 px-4 py-2 rounded-full bg-white transition-all w-fit cursor-pointer"
-                  >
-                    ← Voltar para o início
-                  </button>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <button 
+                      onClick={() => setIsFilterOpen(!isFilterOpen)}
+                      className="flex items-center gap-2 border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-purple-500 hover:bg-gray-50"
+                    >
+                      <Search size={16} /> Filtros { (filterInStock || filterPriceRange !== 'all') && <span className="w-2 h-2 rounded-full bg-purple-600"></span> }
+                    </button>
+                    <select 
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    >
+                      <option value="newest">Lançamentos</option>
+                      <option value="price_asc">Menor Preço</option>
+                      <option value="price_desc">Maior Preço</option>
+                    </select>
+
+                    <button 
+                      onClick={goHome}
+                      className="text-xs font-semibold text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 px-4 py-2 rounded-full bg-white transition-all w-fit cursor-pointer hidden sm:block"
+                    >
+                      ← Voltar para o início
+                    </button>
+                  </div>
                 </div>
+
+                {isFilterOpen && (
+                  <div className="bg-white border border-gray-100 rounded-xl p-4 mb-8 flex flex-col sm:flex-row gap-6 shadow-sm">
+                    <div>
+                      <h4 className="font-bold text-sm text-gray-800 mb-2">Disponibilidade</h4>
+                      <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                        <input type="checkbox" checked={filterInStock} onChange={(e) => setFilterInStock(e.target.checked)} className="rounded text-purple-600 focus:ring-purple-500" />
+                        Apenas em estoque
+                      </label>
+                    </div>
+                    <div>
+                       <h4 className="font-bold text-sm text-gray-800 mb-2">Faixa de Preço</h4>
+                       <select value={filterPriceRange} onChange={(e) => setFilterPriceRange(e.target.value)} className="border border-gray-200 rounded-md px-3 py-1.5 text-sm text-gray-700 bg-white w-full sm:w-auto">
+                         <option value="all">Todos os preços</option>
+                         <option value="under50">Até R$ 50,00</option>
+                         <option value="50to100">R$ 50,00 a R$ 100,00</option>
+                         <option value="over100">Acima de R$ 100,00</option>
+                       </select>
+                    </div>
+                  </div>
+                )}
 
                 {/* Product Grid */}
                 {(() => {
-                  const filteredProducts = visibleProducts.filter(p => {
+                  let filteredProducts = visibleProducts.filter(p => {
                     const matchesCategory = categoryParam === 'all' || (p.category || 'Outros') === categoryParam;
                     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                                           (p.description || '').toLowerCase().includes(searchQuery.toLowerCase());
-                    return matchesCategory && matchesSearch;
+                    
+                    let matchesStock = true;
+                    if (filterInStock) {
+                      matchesStock = p.stock !== undefined && p.stock > 0;
+                    }
+
+                    let matchesPrice = true;
+                    if (filterPriceRange === 'under50') matchesPrice = p.price < 50;
+                    else if (filterPriceRange === '50to100') matchesPrice = p.price >= 50 && p.price <= 100;
+                    else if (filterPriceRange === 'over100') matchesPrice = p.price > 100;
+
+                    return matchesCategory && matchesSearch && matchesStock && matchesPrice;
                   });
+
+                  if (sortBy === 'price_asc') {
+                    filteredProducts.sort((a, b) => a.price - b.price);
+                  } else if (sortBy === 'price_desc') {
+                    filteredProducts.sort((a, b) => b.price - a.price);
+                  }
 
                   if (filteredProducts.length === 0) {
                     return (
@@ -528,22 +729,17 @@ export function Storefront() {
               // Standard Homepage View
               <div className="-mx-4 md:mx-0">
                 {/* Hero Banner Carousel */}
-                <section className="w-full bg-[#f9e5e6] overflow-hidden relative rounded-2xl mb-12" style={{ height: '400px' }}>
-                  <AnimatePresence mode="wait">
-                    {(() => {
-                      const banners = settings.heroBanners && settings.heroBanners.length > 0 
-                        ? settings.heroBanners 
-                        : [{
-                            id: 'legacy',
-                            image: settings.heroBannerImage,
-                            titleHtml: settings.heroBannerTitleHtml,
-                            subtitle: settings.heroBannerSubtitle,
-                            buttonText: settings.heroBannerButtonText,
-                            buttonColor: settings.heroBannerButtonColor
-                          }];
-                      const currentBanner = banners[currentBannerIdx % banners.length];
-                      
-                      return (
+                {(() => {
+                  const banners = settings.heroBanners || [];
+                  if (banners.length === 0) return null;
+
+                  const currentBanner = banners[currentBannerIdx % banners.length];
+                  
+                  if (!currentBanner?.image) return null;
+
+                  return (
+                    <section className="w-full bg-[#f9e5e6] overflow-hidden relative rounded-2xl mb-12" style={{ height: '400px' }}>
+                      <AnimatePresence mode="wait">
                         <motion.div
                           key={currentBannerIdx}
                           initial={{ opacity: 0 }}
@@ -594,26 +790,26 @@ export function Storefront() {
                               )}
                            </div>
                         </motion.div>
-                      );
-                    })()}
-                  </AnimatePresence>
+                      </AnimatePresence>
 
-                  {/* Dots indicator */}
-                  {settings.heroBanners && settings.heroBanners.length > 1 && (
-                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
-                      {settings.heroBanners.map((_, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => setCurrentBannerIdx(idx)}
-                          className={`w-3 h-3 rounded-full transition-colors ${
-                            idx === currentBannerIdx % settings.heroBanners.length ? 'bg-white' : 'bg-white/50'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </section>
-                
+                      {/* Dots indicator */}
+                      {settings.heroBanners && settings.heroBanners.length > 1 && (
+                        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
+                          {settings.heroBanners.map((_, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setCurrentBannerIdx(idx)}
+                              className={`w-3 h-3 rounded-full transition-colors ${
+                                idx === currentBannerIdx % settings.heroBanners.length ? 'bg-white' : 'bg-white/50'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  );
+                })()}
+
                 {/* Features Row */}
                 {settings.storeFeatures && settings.storeFeatures.length > 0 && (
                   <section className="border-b border-gray-200 bg-white rounded-2xl mb-12 shadow-xs">
@@ -655,28 +851,34 @@ export function Storefront() {
                 )}
 
                 {/* Promo Banners */}
-                <section className="max-w-[1400px] mx-auto py-4 mb-12">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="rounded-3xl overflow-hidden relative h-[200px] md:h-[250px] flex items-center px-6 md:px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner1ColorStart}, ${settings.promoBanner1ColorEnd})` }} onClick={() => {
-                        setSearchParams({ category: 'Música' });
-                      }}>
-                         <div className="z-10 text-white">
-                           <h3 className="text-3xl font-bold text-yellow-300 mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner1TitleHtml || '' }}></h3>
-                           <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner1SubtitleHtml || '' }}></p>
-                           <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f] cursor-pointer">{settings.promoBanner1ButtonText}</button>
-                         </div>
-                      </div>
-                      <div className="rounded-3xl overflow-hidden relative h-[200px] md:h-[250px] flex items-center px-6 md:px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner2ColorStart}, ${settings.promoBanner2ColorEnd})` }} onClick={() => {
-                        setSearchParams({ category: 'Canecas' });
-                      }}>
-                         <div className="z-10 text-white">
-                           <h3 className="text-3xl font-bold text-white mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner2TitleHtml || '' }}></h3>
-                           <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner2SubtitleHtml || '' }}></p>
-                           <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f] cursor-pointer">{settings.promoBanner2ButtonText}</button>
-                         </div>
-                      </div>
-                   </div>
-                </section>
+                {(settings.promoBanner1TitleHtml || settings.promoBanner2TitleHtml) && (
+                  <section className="max-w-[1400px] mx-auto py-4 mb-12">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {settings.promoBanner1TitleHtml && (
+                          <div className="rounded-3xl overflow-hidden relative h-[200px] md:h-[250px] flex items-center px-6 md:px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner1ColorStart}, ${settings.promoBanner1ColorEnd})` }} onClick={() => {
+                            setSearchParams({ category: 'Música' });
+                          }}>
+                             <div className="z-10 text-white">
+                               <h3 className="text-3xl font-bold text-yellow-300 mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner1TitleHtml }} />
+                               {settings.promoBanner1SubtitleHtml && <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner1SubtitleHtml }} />}
+                               <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f] cursor-pointer">{settings.promoBanner1ButtonText}</button>
+                             </div>
+                          </div>
+                        )}
+                        {settings.promoBanner2TitleHtml && (
+                          <div className="rounded-3xl overflow-hidden relative h-[200px] md:h-[250px] flex items-center px-6 md:px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner2ColorStart}, ${settings.promoBanner2ColorEnd})` }} onClick={() => {
+                            setSearchParams({ category: 'Canecas' });
+                          }}>
+                             <div className="z-10 text-white">
+                               <h3 className="text-3xl font-bold text-white mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner2TitleHtml }} />
+                               {settings.promoBanner2SubtitleHtml && <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner2SubtitleHtml }} />}
+                               <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f] cursor-pointer">{settings.promoBanner2ButtonText}</button>
+                             </div>
+                          </div>
+                        )}
+                     </div>
+                  </section>
+                )}
 
                 {/* Category Sections */}
                 <div className="space-y-16 max-w-[1400px] mx-auto">
