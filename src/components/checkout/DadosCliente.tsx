@@ -86,20 +86,7 @@ export function DadosCliente({
             <input required type="text" value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} className="w-full border border-gray-300 rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400" />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">CPF</label>
-            <input 
-              type="text" 
-              value={formData.cpf} 
-              maxLength={14}
-              onChange={e => {
-                setFormData({...formData, cpf: maskCPF(e.target.value)});
-                if (errors.cpf) setErrors({...errors, cpf: false});
-              }} 
-              className={`w-full border ${errors.cpf ? 'border-red-500 bg-red-50' : 'border-gray-300'} rounded-sm px-3 py-2 text-sm outline-none focus:border-gray-400 max-w-[150px]`} 
-            />
-            {errors.cpf && <span className="text-xs text-red-500 mt-1 block">CPF inválido</span>}
-          </div>
+          
 
           <div className="grid grid-cols-2 gap-4">
             <div>

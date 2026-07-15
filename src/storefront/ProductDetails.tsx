@@ -571,8 +571,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
          <div className="max-w-[1400px] mx-auto px-4">
             <h2 className="text-2xl font-bold text-gray-800 mb-8 text-center">Você também pode gostar</h2>
             <ProductCarousel 
-              products={products.filter(p => p.id !== product.id && p.category === product.category).slice(0, 10)} 
-              title="" 
+              onAddToCart={onAddToCart} products={products.filter(p => p.id !== product.id && p.category === product.category).slice(0, 10)} 
             />
          </div>
       </div>

@@ -30,6 +30,8 @@ export interface AppSettings {
   faviconUrl?: string;
   primaryColor: string;
   whatsappNumber: string;
+
+  adminEmail?: string;
   paymentMethods: {
     pix: boolean;
     credit: boolean;
@@ -99,6 +101,8 @@ const defaultSettings: AppSettings = {
   faviconUrl: '',
   primaryColor: '#facc15',
   whatsappNumber: '5561981365428',
+  adminEmail: 'alaondez@gmail.com',
+
   paymentMethods: {
     pix: true,
     credit: true,

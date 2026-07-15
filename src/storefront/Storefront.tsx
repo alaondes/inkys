@@ -234,6 +234,13 @@ export function Storefront() {
         cpf: data.cpf || '',
         phone: data.phone || '',
         address: data.address || '',
+        street: data.street || '',
+        number: data.number || '',
+        complement: data.complement || '',
+        neighborhood: data.neighborhood || '',
+        city: data.city || '',
+        state: data.state || '',
+        zipCode: data.zipCode || '',
         paymentMethod: data.paymentMethod || '',
         shippingCost: Number(data.shippingCost) || 0,
         couponDiscount: Number(data.couponDiscount) || 0,
@@ -261,6 +268,17 @@ export function Storefront() {
       try {
         const docRef = await withTimeout(addDoc(collection(db, 'orders'), orderData));
         orderId = docRef.id;
+        
+        // Trigger automatic email
+        fetch('/api/email/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            order: { ...orderData, date: new Date().toISOString(), id: orderId },
+            customerEmail: data.email
+          })
+        }).catch(err => console.error("Error triggering email:", err));
+        
       } catch (dbError) {
         console.warn("Could not save order to db, proceeding with WhatsApp only:", dbError);
       }

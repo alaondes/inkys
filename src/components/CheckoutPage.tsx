@@ -156,14 +156,14 @@ export function CheckoutPage({
     // Validation
     const newErrors: {[key: string]: boolean} = {};
     if (!validateEmail(formData.email)) newErrors.email = true;
-    if (!validateCPF(formData.cpf)) newErrors.cpf = true;
+    
     if (formData.celular.replace(/\D/g, '').length < 10) newErrors.celular = true;
     if (formData.cep.replace(/\D/g, '').length !== 8) newErrors.cep = true;
     if (birthDate && birthDate.replace(/\D/g, '').length !== 8) newErrors.birthDate = true;
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      toast.error('Por favor, corrija os campos destacados em vermelho (CPF, e-mail, etc).');
+      toast.error('Por favor, corrija os campos destacados em vermelho (e-mail, etc).');
       return;
     }
     
@@ -184,12 +184,19 @@ export function CheckoutPage({
         email: formData.email,
         type: tipo,
         name: formData.nome,
-        cpf: formData.cpf,
+        
         gender: gender,
         birthDate: birthDate,
         phone: formData.celular,
         landline: landline,
         address: `${formData.rua ? formData.rua + ', ' : ''}${formData.numero ? formData.numero + ' - ' : ''}${formData.complemento ? formData.complemento + ' - ' : ''}${formData.bairro ? formData.bairro + ', ' : ''}${formData.cidade ? formData.cidade + ' - ' : ''}CEP: ${formData.cep}`,
+        street: formData.rua,
+        number: formData.numero,
+        complement: formData.complemento,
+        neighborhood: formData.bairro,
+        city: formData.cidade,
+        state: formData.estado,
+        zipCode: formData.cep,
         paymentMethod: paymentMethod,
         shippingCost: selectedShipping,
         coupon: appliedCoupon ? appliedCoupon.code : undefined,

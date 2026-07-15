@@ -17,6 +17,7 @@ export function AdminSettings() {
   const [logoUrl, setLogoUrl] = useState(settings.logoUrl);
   const [faviconUrl, setFaviconUrl] = useState(settings.faviconUrl || '');
   const [whatsappNumber, setWhatsappNumber] = useState(settings.whatsappNumber);
+  const [adminEmail, setAdminEmail] = useState(settings.adminEmail || '');
   const [paymentMethods, setPaymentMethods] = useState(settings.paymentMethods);
   
   const [storefrontSettings, setStorefrontSettings] = useState({
@@ -169,7 +170,8 @@ export function AdminSettings() {
        logoUrl, 
        faviconUrl,
        storeName: storefrontSettings.storeName,
-       whatsappNumber: sanitizedWhatsapp
+       whatsappNumber: sanitizedWhatsapp,
+       adminEmail
     });
     showToast('Dados da loja salvos com sucesso!');
   };
@@ -350,6 +352,18 @@ export function AdminSettings() {
                       <p className="text-xs text-gray-500">Recomendado: Ícone quadrado pequeno (PNG/ICO)</p>
                     </div>
                   </div>
+                </div>
+
+                <div className="space-y-2 pt-4 border-t border-gray-100">
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">E-mail para Receber Pedidos</label>
+                  <input 
+                    type="email" 
+                    value={adminEmail} 
+                    onChange={e => setAdminEmail(e.target.value)}
+                    placeholder="Ex: seuemail@gmail.com"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                  />
+                  <p className="text-xs text-gray-400 ml-1">E-mail que receberá a cópia dos pedidos efetuados.</p>
                 </div>
 
                 <div className="space-y-2 pt-4 border-t border-gray-100">

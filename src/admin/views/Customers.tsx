@@ -414,8 +414,12 @@ export function Customers() {
                 {/* Sign-off */}
                 <div className="mt-16 pt-6 border-t border-gray-200 text-center text-xs text-gray-500">
                   <p>Recebemos o valor acima especificado, referente à prestação de serviços / venda de produtos.</p>
-                  <div className="mt-12 border-t border-gray-800 w-48 mx-auto pt-1.5 font-bold text-gray-800">
-                    Assinatura
+                  <div className="mt-8 flex justify-center">
+                    {settings.logoUrl ? (
+                      <img src={settings.logoUrl} alt="Assinatura" className="h-16 object-contain opacity-80" />
+                    ) : (
+                      <div className="h-16"></div>
+                    )}
                   </div>
                 </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink, FileText, Printer } from 'lucide-react';
+import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink, FileText, Printer, User, Calendar, MapPin } from 'lucide-react';
 import { formatPrice } from '../../data/products';
 import { db } from '../../lib/firebase';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
@@ -13,6 +13,11 @@ interface OrderItem {
   quantity: number;
   price: number;
   fileUrl?: string;
+  image?: string;
+  selectedColor?: string;
+  customText?: string;
+  customMusic?: string;
+  customImage?: string;
 }
 
 interface Order {
@@ -85,6 +90,8 @@ export function Orders() {
         return {
           id: doc.id,
           customer: data.customer || 'Cliente não identificado',
+          email: data.email || data.shippingInfo?.email || data.celular || data.shippingInfo?.celular || '',
+          phone: data.phone || data.celular || data.shippingInfo?.phone || data.shippingInfo?.celular || '',
           date: formattedDate,
           total: data.total || 0,
           status: data.status || 'Pendente',
@@ -305,35 +312,72 @@ export function Orders() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-2xl rounded-2xl p-6 relative border border-gray-200 shadow-xl flex flex-col max-h-[90vh]">
             <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100 shrink-0">
-              <h3 className="text-xl font-bold uppercase tracking-wider flex items-center gap-3 text-gray-900">
-                Pedido <span className="text-[var(--color-primary)]">{selectedOrder.id}</span>
+              <h3 className="text-lg font-bold uppercase tracking-wider flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-gray-800">
+                PEDIDO 
+                <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-md text-sm tracking-widest font-mono border border-gray-200">
+                  {selectedOrder.id}
+                </span>
               </h3>
               <button onClick={() => setSelectedOrder(null)} className="text-gray-400 hover:text-gray-900"><XCircle size={24} /></button>
             </div>
             
             <div className="flex-1 overflow-y-auto space-y-6 pr-2 text-gray-900">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-gray-500 mb-1">Cliente</p>
-                  <p className="text-sm font-medium">{selectedOrder.customer}</p>
-                  {selectedOrder.email && <p className="text-sm text-gray-600">{selectedOrder.email}</p>}
-                  {selectedOrder.phone && <p className="text-sm text-gray-600">{selectedOrder.phone}</p>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  <div className="flex items-center gap-2 mb-3">
+                    <User className="text-gray-400" size={16} />
+                    <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Cliente</p>
+                  </div>
+                  <p className="text-sm font-bold text-gray-900 mb-2">{selectedOrder.customer}</p>
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-600"><span className="font-semibold text-gray-700">Email:</span> {selectedOrder.email || <span className="text-gray-400 italic">Não informado</span>}</p>
+                    <p className="text-xs text-gray-600"><span className="font-semibold text-gray-700">Celular:</span> {selectedOrder.phone || <span className="text-gray-400 italic">Não informado</span>}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-gray-500 mb-1">Data do Pedido</p>
-                  <p className="text-sm">{selectedOrder.date}</p>
+                
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calendar className="text-gray-400" size={16} />
+                    <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Data do Pedido</p>
+                  </div>
+                  <p className="text-sm font-medium text-gray-900">{selectedOrder.date}</p>
                 </div>
               </div>
 
               {selectedOrder.shippingInfo && (
-                <div className="border-t border-gray-100 pt-4">
-                  <p className="text-[10px] uppercase font-bold text-gray-500 mb-2">Endereço de Entrega</p>
-                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm">
-                    <p>{selectedOrder.shippingInfo.street}, {selectedOrder.shippingInfo.number} {selectedOrder.shippingInfo.complement && `- ${selectedOrder.shippingInfo.complement}`}</p>
-                    <p>{selectedOrder.shippingInfo.neighborhood} - {selectedOrder.shippingInfo.city}/{selectedOrder.shippingInfo.state}</p>
-                    <p>CEP: {selectedOrder.shippingInfo.zipCode}</p>
-                    {selectedOrder.shippingInfo.cpf && <p className="mt-2 text-gray-600">CPF: {selectedOrder.shippingInfo.cpf}</p>}
-                    <p className="mt-2 font-bold text-[var(--color-primary)]">Frete: {selectedOrder.shippingInfo.shippingType === 'sedex' ? 'Sedex' : 'PAC'} ({formatPrice(selectedOrder.shippingInfo.shippingCost || 0)})</p>
+                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-[var(--color-primary)]"></div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <MapPin className="text-[var(--color-primary)]" size={18} />
+                    <p className="text-xs uppercase font-bold text-gray-700 tracking-wider">Endereço de Entrega</p>
+                  </div>
+                  
+                  <div className="text-sm text-gray-700 space-y-1.5 pl-1">
+                    {selectedOrder.shippingInfo.street ? (
+                      <>
+                        <p className="font-medium text-gray-900 text-base">{selectedOrder.shippingInfo.street}, {selectedOrder.shippingInfo.number} {selectedOrder.shippingInfo.complement && <span className="text-gray-500 font-normal">- {selectedOrder.shippingInfo.complement}</span>}</p>
+                        <p>{selectedOrder.shippingInfo.neighborhood} - {selectedOrder.shippingInfo.city} / {selectedOrder.shippingInfo.state}</p>
+                        <p className="text-gray-500 pt-1">CEP: <span className="font-medium text-gray-700">{selectedOrder.shippingInfo.zipCode}</span></p>
+                      </>
+                    ) : (
+                      <p className="whitespace-pre-line leading-relaxed text-gray-800">{selectedOrder.shippingInfo.address}</p>
+                    )}
+                    
+                    <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {selectedOrder.shippingInfo.cpf && (
+                        <div>
+                          <p className="text-[10px] uppercase text-gray-400 font-bold mb-0.5">CPF / CNPJ</p>
+                          <p className="font-medium">{selectedOrder.shippingInfo.cpf}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-[10px] uppercase text-gray-400 font-bold mb-0.5">Frete Selecionado</p>
+                        <p className="font-bold text-[var(--color-primary)]">
+                          {selectedOrder.shippingInfo.shippingType === 'sedex' ? 'Sedex' : 'PAC'} 
+                          <span className="text-gray-600 font-medium ml-1">({formatPrice(selectedOrder.shippingInfo.shippingCost || 0)})</span>
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -341,23 +385,77 @@ export function Orders() {
               <div className="space-y-3 border-t border-gray-100 pt-4">
                 <p className="text-[10px] uppercase font-bold text-gray-500">Itens do Pedido</p>
                 {selectedOrder.items.map((item, i) => (
-                  <div key={i} className="flex flex-col gap-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                    <div className="flex justify-between items-center">
-                      <div className="flex gap-3 items-center">
-                        <span className="bg-white border border-gray-200 text-xs px-2 py-1 rounded font-bold">{item.quantity}x</span>
-                        <span className="text-sm text-gray-900">{item.name}</span>
+                  <div key={i} className="flex flex-col gap-2 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <div className="flex justify-between items-start">
+                      <div className="flex gap-3 items-start">
+                        {item.image && (
+                          <div className="w-12 h-12 rounded-md overflow-hidden bg-white border border-gray-200 shrink-0">
+                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-white border border-gray-200 text-xs px-2 py-0.5 rounded-md font-bold text-gray-700 shadow-sm">{item.quantity}x</span>
+                            <span className="text-sm font-bold text-gray-900 leading-tight">{item.name}</span>
+                          </div>
+                          {item.selectedColor && (
+                            <span className="text-xs text-gray-500 mt-1">Cor: <span className="font-semibold text-gray-700">{item.selectedColor}</span></span>
+                          )}
+                        </div>
                       </div>
                       <span className="font-bold text-sm text-[var(--color-primary)]">{formatPrice(item.price * item.quantity)}</span>
                     </div>
-                    {item.fileUrl && (
-                      <a 
-                        href={item.fileUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1 mt-1 w-fit"
-                      >
-                        <ExternalLink size={12} /> Ver arte enviada
-                      </a>
+                    
+                    {/* Exibição das Personalizações */}
+                    {(item.customText || item.customMusic || item.fileUrl || item.customImage) && (
+                      <div className="mt-2 pl-[4.5rem] space-y-2">
+                        {item.customText && (
+                          <div className="flex items-start gap-2 text-xs">
+                            <span className="text-gray-400 mt-0.5">💬</span>
+                            <div>
+                              <span className="text-gray-500 font-medium">Texto/Nome:</span>
+                              <p className="text-gray-800 font-semibold">{item.customText}</p>
+                            </div>
+                          </div>
+                        )}
+                        {item.customMusic && (
+                          <div className="flex items-start gap-2 text-xs">
+                            <span className="text-gray-400 mt-0.5">🎵</span>
+                            <div>
+                              <span className="text-gray-500 font-medium">Link Spotify:</span>
+                              <a href={item.customMusic} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline block truncate max-w-[200px] sm:max-w-xs">
+                                {item.customMusic}
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                        {item.customImage && (
+                          <div className="flex items-start gap-2 text-xs">
+                            <span className="text-gray-400 mt-0.5">🖼️</span>
+                            <div>
+                              <span className="text-gray-500 font-medium">Foto Personalizada:</span>
+                              <div className="mt-1">
+                                <a href={item.customImage} target="_blank" rel="noopener noreferrer">
+                                  <img src={item.customImage} alt="Foto Personalizada" className="h-16 rounded border border-gray-200 hover:opacity-80 transition-opacity" />
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {item.fileUrl && !item.customImage && (
+                          <div className="flex items-start gap-2 text-xs">
+                            <span className="text-gray-400 mt-0.5">📎</span>
+                            <a 
+                              href={item.fileUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 underline font-medium flex items-center gap-1"
+                            >
+                              <ExternalLink size={12} /> Ver arte enviada
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 ))}
@@ -600,8 +698,12 @@ export function Orders() {
                 {/* Sign-off */}
                 <div className="mt-16 pt-6 border-t border-gray-200 text-center text-xs text-gray-500">
                   <p>Recebemos o valor acima especificado, referente à prestação de serviços / venda de produtos.</p>
-                  <div className="mt-12 border-t border-gray-800 w-48 mx-auto pt-1.5 font-bold text-gray-800">
-                    Assinatura
+                  <div className="mt-8 flex justify-center">
+                    {settings.logoUrl ? (
+                      <img src={settings.logoUrl} alt="Assinatura" className="h-16 object-contain opacity-80" />
+                    ) : (
+                      <div className="h-16"></div>
+                    )}
                   </div>
                 </div>
 

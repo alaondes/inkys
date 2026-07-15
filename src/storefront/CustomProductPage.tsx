@@ -285,10 +285,10 @@ export function CustomProductPage({ onBack, onAddToCart }: { onBack: () => void,
                   </div>
 
                   {/* Informational Guidelines / Templates for the specific product */}
-                  {(guideText || guideImage || selectedProduct.templateUrl) && (
+                  {(guideText || guideImage || selectedProduct.templateFile) && (
                     <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-5 space-y-4">
                       
-                      {selectedProduct.templateUrl && (
+                      {selectedProduct.templateFile && (
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-xs border border-blue-100">
                           <div className="flex gap-3">
                             <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
@@ -303,7 +303,7 @@ export function CustomProductPage({ onBack, onAddToCart }: { onBack: () => void,
                           </div>
                           
                           <a 
-                            href={selectedProduct.templateUrl} 
+                            href={selectedProduct.templateFile} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="bg-[var(--color-primary)] text-white hover:brightness-110 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 whitespace-nowrap"
