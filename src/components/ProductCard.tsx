@@ -132,51 +132,53 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           </div>
         )}
         
-        <div className="flex items-center gap-0.5 sm:gap-1 mb-1.5 sm:mb-2 shrink-0">
-          {[...Array(5)].map((_, i) => (
-            <Star key={i} size={11} className={i < rating ? "fill-yellow-400 text-yellow-400" : "fill-gray-200 text-gray-200"} />
-          ))}
-          <span className="text-[10px] sm:text-xs text-yellow-500 font-medium ml-0.5 sm:ml-1">({reviews})</span>
-        </div>
-        
-        <div className="mb-3 sm:mb-4 w-full shrink-0">
-          <div className="text-lg xs:text-xl sm:text-2xl md:text-3xl font-bold leading-none mb-0.5 sm:mb-1" style={{ color: settings.buyButtonColor }}>
-            {formatPrice(pixPrice)} <span className="text-[10px] sm:text-sm font-normal">no pix</span>
+        <div className="flex flex-col items-center mt-auto w-full">
+          <div className="flex items-center gap-0.5 sm:gap-1 mb-1.5 sm:mb-2 shrink-0">
+            {[...Array(5)].map((_, i) => (
+              <Star key={i} size={11} className={i < rating ? "fill-yellow-400 text-yellow-400" : "fill-gray-200 text-gray-200"} />
+            ))}
+            <span className="text-[10px] sm:text-xs text-yellow-500 font-medium ml-0.5 sm:ml-1">({reviews})</span>
           </div>
-          <div className="text-[9px] sm:text-[11px] text-gray-500 mb-1 sm:mb-2">com {Math.round(pixDiscount * 100)}% de desconto</div>
           
-          {product.compareAtPrice && product.compareAtPrice > product.price && (
-            <div className="text-xs sm:text-sm font-bold text-gray-400 line-through decoration-gray-400">
-              {formatPrice(product.compareAtPrice)}
+          <div className="mb-3 sm:mb-4 w-full shrink-0">
+            <div className="text-lg xs:text-xl sm:text-2xl md:text-3xl font-bold leading-none mb-0.5 sm:mb-1" style={{ color: settings.buyButtonColor }}>
+              {formatPrice(pixPrice)} <span className="text-[10px] sm:text-sm font-normal">no pix</span>
             </div>
-          )}
-          
-          <div className="text-xs sm:text-sm font-bold text-gray-800">
-            {formatPrice(product.price)}
+            <div className="text-[9px] sm:text-[11px] text-gray-500 mb-1 sm:mb-2">com {Math.round(pixDiscount * 100)}% de desconto</div>
+            
+            {product.compareAtPrice && product.compareAtPrice > product.price && (
+              <div className="text-xs sm:text-sm font-bold text-gray-400 line-through decoration-gray-400">
+                {formatPrice(product.compareAtPrice)}
+              </div>
+            )}
+            
+            <div className="text-xs sm:text-sm font-bold text-gray-800">
+              {formatPrice(product.price)}
+            </div>
+            {settings.paymentMethods?.credit && (
+              <div className="text-[10px] sm:text-[13px] text-gray-600 leading-tight mt-0.5">
+                até <span className="font-bold">{installments}x</span> de <span className="font-bold">{formatPrice(installmentPrice)}</span> sem juros
+              </div>
+            )}
           </div>
-          {settings.paymentMethods?.credit && (
-            <div className="text-[10px] sm:text-[13px] text-gray-600 leading-tight mt-0.5">
-              até <span className="font-bold">{installments}x</span> de <span className="font-bold">{formatPrice(installmentPrice)}</span> sem juros
-            </div>
-          )}
-        </div>
-        
-        <div className="flex flex-col gap-1.5 sm:gap-2 w-full mt-auto">
-          <button 
-            onClick={() => product.stock !== undefined && product.stock <= 0 ? null : onAddToCart(product, selectedColor)}
-            disabled={product.stock !== undefined && product.stock <= 0}
-            className={`w-full text-white py-1.5 sm:py-2.5 rounded font-bold text-xs sm:text-sm md:text-[15px] transition-all ${product.stock !== undefined && product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : 'hover:brightness-110'}`}
-            style={{ backgroundColor: product.stock !== undefined && product.stock <= 0 ? '#9CA3AF' : settings.buyButtonColor }}
-          >
-            {product.stock !== undefined && product.stock <= 0 ? 'Esgotado' : 'Comprar'}
-          </button>
-          <button 
-            onClick={handleWhatsapp}
-            className="w-full border border-[#5ba324] text-[#5ba324] py-1.5 sm:py-2.5 rounded text-[10px] sm:text-[11px] md:text-[13px] hover:bg-green-50 transition-colors flex items-center justify-center gap-1 sm:gap-2"
-          >
-            <span className="truncate">Dúvidas pelo whatsapp</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#5ba324] shrink-0"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></svg>
-          </button>
+          
+          <div className="flex flex-col gap-1.5 sm:gap-2 w-full">
+            <button 
+              onClick={() => product.stock !== undefined && product.stock <= 0 ? null : onAddToCart(product, selectedColor)}
+              disabled={product.stock !== undefined && product.stock <= 0}
+              className={`w-full text-white py-1.5 sm:py-2.5 rounded font-bold text-xs sm:text-sm md:text-[15px] transition-all ${product.stock !== undefined && product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : 'hover:brightness-110'}`}
+              style={{ backgroundColor: product.stock !== undefined && product.stock <= 0 ? '#9CA3AF' : settings.buyButtonColor }}
+            >
+              {product.stock !== undefined && product.stock <= 0 ? 'Esgotado' : 'Comprar'}
+            </button>
+            <button 
+              onClick={handleWhatsapp}
+              className="w-full border border-[#5ba324] text-[#5ba324] py-1.5 sm:py-2.5 rounded text-[10px] sm:text-[11px] md:text-[13px] hover:bg-green-50 transition-colors flex items-center justify-center gap-1 sm:gap-2"
+            >
+              <span className="truncate">Dúvidas pelo whatsapp</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#5ba324] shrink-0"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
