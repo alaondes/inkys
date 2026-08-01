@@ -612,6 +612,12 @@ Agradecemos pela confiança e preferência!`);
       return;
     }
     
+    // Temporarily set a fixed width to ensure the PDF layout is correctly proportioned
+    const originalWidth = element.style.width;
+    const originalMaxWidth = element.style.maxWidth;
+    element.style.width = '800px';
+    element.style.maxWidth = '800px';
+    
     const loadingToast = toast.loading("Gerando PDF...");
     try {
       const html2pdfModule = await import('html2pdf.js');
@@ -621,7 +627,7 @@ Agradecemos pela confiança e preferência!`);
         margin:       10,
         filename:     `${docType === 'quote' ? 'orcamento' : 'recibo'}-${selectedSavedDocId || 'novo'}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: true },
+        html2canvas:  { scale: 2, useCORS: true, logging: true, windowWidth: 800 },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
       
@@ -631,6 +637,9 @@ Agradecemos pela confiança e preferência!`);
     } catch (e: any) {
       console.error("Failed to generate PDF", e);
       toast.error(`Erro ao gerar PDF: ${e.message || 'Erro desconhecido'}`, { id: loadingToast });
+    } finally {
+      element.style.width = originalWidth;
+      element.style.maxWidth = originalMaxWidth;
     }
   };
 

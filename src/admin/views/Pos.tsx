@@ -272,6 +272,12 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
       return;
     }
     
+    // Temporarily set a fixed width to ensure the PDF layout is correctly proportioned
+    const originalWidth = element.style.width;
+    const originalMaxWidth = element.style.maxWidth;
+    element.style.width = '800px';
+    element.style.maxWidth = '800px';
+    
     const loadingToast = toast.loading("Gerando PDF...");
     try {
       const html2pdfModule = await import('html2pdf.js');
@@ -281,7 +287,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
         margin:       10,
         filename:     `${savedOrder.status === 'Orçamento' ? 'orcamento' : 'recibo'}-${savedOrder.id}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: true },
+        html2canvas:  { scale: 2, useCORS: true, logging: true, windowWidth: 800 },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
       
@@ -291,6 +297,9 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
     } catch (e: any) {
       console.error("Failed to generate PDF", e);
       toast.error(`Erro ao gerar PDF: ${e.message || 'Erro desconhecido'}`, { id: loadingToast });
+    } finally {
+      element.style.width = originalWidth;
+      element.style.maxWidth = originalMaxWidth;
     }
   };
 
