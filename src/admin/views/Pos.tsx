@@ -89,8 +89,10 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
   const [paymentMethod, setPaymentMethod] = useState('');
   const [installments, setInstallments] = useState(1);
   const [downPayment, setDownPayment] = useState<number>(0);
+  const [paymentCondition, setPaymentCondition] = useState('a_vista');
 
   const allItems = [...products.map(p => ({...p, isAvulso: false})), ...avulsos.map(a => ({...a, isAvulso: true}))];
+
 
   const filteredProducts = allItems.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(search.toLowerCase()));
@@ -172,6 +174,12 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
   const discountAmount = pixDiscountAmount + (extraDiscount || 0);
   const total = subtotal - discountAmount + (shippingMode === 'pago' ? shippingCost : 0);
 
+  React.useEffect(() => {
+    if ((paymentMethod === 'Pix' || paymentMethod === 'Dinheiro') && paymentCondition === '50_50') {
+      setDownPayment(total / 2);
+    }
+  }, [total, paymentMethod, paymentCondition]);
+
   const handleSave = async (status: 'Pendente' | 'Orçamento') => {
     if (cart.length === 0) {
       toast.error("O carrinho está vazio.");
@@ -219,6 +227,9 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
         notes,
         paymentPolicy,
         paymentMethod,
+        paymentConditions: (paymentMethod === 'Pix' || paymentMethod === 'Dinheiro') 
+                           ? (paymentCondition === '50_50' ? 'Sinal 50% / Entrega 50%' : 'À vista') 
+                           : '',
         installments,
         downPayment,
         createdAt: serverTimestamp(),
@@ -704,6 +715,20 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                       {[1,2,3,4,5,6,7,8,9,10,11,12].map(num => (
                         <option key={num} value={num}>{num}x</option>
                       ))}
+                    </select>
+                  </div>
+                )}
+
+                {(paymentMethod === 'Pix' || paymentMethod === 'Dinheiro') && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-gray-700">Condição:</span>
+                    <select
+                      value={paymentCondition}
+                      onChange={(e) => setPaymentCondition(e.target.value)}
+                      className="w-40 bg-white border border-gray-200/60 rounded-lg p-1.5 text-sm focus:border-[var(--color-primary)] outline-none transition-colors font-medium text-gray-800"
+                    >
+                      <option value="a_vista">À vista</option>
+                      <option value="50_50">Sinal 50% / Entrega 50%</option>
                     </select>
                   </div>
                 )}
@@ -1221,7 +1246,11 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                       {savedOrder.paymentMethod && (
                         <div className="flex justify-between text-gray-700 font-semibold border-t border-dashed border-gray-200 pt-2 mt-2">
                           <span>Forma de Pagamento:</span>
-                          <span>{savedOrder.paymentMethod} {savedOrder.paymentMethod === 'Cartão de Crédito' && savedOrder.installments > 1 ? `(${savedOrder.installments}x)` : ''}</span>
+                          <span>
+                            {savedOrder.paymentMethod}
+                            {savedOrder.paymentMethod === 'Cartão de Crédito' && savedOrder.installments > 1 ? ` (${savedOrder.installments}x)` : ''}
+                            {(savedOrder.paymentMethod === 'Pix' || savedOrder.paymentMethod === 'Dinheiro') && savedOrder.paymentConditions ? ` - ${savedOrder.paymentConditions}` : ''}
+                          </span>
                         </div>
                       )}
 
@@ -1245,6 +1274,40 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                     </div>
                   </div>
                 </div>
+
+                {savedOrder.shippingMode && savedOrder.shippingMode !== 'retirada' && savedOrder.shippingInfo && (
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mt-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">ENDEREÇO DE ENTREGA:</h3>
+                    <p className="text-xs text-gray-700 font-medium whitespace-pre-line">
+                      {savedOrder.shippingInfo.street}, {savedOrder.shippingInfo.number} {savedOrder.shippingInfo.complement ? `- ${savedOrder.shippingInfo.complement}` : ''}
+                      <br />
+                      {savedOrder.shippingInfo.neighborhood} - {savedOrder.shippingInfo.city}/{savedOrder.shippingInfo.state}
+                      <br />
+                      CEP: {savedOrder.shippingInfo.zipCode}
+                    </p>
+                  </div>
+                )}
+
+                {/* Payment Policy Block */}
+                {savedOrder.paymentPolicy && (
+                  <div className="bg-blue-50/40 border border-blue-100 p-5 rounded-2xl space-y-2 mt-4 print:mt-6">
+                    <div className="flex items-center gap-1.5 text-blue-900 font-extrabold uppercase tracking-wide text-xs">
+                      <CreditCard size={14} className="text-blue-700" />
+                      <span>Política de Pagamento</span>
+                    </div>
+                    <p className="text-xs text-blue-900/90 whitespace-pre-line font-medium leading-relaxed">
+                      {savedOrder.paymentPolicy}
+                    </p>
+                  </div>
+                )}
+
+                {/* Additional Notes */}
+                {savedOrder.notes && (
+                  <div className="text-xs text-gray-600 border-t border-gray-100 pt-4 mt-4 bg-gray-50/50 p-4 rounded-xl leading-relaxed">
+                    <p className="font-extrabold uppercase tracking-wider text-gray-400 mb-1">Observações:</p>
+                    <p className="whitespace-pre-line font-medium">{savedOrder.notes}</p>
+                  </div>
+                )}
 
                 {/* Bottom Declaration / Footer */}
                 <div className="mt-8 border-t border-gray-100 pt-6 text-center text-[10px] text-gray-400 space-y-4">

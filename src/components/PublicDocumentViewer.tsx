@@ -137,6 +137,8 @@ export function PublicDocumentViewer() {
             customerDoc: orderData.shippingInfo?.cpf || orderData.receipt?.customerDoc || '',
             customerEmail: orderData.email || '',
             customerPhone: orderData.phone || orderData.celular || '',
+            shippingInfo: orderData.shippingInfo || null,
+            shippingMode: orderData.shippingMode || null,
             items: (orderData.items || []).map((item: any) => ({
               description: item.name || item.description || '',
               quantity: item.quantity || 1,
@@ -309,7 +311,9 @@ Agradecemos pela confiança e preferência!`,
     validUntil,
     status,
     emitter = {},
-    design = {}
+    design = {},
+    shippingInfo = null,
+    shippingMode = null
   } = documentData;
 
   const documentTheme = design.theme || 'charcoal';
@@ -439,6 +443,19 @@ Agradecemos pela confiança e preferência!`,
               </div>
             </div>
 
+            {shippingMode && shippingMode !== 'retirada' && shippingInfo && (
+              <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-2">Endereço de Entrega</h3>
+                <p className="text-xs text-gray-700 font-medium whitespace-pre-line leading-relaxed">
+                  {shippingInfo.street}, {shippingInfo.number} {shippingInfo.complement ? `- ${shippingInfo.complement}` : ''}
+                  <br />
+                  {shippingInfo.neighborhood} - {shippingInfo.city}/{shippingInfo.state}
+                  <br />
+                  CEP: {shippingInfo.zipCode}
+                </p>
+              </div>
+            )}
+
             {/* Items Table with Product Images */}
             <div>
               <div className="overflow-x-auto">
@@ -535,7 +552,11 @@ Agradecemos pela confiança e preferência!`,
                 {paymentMethod && (
                   <div className="flex justify-between text-gray-700 font-semibold border-t border-dashed border-gray-200 pt-2 mb-2">
                     <span>Forma de Pagamento:</span>
-                    <span>{paymentMethod} {paymentMethod === 'Cartão de Crédito' && installments && installments > 1 ? `(${installments}x)` : ''}</span>
+                    <span>
+                      {paymentMethod}
+                      {paymentMethod === 'Cartão de Crédito' && installments && installments > 1 ? ` (${installments}x)` : ''}
+                      {(paymentMethod === 'Pix' || paymentMethod === 'Dinheiro') && paymentConditions ? ` - ${paymentConditions}` : ''}
+                    </span>
                   </div>
                 )}
 

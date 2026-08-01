@@ -38,6 +38,7 @@ interface Order {
   shippingCost?: number;
   paymentPolicy?: string;
   paymentMethod?: string;
+  paymentConditions?: string;
   installments?: number;
   downPayment?: number;
   receipt?: {
@@ -958,7 +959,11 @@ export function Orders() {
                       {selectedOrder.paymentMethod && (
                         <div className="flex justify-between text-gray-700 font-semibold border-t border-dashed border-gray-200 pt-2 mt-2">
                           <span>Forma de Pagamento:</span>
-                          <span>{selectedOrder.paymentMethod} {selectedOrder.paymentMethod === 'Cartão de Crédito' && selectedOrder.installments && selectedOrder.installments > 1 ? `(${selectedOrder.installments}x)` : ''}</span>
+                          <span>
+                            {selectedOrder.paymentMethod}
+                            {selectedOrder.paymentMethod === 'Cartão de Crédito' && selectedOrder.installments && selectedOrder.installments > 1 ? ` (${selectedOrder.installments}x)` : ''}
+                            {(selectedOrder.paymentMethod === 'Pix' || selectedOrder.paymentMethod === 'Dinheiro') && selectedOrder.paymentConditions ? ` - ${selectedOrder.paymentConditions}` : ''}
+                          </span>
                         </div>
                       )}
 
@@ -982,6 +987,40 @@ export function Orders() {
                     </div>
                   </div>
                 </div>
+
+                {selectedOrder.shippingMode && selectedOrder.shippingMode !== 'retirada' && selectedOrder.shippingInfo && (
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mt-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">ENDEREÇO DE ENTREGA:</h3>
+                    <p className="text-xs text-gray-700 font-medium whitespace-pre-line">
+                      {selectedOrder.shippingInfo.street}, {selectedOrder.shippingInfo.number} {selectedOrder.shippingInfo.complement ? `- ${selectedOrder.shippingInfo.complement}` : ''}
+                      <br />
+                      {selectedOrder.shippingInfo.neighborhood} - {selectedOrder.shippingInfo.city}/{selectedOrder.shippingInfo.state}
+                      <br />
+                      CEP: {selectedOrder.shippingInfo.zipCode}
+                    </p>
+                  </div>
+                )}
+
+                {/* Payment Policy Block */}
+                {selectedOrder.paymentPolicy && (
+                  <div className="bg-blue-50/40 border border-blue-100 p-5 rounded-2xl space-y-2 mt-4 print:mt-6">
+                    <div className="flex items-center gap-1.5 text-blue-900 font-extrabold uppercase tracking-wide text-xs">
+                      <CreditCard size={14} className="text-blue-700" />
+                      <span>Política de Pagamento</span>
+                    </div>
+                    <p className="text-xs text-blue-900/90 whitespace-pre-line font-medium leading-relaxed">
+                      {selectedOrder.paymentPolicy}
+                    </p>
+                  </div>
+                )}
+
+                {/* Additional Notes */}
+                {selectedOrder.notes && (
+                  <div className="text-xs text-gray-600 border-t border-gray-100 pt-4 mt-4 bg-gray-50/50 p-4 rounded-xl leading-relaxed">
+                    <p className="font-extrabold uppercase tracking-wider text-gray-400 mb-1">Observações:</p>
+                    <p className="whitespace-pre-line font-medium">{selectedOrder.notes}</p>
+                  </div>
+                )}
 
                 {/* Bottom Declaration / Footer */}
                 <div className="mt-8 border-t border-gray-100 pt-6 text-center text-[10px] text-gray-400 space-y-4">
