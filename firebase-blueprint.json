@@ -85,9 +85,38 @@
         "design": { "type": "object" },
         "createdAt": { "type": "string" }
       }
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Admin users and sellers permissions.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "permissions": { "type": "object" },
+        "createdAt": { "type": "object" }
+      }
+    },
+    "Counter": {
+      "title": "Counter",
+      "description": "Sequential order and quote ID counters.",
+      "type": "object",
+      "properties": {
+        "nextOrderNumber": { "type": "number" },
+        "nextBudgetNumber": { "type": "number" }
+      }
     }
   },
   "firestore": {
+    "/counters/{counterId}": {
+      "schema": "Counter",
+      "description": "Database sequence counters for documents, orders, etc."
+    },
+    "/admin_users/{email}": {
+      "schema": "AdminUser",
+      "description": "Collection of all admin users and sellers with specific permissions."
+    },
     "/documents/{documentId}": {
       "schema": "Document",
       "description": "History of all custom issued documents (quotes, receipts)."

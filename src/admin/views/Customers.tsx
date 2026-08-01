@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, deleteDoc, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { formatPrice } from '../../data/products';
 import { Search, XCircle, FileText, Printer, CheckCircle, Trash2 } from 'lucide-react';
@@ -15,21 +15,35 @@ export function Customers() {
   const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<any | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const executeDeleteCustomer = async (customer: any) => {
+  const executeDeleteCustomer = async (customer: any, deleteOrders: boolean = false) => {
     try {
-      // Find orders to delete
-      const customerOrders = orders.filter(o => o.email?.toLowerCase().trim() === customer.email);
-      
       const { writeBatch } = await import('firebase/firestore');
       const batch = writeBatch(db);
       
-      customerOrders.forEach(o => {
-        batch.delete(doc(db, 'orders', o.id));
-      });
+      if (deleteOrders) {
+        const customerOrders = orders.filter(o => {
+          const oEmail = o.email?.toLowerCase().trim() || '';
+          const oPhone = o.phone?.trim() || '';
+          const oName = o.customer?.trim() || '';
+          return (
+            (customer.email && oEmail === customer.email) ||
+            (customer.phone && oPhone === customer.phone) ||
+            (customer.name && oName === customer.name) ||
+            (oEmail || oPhone || oName) === customer.identifier
+          );
+        });
+        customerOrders.forEach(o => {
+          batch.delete(doc(db, 'orders', o.id));
+        });
+      }
+      
+      // Mark as deleted in customers collection so they don't reappear
+      const cId = (customer.id || customer.identifier).replace(/\//g, '_');
+      batch.set(doc(db, 'customers', cId), { deleted: true });
       
       await batch.commit();
 
-      toast.success('Cliente e seus pedidos foram excluídos com sucesso!');
+      toast.success(deleteOrders ? 'Cliente e seus pedidos foram excluídos com sucesso!' : 'Cliente excluído com sucesso!');
       setSelectedCustomer(null);
     } catch (error) {
       console.error('Erro ao excluir cliente:', error);
@@ -38,63 +52,116 @@ export function Customers() {
   };
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'orders'), (snapshot) => {
-      const ordersList: any[] = [];
+    let active = true;
+    let unsubOrders: () => void;
+    let unsubCustomers: () => void;
+    
+    let ordersList: any[] = [];
+    let customersList: any[] = [];
+
+    const updateCombined = () => {
+      if (!active) return;
+
       const customerMap = new Map();
+      
+      // Seed first with registered customers from 'customers' collection
+      customersList.forEach(cust => {
+        if (cust.deleted) return;
+        
+        const identifier = cust.email?.toLowerCase().trim() || cust.phone?.trim() || cust.name?.trim() || cust.identifier;
+        if (!identifier) return;
 
-      snapshot.docs.forEach(doc => {
-        const order = doc.data();
-        const id = doc.id;
+        customerMap.set(identifier, {
+          id: cust.id,
+          identifier,
+          email: cust.email || '',
+          name: cust.name || 'Cliente',
+          phone: cust.phone || '',
+          totalSpent: 0,
+          orderCount: 0,
+          lastOrderDate: cust.updatedAt?.toDate ? cust.updatedAt.toDate() : new Date(0)
+        });
+      });
+
+      // Aggregate state using order lists
+      ordersList.forEach(order => {
         const email = order.email?.toLowerCase().trim();
+        const phone = order.phone?.trim();
+        const name = order.customer?.trim();
+        const identifier = email || phone || name;
 
+        if (!identifier) return;
+
+        if (!customerMap.has(identifier)) {
+          customerMap.set(identifier, {
+            identifier,
+            email: email || '',
+            name: name || 'Cliente Sem Nome',
+            phone: phone || '',
+            totalSpent: 0,
+            orderCount: 0,
+            lastOrderDate: order.date?.toDate ? order.date.toDate() : new Date(0)
+          });
+        }
+
+        const c = customerMap.get(identifier);
+
+        // Cancelled and quotes are not added to stats, but they do NOT delete or hide the customer
+        if (order.status !== 'Cancelado' && order.status !== 'Orçamento') {
+          c.totalSpent += (order.total || 0);
+          c.orderCount += 1;
+        }
+
+        const orderDate = order.date?.toDate ? order.date.toDate() : new Date(0);
+        if (orderDate > c.lastOrderDate) {
+          c.lastOrderDate = orderDate;
+          if (order.customer) c.name = order.customer;
+          if (order.phone) c.phone = order.phone;
+        }
+      });
+      
+      setOrders(ordersList);
+      setCustomers(Array.from(customerMap.values()).sort((a, b) => b.totalSpent - a.totalSpent));
+    };
+
+    unsubOrders = onSnapshot(collection(db, 'orders'), (snapshot) => {
+      ordersList = snapshot.docs.map(doc => {
+        const order = doc.data();
         let formattedDate = 'Data Indisponível';
         if (order.date?.toDate) {
           formattedDate = order.date.toDate().toLocaleDateString('pt-BR', {
             day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
           });
         }
-
-        ordersList.push({
-          id,
+        return {
+          id: doc.id,
           ...order,
-          dateFormatted: formattedDate,
-        });
-
-        if (order.status === 'Cancelado') return; // Ignore cancelled
-        if (!email) return;
-
-        if (!customerMap.has(email)) {
-          customerMap.set(email, {
-            email,
-            name: order.customer,
-            phone: order.phone,
-            totalSpent: 0,
-            orderCount: 0,
-            lastOrderDate: order.date?.toDate ? order.date.toDate() : new Date(0)
-          });
-        }
-        const c = customerMap.get(email);
-        c.totalSpent += (order.total || 0);
-        c.orderCount += 1;
-        const orderDate = order.date?.toDate ? order.date.toDate() : new Date(0);
-        if (orderDate > c.lastOrderDate) {
-          c.lastOrderDate = orderDate;
-          c.name = order.customer; // update name to latest
-          c.phone = order.phone;
-        }
+          dateFormatted: formattedDate
+        };
       });
-      
-      setOrders(ordersList);
-      setCustomers(Array.from(customerMap.values()).sort((a, b) => b.totalSpent - a.totalSpent));
-    }, (e) => { console.warn("Firestore snapshot warning:", e.message); });
-    return () => unsubscribe();
+      updateCombined();
+    }, (e) => { console.warn("Orders listener warning:", e); });
+
+    unsubCustomers = onSnapshot(collection(db, 'customers'), (snapshot) => {
+      customersList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      updateCombined();
+    }, (e) => { console.warn("Customers listener warning:", e); });
+
+    return () => {
+      active = false;
+      if (unsubOrders) unsubOrders();
+      if (unsubCustomers) unsubCustomers();
+    };
   }, []);
 
   useEffect(() => {
     setShowDeleteConfirm(false);
   }, [selectedCustomer]);
 
-  const filtered = customers.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.email.includes(search.toLowerCase()));
+  const filtered = customers.filter(c => c.name?.toLowerCase().includes(search.toLowerCase()) || c.email?.includes(search.toLowerCase()) || c.phone?.includes(search));
 
   return (
     <div className="space-y-6">
@@ -174,7 +241,17 @@ export function Customers() {
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-2">
               {orders
-                .filter(o => o.email?.toLowerCase().trim() === selectedCustomer.email)
+                .filter(o => {
+                  const oEmail = o.email?.toLowerCase().trim() || '';
+                  const oPhone = o.phone?.trim() || '';
+                  const oName = o.customer?.trim() || '';
+                  return (
+                    (selectedCustomer.email && oEmail === selectedCustomer.email) ||
+                    (selectedCustomer.phone && oPhone === selectedCustomer.phone) ||
+                    (selectedCustomer.name && oName === selectedCustomer.name) ||
+                    (oEmail || oPhone || oName) === selectedCustomer.identifier
+                  );
+                })
                 .map((order, idx) => (
                   <div key={idx} className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 space-y-3">
                     <div className="flex justify-between items-start">
@@ -247,10 +324,17 @@ export function Customers() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => executeDeleteCustomer(selectedCustomer)}
+                      onClick={() => executeDeleteCustomer(selectedCustomer, false)}
                       className="px-3.5 py-2 text-xs font-black uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-1"
                     >
-                      <Trash2 size={13} /> Sim, Excluir Tudo
+                      <Trash2 size={13} /> Apenas o Cliente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => executeDeleteCustomer(selectedCustomer, true)}
+                      className="px-3.5 py-2 text-xs font-black uppercase tracking-wider bg-red-800 hover:bg-red-900 text-white rounded-lg transition-colors flex items-center gap-1"
+                    >
+                      <Trash2 size={13} /> Cliente + Pedidos
                     </button>
                   </div>
                 </div>
@@ -330,7 +414,7 @@ export function Customers() {
                 <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6 mb-6">
                   <div>
                     {settings.logoUrl ? (
-                      <img src={settings.logoUrl || undefined} alt="Logo" className="h-14 object-contain mb-2" />
+                      <img src={settings.logoUrl || undefined} alt="Logo" className="h-14 object-contain mb-2" referrerPolicy="no-referrer" />
                     ) : (
                       <h2 className="text-xl font-black text-pink-600 tracking-tighter uppercase mb-2">
                         {settings.storeName || 'Minha Loja'}
@@ -416,7 +500,7 @@ export function Customers() {
                   <p>Recebemos o valor acima especificado, referente à prestação de serviços / venda de produtos.</p>
                   <div className="mt-8 flex justify-center">
                     {settings.logoUrl ? (
-                      <img src={settings.logoUrl} alt="Assinatura" className="h-16 object-contain opacity-80" />
+                      <img src={settings.logoUrl} alt="Assinatura" className="h-16 object-contain opacity-80" referrerPolicy="no-referrer" />
                     ) : (
                       <div className="h-16"></div>
                     )}

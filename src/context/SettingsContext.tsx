@@ -59,11 +59,13 @@ export interface AppSettings {
   promoBanner1ButtonText: string;
   promoBanner1ColorStart: string;
   promoBanner1ColorEnd: string;
+  promoBanner1Link?: string;
   promoBanner2TitleHtml: string;
   promoBanner2SubtitleHtml: string;
   promoBanner2ButtonText: string;
   promoBanner2ColorStart: string;
   promoBanner2ColorEnd: string;
+  promoBanner2Link?: string;
   buyButtonColor: string;
   storeName: string;
   productRating: number;
@@ -71,6 +73,7 @@ export interface AppSettings {
   pixDiscount: number;
   installments: number;
   categories: string[];
+  categoryGroups?: Record<string, string[]>;
   freeShippingThreshold?: number;
   fixedShippingRates?: Record<string, number>;
   customPageTitle?: string;
@@ -94,6 +97,11 @@ export interface AppSettings {
   adminButtonTextColor?: string;
   adminButtonBgColorHover?: string;
   showClearCartButton?: boolean;
+  footerBgColor?: string;
+  footerTextColor?: string;
+  footerHeadingColor?: string;
+  footerLogoUrl?: string;
+  footerDescription?: string;
 }
 
 const defaultSettings: AppSettings = {
@@ -131,11 +139,13 @@ const defaultSettings: AppSettings = {
   promoBanner1ButtonText: 'COMPRAR',
   promoBanner1ColorStart: '#4a8bf5',
   promoBanner1ColorEnd: '#68abfa',
+  promoBanner1Link: '?category=Música',
   promoBanner2TitleHtml: '',
   promoBanner2SubtitleHtml: '',
   promoBanner2ButtonText: 'COMPRAR',
   promoBanner2ColorStart: '#b861ff',
   promoBanner2ColorEnd: '#c37aff',
+  promoBanner2Link: '?category=Canecas',
   buyButtonColor: '#5ba324',
   storeName: 'inkys',
   productRating: 5,
@@ -143,6 +153,11 @@ const defaultSettings: AppSettings = {
   pixDiscount: 0.10,
   installments: 2,
   categories: ['Canecas', 'Dia das Mães', 'Dia dos Pais', 'Música', 'Divertidas', 'Copa', 'Outros', 'Anos 80/90'],
+  categoryGroups: {
+    'Datas Especiais': ['Dia dos Pais', 'Dia das Mães', 'Dia dos Avós', 'Dia dos Namorados', 'Dia dos Professores', 'Dias das Mulheres', 'Aniversário'],
+    'Temas': ['Anos 80/90', 'Música', 'Divertidas', 'Geek/Nerd'],
+    'Para Quem': ['Casais', 'Amigo(a)', 'Família']
+  },
   fixedShippingRates: { 'SP': 15.90, 'RJ': 20.00 },
   customPageTitle: 'Seu Produto, do Seu Jeito!',
   customPageDescription: 'Faça um orçamento de canecas, azulejos, camisetas e muito mais com a sua cara, logo da sua empresa ou para presentear alguém especial.',
@@ -161,7 +176,12 @@ const defaultSettings: AppSettings = {
     { id: 'f2', icon: 'CreditCard', title: 'Parcelamento', subtitle: 'Em até 2x sem juros', enabled: true },
     { id: 'f3', icon: 'Zap', title: 'Ganhe Desconto', subtitle: 'Pagando com PIX', enabled: true },
     { id: 'f4', icon: 'ShieldCheck', title: 'Segurança', subtitle: 'Loja com SSL de proteção', enabled: true },
-  ]
+  ],
+  footerBgColor: '#111827',
+  footerTextColor: '#9ca3af',
+  footerHeadingColor: '#ffffff',
+  footerLogoUrl: '',
+  footerDescription: 'Especializados em produtos criativos e personalizados. Transforme suas ideias em presentes inesquecíveis.',
 };
 
 interface SettingsContextType {
@@ -228,9 +248,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           needsCleanup = true;
         }
 
-        const isGuestSession = !auth.currentUser && !window.location.pathname.includes('/admin');
+        const canWrite = auth.currentUser !== null;
 
-        if (needsCleanup && !isGuestSession) {
+        if (needsCleanup && canWrite) {
           setDoc(settingsRef, cleaned, { merge: true }).catch(console.error);
         }
 
@@ -245,8 +265,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       } else {
         // Initialize settings if they don't exist
-        const isGuestSession = !auth.currentUser && !window.location.pathname.includes('/admin');
-        if (!isGuestSession && !hasAttemptedInit && (() => { try { return localStorage.getItem('inkys_settings_seeded') !== 'true'; } catch(e) { return true; } })()) {
+        const canWrite = auth.currentUser !== null;
+        if (canWrite && !hasAttemptedInit && (() => { try { return localStorage.getItem('inkys_settings_seeded') !== 'true'; } catch(e) { return true; } })()) {
           hasAttemptedInit = true;
           setDoc(settingsRef, defaultSettings).then(() => {
             try { localStorage.setItem('inkys_settings_seeded', 'true'); } catch(e) {};

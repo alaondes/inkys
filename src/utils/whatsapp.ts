@@ -45,8 +45,9 @@ export const generateWhatsAppLink = (cart: CartItem[], checkoutData: CheckoutDat
     const customText = item.customText ? `\n   💬 Texto: "${item.customText}"` : '';
     const customMusic = item.customMusic ? `\n   🎵 Música: ${item.customMusic}` : '';
     const customImage = item.customImage ? `\n   🖼️ [Foto Personalizada Inclusa no Pedido]` : '';
+    const productImage = item.image ? `\n   🖼️ [Ver Produto: ${item.image}]` : '';
     
-    message += `${item.quantity}x ${item.name}${colorText} - ${formatPrice(item.price * item.quantity)}${fileText}${customText}${customMusic}${customImage}\n`;
+    message += `${item.quantity}x ${item.name}${colorText} - ${formatPrice(item.price * item.quantity)}${fileText}${customText}${customMusic}${customImage}${productImage}\n`;
   });
   
   message += `\n*SUBTOTAL:* ${formatPrice(subtotal)}\n`;

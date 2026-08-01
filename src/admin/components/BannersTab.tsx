@@ -1,4 +1,5 @@
 import React from 'react';
+import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import { 
   Plus, 
   Save, 
@@ -67,9 +68,9 @@ export function BannersTab({
             newBanners.push({
               id: Date.now().toString(),
               image: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&q=80',
-              titleHtml: 'Novo Banner',
-              subtitle: 'Subtítulo',
-              buttonText: 'Comprar',
+              titleHtml: '',
+              subtitle: '',
+              buttonText: '',
               buttonColor: '#000000'
             });
             setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
@@ -111,7 +112,7 @@ export function BannersTab({
               </button>
             </div>
             
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="gap-6">
               
               {/* COLUNA ESQUERDA: Imagem */}
               <div className="space-y-4">
@@ -123,9 +124,9 @@ export function BannersTab({
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">1. IMAGEM DE FUNDO</span>
                   </div>
                   
-                  <div className="relative aspect-[21/9] bg-slate-200 rounded-xl overflow-hidden border-2 border-dashed border-slate-300 hover:border-violet-400 group/img transition-colors cursor-pointer">
+                  <div className="relative aspect-[1920/633] bg-slate-200 rounded-xl overflow-hidden border-2 border-dashed border-slate-300 hover:border-violet-400 group/img transition-colors cursor-pointer">
                     {banner.image ? (
-                      <img src={banner.image} alt="Banner Preview" className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105" />
+                      <img src={banner.image} alt="Banner Preview" className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105" referrerPolicy="no-referrer" />
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-100">
                         <ImageIcon size={32} className="opacity-40 mb-1" />
@@ -134,12 +135,12 @@ export function BannersTab({
                     )}
                     <label className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 flex flex-col items-center justify-center text-white cursor-pointer transition-opacity">
                       <Upload size={24} className="mb-1" />
-                      <span className="text-xs font-bold">Fazer Upload (2000x1125)</span>
+                      <span className="text-xs font-bold">Fazer Upload (1920x633)</span>
                       <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
                           try {
-                            const res = await resizeImage(file, 1200, 800);
+                            const res = await resizeImage(file, 1920, 1080);
                             const newBanners = [...heroBanners];
                             newBanners[index] = { ...newBanners[index], image: res };
                             setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
@@ -161,7 +162,7 @@ export function BannersTab({
                         const file = e.target.files?.[0];
                         if (file) {
                           try {
-                            const res = await resizeImage(file, 1200, 800);
+                            const res = await resizeImage(file, 1920, 1080);
                             const newBanners = [...heroBanners];
                             newBanners[index] = { ...newBanners[index], image: res };
                             setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
@@ -181,7 +182,7 @@ export function BannersTab({
                         const file = e.target.files?.[0];
                         if (file) {
                           try {
-                            const res = await resizeImage(file, 1200, 800);
+                            const res = await resizeImage(file, 1920, 1080);
                             const newBanners = [...heroBanners];
                             newBanners[index] = { ...newBanners[index], image: res };
                             setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
@@ -209,7 +210,7 @@ export function BannersTab({
                       onChange={(e) => {
                         if (banner.image?.startsWith('data:')) return;
                         const newBanners = [...heroBanners];
-                        newBanners[index] = { ...newBanners[index], image: e.target.value };
+                        newBanners[index] = { ...newBanners[index], image: convertGoogleDriveUrl(e.target.value) };
                         setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
                       }}
                       className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none shadow-sm disabled:bg-slate-100 disabled:text-slate-400 transition-all font-mono truncate"
@@ -228,320 +229,21 @@ export function BannersTab({
                       </button>
                     )}
                   </div>
-                </div>
-
-                {/* CHAMADA PARA AÇÃO (BOTÃO) */}
-                <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 space-y-3 shadow-sm">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">5. CHAMADA PARA AÇÃO (BOTÃO)</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="col-span-2 space-y-1">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold ml-1">Texto do Botão</label>
-                      <input type="text" placeholder="Ex: Comprar Agora" value={banner.buttonText || ''} onChange={e => {
-                        const newBanners = [...heroBanners];
-                        newBanners[index] = { ...newBanners[index], buttonText: e.target.value };
-                        setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                      }} className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none h-10 shadow-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold ml-1">Cor do Botão</label>
-                      <input type="color" value={banner.buttonColor || '#b44e68'} onChange={e => {
-                        const newBanners = [...heroBanners];
-                        newBanners[index] = { ...newBanners[index], buttonColor: e.target.value };
-                        setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                      }} className="w-full h-10 cursor-pointer rounded-xl border border-slate-200 p-0.5 bg-white shadow-sm" />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold ml-1 flex items-center gap-1">
-                      <LinkIcon size={10} /> Link do Botão
-                    </label>
-                    <input 
-                      type="text" 
-                      placeholder="Ex: #category-all ou https://..."
-                      value={banner.buttonLink || ''} 
-                      onChange={e => {
+                  <div className="mt-4">
+                    <label className="text-[10px] uppercase tracking-wider text-slate-500 font-bold ml-1 mb-1 block">Link de Destino do Banner</label>
+                    <input type="text"
+                      placeholder="Ex: /?category=Canecas ou /produto/123"
+                      value={banner.buttonLink || ''}
+                      onChange={(e) => {
                         const newBanners = [...heroBanners];
                         newBanners[index] = { ...newBanners[index], buttonLink: e.target.value };
                         setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                      }} 
-                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none shadow-sm transition-all font-mono" 
-                    />
-                    <p className="text-[9px] text-slate-400 ml-1">💡 Dica: Use <code className="bg-slate-100 px-1 py-0.5 rounded text-violet-600 font-mono">#category-all</code> para listar todos os produtos.</p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* COLUNA DIREITA: Textos, Estilos e Ações */}
-              <div className="space-y-4">
-                {/* ALINHAMENTO DO TEXTO */}
-                <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 space-y-3 shadow-sm">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">ALINHAMENTO DO TEXTO</span>
-                  </div>
-                  <div className="flex gap-2">
-                    {['left', 'center', 'right'].map(align => (
-                      <button
-                        key={align}
-                        onClick={() => {
-                          const newBanners = [...heroBanners];
-                          newBanners[index] = { ...newBanners[index], textAlign: align };
-                          setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                        }}
-                        className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
-                          (banner.textAlign || 'center') === align 
-                            ? 'bg-[var(--color-primary)] text-white border-transparent' 
-                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                        }`}
-                      >
-                        {align === 'left' ? 'Esquerda' : align === 'center' ? 'Centro' : 'Direita'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* TÍTULO PRINCIPAL */}
-                <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 space-y-3 shadow-sm">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">2. TÍTULO PRINCIPAL</span>
-                    <span className="text-[9px] text-slate-400 font-semibold">(Suporta HTML)</span>
-                  </div>
-                  
-                  <input 
-                    type="text" 
-                    placeholder="Ex: Caneca Personalizada"
-                    value={banner.titleHtml || ''} 
-                    onChange={e => {
-                      const newBanners = [...heroBanners];
-                      newBanners[index] = { ...newBanners[index], titleHtml: e.target.value };
-                      setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                    }} 
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none shadow-sm transition-all" 
-                  />
-                  
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-1">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold ml-1 flex items-center gap-1">
-                        <Palette size={10} /> Cor
-                      </label>
-                      <input type="color" value={banner.titleColor || '#e84e70'} onChange={e => {
-                        const newBanners = [...heroBanners];
-                        newBanners[index] = { ...newBanners[index], titleColor: e.target.value };
-                        setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                      }} className="w-full h-9 cursor-pointer rounded-xl border border-slate-200 p-0.5 bg-white shadow-sm" />
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold ml-1 flex items-center gap-1">
-                        <Type size={10} /> Tam.
-                      </label>
-                      <select value={banner.titleSize || 'text-3xl'} onChange={e => {
-                        const newBanners = [...heroBanners];
-                        newBanners[index] = { ...newBanners[index], titleSize: e.target.value };
-                        setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                      }} className="w-full bg-white border border-gray-200 rounded-xl p-2 text-xs focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none shadow-sm h-9">
-                        <option value="text-2xl">Pequeno (2xl)</option>
-                        <option value="text-3xl">Médio (3xl)</option>
-                        <option value="text-4xl">Grande (4xl)</option>
-                        <option value="text-5xl">Extra G (5xl)</option>
-                        <option value="text-6xl">Super G (6xl)</option>
-                      </select>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold ml-1 flex items-center gap-1">
-                        <Sparkles size={10} /> Fonte
-                      </label>
-                      <select value={banner.titleFont || 'font-sans'} onChange={e => {
-                        const newBanners = [...heroBanners];
-                        newBanners[index] = { ...newBanners[index], titleFont: e.target.value };
-                        setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                      }} className="w-full bg-white border border-gray-200 rounded-xl p-2 text-xs focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none shadow-sm h-9">
-                        <option value="font-sans">Inter (Padrão)</option>
-                        <option value="font-montserrat">Montserrat</option>
-                        <option value="font-outfit">Outfit</option>
-                        <option value="font-space">Space Grotesk</option>
-                        <option value="font-playfair">Playfair Display</option>
-                        <option value="font-cinzel">Cinzel</option>
-                        <option value="font-lora">Lora (Editorial)</option>
-                        <option value="font-serif">Serif Clássica</option>
-                        <option value="font-mono">Monospace Tech</option>
-                        <option value="font-script">Dancing Cursiva</option>
-                        <option value="font-pacifico">Pacifico Retrô</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* SUBTÍTULO */}
-                <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 space-y-3 shadow-sm">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">3. SUBTÍTULO</span>
-                  </div>
-                  
-                  <input 
-                    type="text" 
-                    placeholder="Ex: Transformando lembranças em emoção"
-                    value={banner.subtitle || ''} 
-                    onChange={e => {
-                      const newBanners = [...heroBanners];
-                      newBanners[index] = { ...newBanners[index], subtitle: e.target.value };
-                      setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                    }} 
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none shadow-sm transition-all" 
-                  />
-                  
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-1">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold ml-1 flex items-center gap-1">
-                        <Palette size={10} /> Cor
-                      </label>
-                      <input type="color" value={banner.subtitleColor || '#592c60'} onChange={e => {
-                        const newBanners = [...heroBanners];
-                        newBanners[index] = { ...newBanners[index], subtitleColor: e.target.value };
-                        setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                      }} className="w-full h-9 cursor-pointer rounded-xl border border-slate-200 p-0.5 bg-white shadow-sm" />
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold ml-1 flex items-center gap-1">
-                        <Type size={10} /> Tam.
-                      </label>
-                      <select value={banner.subtitleSize || 'text-xl'} disabled={banner.subtitleSameSize} onChange={e => {
-                        const newBanners = [...heroBanners];
-                        newBanners[index] = { ...newBanners[index], subtitleSize: e.target.value };
-                        setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                      }} className="w-full bg-white border border-gray-200 rounded-xl p-2 text-xs focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none shadow-sm h-9 disabled:opacity-50 disabled:bg-slate-100">
-                        <option value="text-sm">Pequeno (sm)</option>
-                        <option value="text-base">Médio (base)</option>
-                        <option value="text-lg">Grande (lg)</option>
-                        <option value="text-xl">Extra (xl)</option>
-                        <option value="text-2xl">2xl</option>
-                        <option value="text-3xl">3xl</option>
-                        <option value="text-4xl">4xl</option>
-                        <option value="text-5xl">5xl</option>
-                        <option value="text-6xl">6xl</option>
-                      </select>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold ml-1 flex items-center gap-1">
-                        <Sparkles size={10} /> Fonte
-                      </label>
-                      <select value={banner.subtitleFont || 'font-sans'} onChange={e => {
-                        const newBanners = [...heroBanners];
-                        newBanners[index] = { ...newBanners[index], subtitleFont: e.target.value };
-                        setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                      }} className="w-full bg-white border border-gray-200 rounded-xl p-2 text-xs focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none shadow-sm h-9">
-                        <option value="font-sans">Inter (Padrão)</option>
-                        <option value="font-montserrat">Montserrat</option>
-                        <option value="font-outfit">Outfit</option>
-                        <option value="font-space">Space Grotesk</option>
-                        <option value="font-playfair">Playfair Display</option>
-                        <option value="font-cinzel">Cinzel</option>
-                        <option value="font-lora">Lora (Editorial)</option>
-                        <option value="font-serif">Serif Clássica</option>
-                        <option value="font-mono">Monospace Tech</option>
-                        <option value="font-script">Dancing Cursiva</option>
-                        <option value="font-pacifico">Pacifico Retrô</option>
-                      </select>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 pt-1 ml-1">
-                    <input 
-                      type="checkbox" 
-                      id={`subtitle-same-size-${banner.id || index}`}
-                      checked={banner.subtitleSameSize || false} 
-                      onChange={e => {
-                        const newBanners = [...heroBanners];
-                        newBanners[index] = { ...newBanners[index], subtitleSameSize: e.target.checked };
-                        setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
                       }}
-                      className="rounded text-violet-600 focus:ring-violet-500 cursor-pointer w-4 h-4"
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none shadow-sm transition-all"
                     />
-                    <label htmlFor={`subtitle-same-size-${banner.id || index}`} className="text-xs text-slate-600 font-medium cursor-pointer select-none">
-                      Subtítulo no mesmo tamanho do título
-                    </label>
-                  </div>
-                </div>
-
-                {/* TEXTO COMPLEMENTAR (TERCEIRA LINHA) */}
-                <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 space-y-3 shadow-sm">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">4. TEXTO COMPLEMENTAR (OPCIONAL)</span>
-                  </div>
-                  
-                  <input 
-                    type="text" 
-                    placeholder="Texto opcional abaixo do subtítulo"
-                    value={banner.description || ''} 
-                    onChange={e => {
-                      const newBanners = [...heroBanners];
-                      newBanners[index] = { ...newBanners[index], description: e.target.value };
-                      setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                    }} 
-                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none shadow-sm transition-all" 
-                  />
-                  
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-1">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold ml-1 flex items-center gap-1">
-                        <Palette size={10} /> Cor
-                      </label>
-                      <input type="color" value={banner.descriptionColor || '#592c60'} onChange={e => {
-                        const newBanners = [...heroBanners];
-                        newBanners[index] = { ...newBanners[index], descriptionColor: e.target.value };
-                        setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                      }} className="w-full h-9 cursor-pointer rounded-xl border border-slate-200 p-0.5 bg-white shadow-sm" />
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold ml-1 flex items-center gap-1">
-                        <Type size={10} /> Tam.
-                      </label>
-                      <select value={banner.descriptionSize || 'text-xl'} onChange={e => {
-                        const newBanners = [...heroBanners];
-                        newBanners[index] = { ...newBanners[index], descriptionSize: e.target.value };
-                        setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                      }} className="w-full bg-white border border-gray-200 rounded-xl p-2 text-xs focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none shadow-sm h-9">
-                        <option value="text-sm">Pequeno (sm)</option>
-                        <option value="text-base">Médio (base)</option>
-                        <option value="text-lg">Grande (lg)</option>
-                        <option value="text-xl">Extra (xl)</option>
-                        <option value="text-2xl">2xl</option>
-                        <option value="text-3xl">3xl</option>
-                        <option value="text-4xl">4xl</option>
-                        <option value="text-5xl">5xl</option>
-                        <option value="text-6xl">6xl</option>
-                      </select>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <label className="text-[9px] uppercase tracking-wider text-slate-500 font-bold ml-1 flex items-center gap-1">
-                        <Sparkles size={10} /> Fonte
-                      </label>
-                      <select value={banner.descriptionFont || 'font-sans'} onChange={e => {
-                        const newBanners = [...heroBanners];
-                        newBanners[index] = { ...newBanners[index], descriptionFont: e.target.value };
-                        setStorefrontSettings({ ...storefrontSettings, heroBanners: newBanners });
-                      }} className="w-full bg-white border border-gray-200 rounded-xl p-2 text-xs focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none shadow-sm h-9">
-                        <option value="font-sans">Inter (Padrão)</option>
-                        <option value="font-montserrat">Montserrat</option>
-                        <option value="font-outfit">Outfit</option>
-                        <option value="font-space">Space Grotesk</option>
-                        <option value="font-playfair">Playfair Display</option>
-                        <option value="font-cinzel">Cinzel</option>
-                        <option value="font-lora">Lora (Editorial)</option>
-                        <option value="font-serif">Serif Clássica</option>
-                        <option value="font-mono">Monospace Tech</option>
-                        <option value="font-script">Dancing Cursiva</option>
-                        <option value="font-pacifico">Pacifico Retrô</option>
-                      </select>
-                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1 ml-1">
+                      Onde o cliente vai ao clicar no banner (deixe vazio para não ter link).
+                    </p>
                   </div>
                 </div>
               </div>

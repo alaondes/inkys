@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink, FileText, Printer, User, Calendar, MapPin } from 'lucide-react';
+import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink, FileText, Printer, User, Calendar, MapPin, Trash2, ClipboardList, MessageCircle } from 'lucide-react';
 import { formatPrice } from '../../data/products';
 import { db } from '../../lib/firebase';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 
-type OrderStatus = 'Pendente' | 'Pago' | 'Enviado' | 'Cancelado';
+type OrderStatus = 'Pendente' | 'Pago' | 'Enviado' | 'Cancelado' | 'Orçamento';
 
 interface OrderItem {
   name: string;
@@ -32,6 +32,11 @@ interface Order {
   items: OrderItem[];
   shippingInfo?: any;
   notes?: string;
+  subtotal?: number;
+  discount?: number;
+  shippingMode?: string;
+  shippingCost?: number;
+  paymentPolicy?: string;
   receipt?: {
     date: string;
     items: Array<{ description: string; quantity: number; unitPrice: number }>;
@@ -48,6 +53,7 @@ const statusConfig = {
   'Pago': { icon: CheckCircle, color: 'text-blue-600', bg: 'bg-blue-100' },
   'Enviado': { icon: Truck, color: 'text-green-600', bg: 'bg-green-100' },
   'Cancelado': { icon: XCircle, color: 'text-red-600', bg: 'bg-red-100' },
+  'Orçamento': { icon: ClipboardList, color: 'text-purple-600', bg: 'bg-purple-100' },
 };
 
 export function Orders() {
@@ -165,6 +171,20 @@ export function Orders() {
     document.body.removeChild(link);
   };
 
+  const handleDelete = async () => {
+    if (!selectedOrder) return;
+    if (window.confirm('Tem certeza que deseja excluir permanentemente este pedido? Esta ação não pode ser desfeita.')) {
+      try {
+        await deleteDoc(doc(db, 'orders', selectedOrder.id));
+        toast.success('Pedido excluído com sucesso!');
+        setSelectedOrder(null);
+      } catch (error) {
+        console.error('Error deleting order:', error);
+        toast.error('Erro ao excluir o pedido');
+      }
+    }
+  };
+
   const handleSave = async () => {
     if (!selectedOrder) return;
     setIsSaving(true);
@@ -177,8 +197,8 @@ export function Orders() {
         notes: localNotes
       };
 
-      // Se o status for alterado para "Enviado", cria/atualiza o recibo automaticamente no pedido
-      if (localStatus === 'Enviado') {
+      // Se o status for alterado para "Pago" ou "Enviado", cria/atualiza o recibo automaticamente no pedido
+      if (localStatus === 'Pago' || localStatus === 'Enviado') {
         updateData.receipt = {
           date: new Date().toLocaleDateString('pt-BR'),
           items: selectedOrder.items.map(item => ({
@@ -188,15 +208,46 @@ export function Orders() {
           })),
           discount: selectedOrder.shippingInfo?.couponDiscount || 0,
           total: selectedOrder.total,
-          notes: `Recibo gerado automaticamente para o pedido #${selectedOrder.id} finalizado e enviado.`,
+          notes: `Recibo gerado automaticamente para o pedido #${selectedOrder.id} (${localStatus}).`,
           customerName: selectedOrder.customer,
           customerDoc: selectedOrder.shippingInfo?.cpf || ''
         };
       }
 
-      updateDoc(orderRef, updateData).catch(e => console.warn(e));
+      await updateDoc(orderRef, updateData).catch(e => console.warn(e));
+      
+      // Trigger status update email if status changed or if it is pending (reminder)
+      if (localStatus !== selectedOrder.status || localStatus === 'Pendente') {
+        let statusKey = '';
+        if (localStatus === 'Pago') statusKey = 'paid';
+        else if (localStatus === 'Enviado') statusKey = 'shipped';
+        else if (localStatus === 'Cancelado') statusKey = 'cancelled';
+        else if (localStatus === 'Pendente') statusKey = 'pending';
+        
+        const customerEmail = selectedOrder.email || selectedOrder.shippingInfo?.email || '';
+        
+        if (statusKey && customerEmail) {
+          fetch('/api/email/status-update', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              order: {
+                id: selectedOrder.id,
+                customer: selectedOrder.customer,
+                total: selectedOrder.total
+              },
+              customerEmail,
+              status: statusKey,
+              trackingCode: localTracking
+            }),
+          }).catch(err => console.error("Error triggering status update email:", err));
+        }
+      }
+
       toast.success('Pedido salvo com sucesso!');
-      if (localStatus === 'Enviado') {
+      if (localStatus === 'Pago' || localStatus === 'Enviado') {
         toast.success('Recibo gerado e anexado ao pedido!');
       }
       setSelectedOrder(null);
@@ -240,6 +291,7 @@ export function Orders() {
             <option value="Pago">Pagos</option>
             <option value="Enviado">Enviados</option>
             <option value="Cancelado">Cancelados</option>
+            <option value="Orçamento">Orçamentos</option>
           </select>
           
           <select 
@@ -281,7 +333,7 @@ export function Orders() {
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${statusConfig[order.status].bg} ${statusConfig[order.status].color}`}>
                           <StatusIcon size={12} /> {order.status}
                         </span>
-                        {(order.receipt || order.status === 'Enviado') && (
+                        {(order.receipt || order.status === 'Pago' || order.status === 'Enviado') && (
                           <span className="text-green-600 bg-green-50 px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5" title="Recibo disponível">
                             <FileText size={10} /> Recibo
                           </span>
@@ -390,7 +442,7 @@ export function Orders() {
                       <div className="flex gap-3 items-start">
                         {item.image && (
                           <div className="w-12 h-12 rounded-md overflow-hidden bg-white border border-gray-200 shrink-0">
-                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           </div>
                         )}
                         <div className="flex flex-col">
@@ -436,7 +488,7 @@ export function Orders() {
                               <span className="text-gray-500 font-medium">Foto Personalizada:</span>
                               <div className="mt-1">
                                 <a href={item.customImage} target="_blank" rel="noopener noreferrer">
-                                  <img src={item.customImage} alt="Foto Personalizada" className="h-16 rounded border border-gray-200 hover:opacity-80 transition-opacity" />
+                                  <img src={item.customImage} alt="Foto Personalizada" className="h-16 rounded border border-gray-200 hover:opacity-80 transition-opacity" referrerPolicy="no-referrer" />
                                 </a>
                               </div>
                             </div>
@@ -465,27 +517,74 @@ export function Orders() {
                 </div>
               </div>
 
-              {(selectedOrder.receipt || localStatus === 'Enviado') ? (
+              {(selectedOrder.receipt || localStatus === 'Pago' || localStatus === 'Enviado' || localStatus === 'Orçamento') ? (
                 <div className="border-t border-gray-100 pt-4">
-                  <p className="text-[10px] uppercase font-bold text-gray-500 mb-2">Recibo do Pedido</p>
-                  <div className="bg-green-50 border border-green-200 p-4 rounded-xl flex items-center justify-between">
+                  <p className="text-[10px] uppercase font-bold text-gray-500 mb-2">{localStatus === 'Orçamento' ? 'Visualizar Orçamento' : 'Recibo do Pedido'}</p>
+                  <div className={`${localStatus === 'Orçamento' ? 'bg-purple-50 border-purple-200' : 'bg-green-50 border-green-200'} border p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}>
                     <div>
-                      <p className="text-sm font-bold text-green-800 flex items-center gap-1.5">
-                        <CheckCircle size={16} className="text-green-600" /> Recibo disponível
+                      <p className={`text-sm font-bold ${localStatus === 'Orçamento' ? 'text-purple-800' : 'text-green-800'} flex items-center gap-1.5`}>
+                        <CheckCircle size={16} className={localStatus === 'Orçamento' ? 'text-purple-600' : 'text-green-600'} /> {localStatus === 'Orçamento' ? 'Orçamento disponível' : 'Recibo disponível'}
                       </p>
-                      <p className="text-xs text-green-600">
-                        {selectedOrder.receipt 
-                          ? `Armazenado neste pedido em ${selectedOrder.receipt.date}` 
-                          : 'Pronto para visualizar (será salvo automaticamente ao salvar o pedido como "Enviado")'}
+                      <p className={`text-xs ${localStatus === 'Orçamento' ? 'text-purple-600' : 'text-green-600'}`}>
+                        {localStatus === 'Orçamento'
+                          ? 'Pronto para visualizar ou enviar via WhatsApp'
+                          : selectedOrder.receipt 
+                            ? `Armazenado neste pedido em ${selectedOrder.receipt.date}` 
+                            : 'Pronto para visualizar (será salvo automaticamente ao salvar o pedido como "Enviado")'}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowReceiptPreview(true)}
-                      className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors shadow-sm"
-                    >
-                      <FileText size={14} /> Ver Recibo
-                    </button>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const docUrl = `${window.location.origin}/document/${selectedOrder.id}`;
+                          let message = `Olá, *${selectedOrder.customer || ''}*!\n\n`;
+                          message += `Aqui está o resumo do seu *${localStatus === 'Orçamento' ? 'ORÇAMENTO' : 'PEDIDO'}* #${selectedOrder.id.substring(0, 8)}:\n\n`;
+                          
+                          selectedOrder.items.forEach((item) => {
+                            message += `• ${item.quantity}x ${item.name} - ${formatPrice(item.price * item.quantity)}\n`;
+                          });
+                          
+                          message += `\n*SUBTOTAL:* ${formatPrice(selectedOrder.subtotal || selectedOrder.total)}\n`;
+                          if (selectedOrder.discount > 0) {
+                            message += `*DESCONTO:* -${formatPrice(selectedOrder.discount)}\n`;
+                          }
+                          if (selectedOrder.shippingMode && selectedOrder.shippingMode !== 'retirada') {
+                            message += `*FRETE:* ${selectedOrder.shippingMode === 'gratis' ? 'Grátis' : formatPrice(selectedOrder.shippingCost || 0)}\n`;
+                          }
+                          message += `*TOTAL:* ${formatPrice(selectedOrder.total)}\n\n`;
+                          
+                          message += `Você pode visualizar, imprimir ou baixar o documento profissional em PDF com o nosso logotipo, fotos dos produtos e nossa *Política de Pagamento* clicando no link abaixo:\n`;
+                          message += `🔗 ${docUrl}\n\n`;
+                          
+                          if (selectedOrder.notes) {
+                            message += `*Observações:*\n${selectedOrder.notes}\n\n`;
+                          }
+                          
+                          message += `Qualquer dúvida, estamos à disposição!`;
+                      
+                          const encodedMessage = encodeURIComponent(message);
+                          const phoneNumber = selectedOrder.phone ? selectedOrder.phone.replace(/\D/g, '') : '';
+                          
+                          if (phoneNumber) {
+                            const prefix = phoneNumber.startsWith('55') || phoneNumber.length > 11 ? '' : '55';
+                            window.open(`https://wa.me/${prefix}${phoneNumber}?text=${encodedMessage}`, '_blank');
+                          } else {
+                            window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+                          }
+                        }}
+                        className="flex-1 sm:flex-none justify-center items-center gap-1.5 bg-[#25D366] hover:bg-[#1DA851] text-white text-xs font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors shadow-sm flex"
+                      >
+                        <MessageCircle size={14} /> WhatsApp
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowReceiptPreview(true)}
+                        className={`flex-1 sm:flex-none justify-center items-center gap-1.5 ${localStatus === 'Orçamento' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-green-600 hover:bg-green-700'} text-white text-xs font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors shadow-sm flex`}
+                      >
+                        <FileText size={14} /> Ver {localStatus === 'Orçamento' ? 'Orçamento' : 'Recibo'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -497,7 +596,7 @@ export function Orders() {
                   <div className="space-y-1 flex-1">
                     <label className="text-[10px] uppercase font-bold text-gray-500">Status</label>
                     <div className="flex flex-wrap gap-2">
-                      {(['Pendente', 'Pago', 'Enviado', 'Cancelado'] as OrderStatus[]).map(status => (
+                      {(['Pendente', 'Pago', 'Enviado', 'Cancelado', 'Orçamento'] as OrderStatus[]).map(status => (
                         <button
                           key={status}
                           onClick={() => setLocalStatus(status)}
@@ -541,27 +640,40 @@ export function Orders() {
             </div>
 
             {/* Footer with Save/Cancel Buttons */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 shrink-0 mt-4">
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className="px-4 py-2 text-sm font-bold uppercase tracking-wider text-gray-500 hover:text-gray-900 transition-colors"
-                disabled={isSaving}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="px-6 py-2 text-sm font-bold uppercase tracking-wider bg-gray-950 text-white rounded-xl hover:bg-gray-800 transition-all flex items-center gap-2 disabled:opacity-50"
-              >
-                {isSaving ? 'Salvando...' : 'Salvar e Sair'}
-              </button>
+            <div className="flex justify-between items-center gap-3 pt-4 border-t border-gray-100 shrink-0 mt-4">
+              <div>
+                {selectedOrder.status === 'Cancelado' && (
+                  <button
+                    onClick={handleDelete}
+                    disabled={isSaving}
+                    className="px-4 py-2 text-sm font-bold uppercase tracking-wider text-red-500 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors flex items-center gap-2"
+                  >
+                    <Trash2 size={16} /> Excluir Pedido
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className="px-4 py-2 text-sm font-bold uppercase tracking-wider text-gray-500 hover:text-gray-900 transition-colors"
+                  disabled={isSaving}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="px-6 py-2 text-sm font-bold uppercase tracking-wider bg-gray-950 text-white rounded-xl hover:bg-gray-800 transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isSaving ? 'Salvando...' : 'Salvar e Sair'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {showReceiptPreview && selectedOrder && (selectedOrder.receipt || localStatus === 'Enviado') && (
+      {showReceiptPreview && selectedOrder && (selectedOrder.receipt || localStatus === 'Pago' || localStatus === 'Enviado') && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:z-0">
           <style>{`
             @media print {
@@ -588,9 +700,51 @@ export function Orders() {
             {/* Header hidden on print */}
             <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100 shrink-0 print:hidden">
               <h3 className="text-lg font-black uppercase tracking-wider text-gray-900 flex items-center gap-2">
-                <FileText className="text-green-600" size={20} /> Recibo do Pedido #{selectedOrder.id.substring(0, 8)}
+                <FileText className={localStatus === 'Orçamento' ? "text-purple-600" : "text-green-600"} size={20} /> {localStatus === 'Orçamento' ? 'Orçamento' : 'Recibo do Pedido'} #{selectedOrder.id.substring(0, 8)}
               </h3>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const docUrl = `${window.location.origin}/document/${selectedOrder.id}`;
+                    let message = `Olá, *${selectedOrder.customer || ''}*!\n\n`;
+                    message += `Aqui está o resumo do seu *${localStatus === 'Orçamento' ? 'ORÇAMENTO' : 'PEDIDO'}* #${selectedOrder.id.substring(0, 8)}:\n\n`;
+                    
+                    selectedOrder.items.forEach((item) => {
+                      message += `• ${item.quantity}x ${item.name} - ${formatPrice(item.price * item.quantity)}\n`;
+                    });
+                    
+                    message += `\n*SUBTOTAL:* ${formatPrice(selectedOrder.subtotal || selectedOrder.total)}\n`;
+                    if (selectedOrder.discount > 0) {
+                      message += `*DESCONTO:* -${formatPrice(selectedOrder.discount)}\n`;
+                    }
+                    if (selectedOrder.shippingMode && selectedOrder.shippingMode !== 'retirada') {
+                      message += `*FRETE:* ${selectedOrder.shippingMode === 'gratis' ? 'Grátis' : formatPrice(selectedOrder.shippingCost || 0)}\n`;
+                    }
+                    message += `*TOTAL:* ${formatPrice(selectedOrder.total)}\n\n`;
+                    
+                    message += `Você pode visualizar, imprimir ou baixar o documento profissional em PDF com o nosso logotipo, fotos dos produtos e nossa *Política de Pagamento* clicando no link abaixo:\n`;
+                    message += `🔗 ${docUrl}\n\n`;
+                    
+                    if (selectedOrder.notes) {
+                      message += `*Observações:*\n${selectedOrder.notes}\n\n`;
+                    }
+                    
+                    message += `Qualquer dúvida, estamos à disposição!`;
+                
+                    const encodedMessage = encodeURIComponent(message);
+                    const phoneNumber = selectedOrder.phone ? selectedOrder.phone.replace(/\D/g, '') : '';
+                    
+                    if (phoneNumber) {
+                      const prefix = phoneNumber.startsWith('55') || phoneNumber.length > 11 ? '' : '55';
+                      window.open(`https://wa.me/${prefix}${phoneNumber}?text=${encodedMessage}`, '_blank');
+                    } else {
+                      window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+                    }
+                  }}
+                  className="flex items-center gap-1.5 bg-[#25D366] hover:bg-[#1DA851] text-white text-xs font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors"
+                >
+                  <MessageCircle size={14} /> WhatsApp
+                </button>
                 <button
                   onClick={() => window.print()}
                   className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors"
@@ -608,101 +762,158 @@ export function Orders() {
 
             {/* Receipt Printable Content */}
             <div className="flex-1 overflow-y-auto pr-1 print:overflow-visible print:pr-0">
-              <div id="printable-receipt-area" className="bg-white p-6 rounded-xl border border-gray-100 text-gray-800 min-h-[500px] print:border-none print:p-0">
+              <div id="printable-receipt-area" className="bg-white p-6 sm:p-10 rounded-2xl border border-gray-100 text-gray-800 min-h-[650px] print:border-none print:p-0 flex flex-col justify-between">
                 
-                {/* Store Header */}
-                <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6 mb-6">
-                  <div>
-                    {settings.logoUrl ? (
-                      <img src={settings.logoUrl || undefined} alt="Logo" className="h-14 object-contain mb-2" />
-                    ) : (
-                      <h2 className="text-xl font-black text-pink-600 tracking-tighter uppercase mb-2">
-                        {settings.storeName || 'Minha Loja'}
-                      </h2>
-                    )}
-                    {settings.whatsappNumber && <p className="text-xs text-gray-600 font-medium">WhatsApp: {settings.whatsappNumber}</p>}
+                <div className="space-y-6">
+                  {/* Store Header */}
+                  <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6">
+                    <div>
+                      {settings.logoUrl ? (
+                        <img src={settings.logoUrl} alt="Logo" className="h-16 object-contain mb-2" referrerPolicy="no-referrer" />
+                      ) : (
+                        <h2 className="text-2xl font-black text-gray-900 tracking-tighter uppercase mb-2">
+                          {settings.storeName || 'Inkys'}
+                        </h2>
+                      )}
+                      {settings.whatsappNumber && (
+                        <p className="text-xs text-gray-500 font-semibold tracking-wide">
+                          WhatsApp: {settings.whatsappNumber}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <h1 className="text-2xl font-black uppercase tracking-widest text-gray-300 mb-1">
+                        {selectedOrder.status === 'Orçamento' ? 'ORÇAMENTO' : 'RECIBO'}
+                      </h1>
+                      <p className="text-xs text-gray-600 font-medium">
+                        <strong>Data:</strong> {selectedOrder.receipt?.date || new Date().toLocaleDateString('pt-BR')}
+                      </p>
+                      <p className="text-xs text-gray-600 font-medium">
+                        <strong>Pedido ID:</strong> #{selectedOrder.id}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <h1 className="text-2xl font-black uppercase tracking-widest text-gray-300 mb-1">
-                      Recibo
-                    </h1>
-                    <p className="text-xs"><strong>Data:</strong> {selectedOrder.receipt?.date || new Date().toLocaleDateString('pt-BR')}</p>
-                    <p className="text-xs"><strong>Pedido ID:</strong> #{selectedOrder.id}</p>
+
+                  {/* Client Info */}
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">CLIENTE:</h3>
+                    <p className="text-base font-extrabold text-gray-900">
+                      {selectedOrder.receipt?.customerName || selectedOrder.customer}
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 text-xs text-gray-600 font-medium">
+                      {(selectedOrder.receipt?.customerDoc || selectedOrder.shippingInfo?.cpf) && (
+                        <p><strong>CPF/CNPJ:</strong> {selectedOrder.receipt?.customerDoc || selectedOrder.shippingInfo?.cpf}</p>
+                      )}
+                      {selectedOrder.phone && (
+                        <p><strong>WhatsApp:</strong> {selectedOrder.phone}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Client Info */}
-                <div className="mb-6 bg-gray-50 p-4 rounded-lg print:bg-transparent print:p-0 print:border-b print:border-gray-200 print:rounded-none">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Cliente:</h3>
-                  <p className="text-base font-bold text-gray-900">{selectedOrder.receipt?.customerName || selectedOrder.customer}</p>
-                  {(selectedOrder.receipt?.customerDoc || selectedOrder.shippingInfo?.cpf) && (
-                    <p className="text-xs text-gray-600 mt-1 font-medium">CPF/CNPJ: {selectedOrder.receipt?.customerDoc || selectedOrder.shippingInfo?.cpf}</p>
-                  )}
-                </div>
-
-                {/* Items Table */}
-                <div className="overflow-x-auto mb-6">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b-2 border-gray-800 text-xs font-bold uppercase tracking-wider text-gray-500">
-                        <th className="py-2.5 pl-2">Descrição</th>
-                        <th className="py-2.5 text-center w-16">Qtd</th>
-                        <th className="py-2.5 text-right w-24">Unit.</th>
-                        <th className="py-2.5 text-right pr-2 w-24">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(selectedOrder.receipt?.items || selectedOrder.items.map(i => ({ description: i.name, quantity: i.quantity, unitPrice: i.price }))).map((item: any, idx: number) => (
-                        <tr key={idx} className="border-b border-gray-100 text-sm">
-                          <td className="py-2.5 pl-2 font-medium text-gray-900">{item.description}</td>
-                          <td className="py-2.5 text-center text-gray-600">{item.quantity}</td>
-                          <td className="py-2.5 text-right text-gray-600">{formatPrice(item.unitPrice)}</td>
-                          <td className="py-2.5 text-right pr-2 font-bold text-gray-900">{formatPrice(item.quantity * item.unitPrice)}</td>
+                  {/* Items Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b-2 border-gray-800 text-xs font-black uppercase tracking-wider text-gray-400">
+                          <th className="py-3 pl-2">DESCRIÇÃO</th>
+                          <th className="py-3 text-center w-16">QTD</th>
+                          <th className="py-3 text-right w-24">UNIT.</th>
+                          <th className="py-3 text-right pr-2 w-28">TOTAL</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {(selectedOrder.receipt?.items || selectedOrder.items.map(i => ({ description: i.name, quantity: i.quantity, unitPrice: i.price, image: i.image || i.customImage }))).map((item: any, idx: number) => (
+                          <tr key={idx} className="border-b border-gray-100 text-xs">
+                            <td className="py-3 pl-2 font-semibold text-gray-900 leading-relaxed">
+                              <div className="flex items-center gap-3">
+                                {item.image ? (
+                                  <img 
+                                    src={item.image} 
+                                    alt={item.description} 
+                                    className="w-10 h-10 object-cover rounded-lg border border-gray-200 shadow-2xs shrink-0" 
+                                    referrerPolicy="no-referrer" 
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded bg-gray-50 flex items-center justify-center border border-gray-100 shrink-0">
+                                    <FileText size={14} className="text-gray-400" />
+                                  </div>
+                                )}
+                                <div>
+                                  <p className="font-extrabold text-gray-900">{item.description}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 text-center text-gray-600 font-medium">{item.quantity}</td>
+                            <td className="py-3 text-right text-gray-600 font-semibold">{formatPrice(item.unitPrice)}</td>
+                            <td className="py-3 text-right pr-2 font-extrabold text-gray-900">{formatPrice(item.quantity * item.unitPrice)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                {/* Totals */}
-                <div className="flex justify-end mb-8">
-                  <div className="w-60 space-y-2 text-sm">
-                    <div className="flex justify-between text-gray-600">
-                      <span>Subtotal:</span>
-                      <span>
-                        {formatPrice(
-                          (selectedOrder.receipt?.items || selectedOrder.items.map(i => ({ description: i.name, quantity: i.quantity, unitPrice: i.price })))
-                            .reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0)
-                        )}
-                      </span>
-                    </div>
-                    {(selectedOrder.receipt?.discount || selectedOrder.shippingInfo?.couponDiscount) ? (
-                      <div className="flex justify-between text-red-500">
-                        <span>Desconto:</span>
-                        <span>-{formatPrice(selectedOrder.receipt?.discount || selectedOrder.shippingInfo?.couponDiscount || 0)}</span>
+                  {/* Totals & Notes */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-6 pt-4 border-t border-gray-100">
+                    <div className="w-full sm:w-1/2 space-y-4">
+                      <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100 text-xs leading-relaxed">
+                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">OBSERVAÇÕES</h4>
+                        <p className="text-gray-600 font-medium whitespace-pre-wrap">
+                          {selectedOrder.receipt?.notes || selectedOrder.notes || `Recibo gerado automaticamente para o pedido #${selectedOrder.id} finalizado.`}
+                        </p>
                       </div>
-                    ) : null}
-                    <div className="flex justify-between text-lg font-black border-t border-gray-800 pt-2 text-gray-900">
-                      <span>Total:</span>
-                      <span>{formatPrice(selectedOrder.receipt?.total || selectedOrder.total)}</span>
+                      {selectedOrder.paymentPolicy && (
+                        <div className="bg-blue-50/40 border border-blue-100 p-4 rounded-xl space-y-1">
+                          <p className="text-[10px] font-black text-blue-800 uppercase tracking-wider mb-0.5">Política de Pagamento</p>
+                          <p className="text-[11px] text-blue-900/90 whitespace-pre-wrap font-medium leading-relaxed">{selectedOrder.paymentPolicy}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="w-full sm:w-64 space-y-2 text-xs font-semibold">
+                      <div className="flex justify-between text-gray-500">
+                        <span>Subtotal:</span>
+                        <span>
+                          {formatPrice(
+                            (selectedOrder.receipt?.items || selectedOrder.items.map(i => ({ description: i.name, quantity: i.quantity, unitPrice: i.price })))
+                              .reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0)
+                          )}
+                        </span>
+                      </div>
+                      {(selectedOrder.receipt?.discount || selectedOrder.shippingInfo?.couponDiscount) ? (
+                        <div className="flex justify-between text-red-600 font-bold">
+                          <span>Desconto:</span>
+                          <span>-{formatPrice(selectedOrder.receipt?.discount || selectedOrder.shippingInfo?.couponDiscount || 0)}</span>
+                        </div>
+                      ) : null}
+                      {selectedOrder.shippingMode && selectedOrder.shippingMode !== 'retirada' && (
+                        <div className="flex justify-between text-gray-500">
+                          <span>Frete {selectedOrder.shippingMode === 'gratis' ? '(Grátis)' : ''}:</span>
+                          <span>{selectedOrder.shippingMode === 'gratis' ? 'Grátis' : formatPrice(selectedOrder.shippingCost || 0)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-lg font-black border-t-2 pt-2 border-gray-800 text-gray-900">
+                        <span>Total Geral:</span>
+                        <span className="text-gray-900">{formatPrice(selectedOrder.receipt?.total || selectedOrder.total)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Notes */}
-                <div className="mt-8 text-xs text-gray-500 border-t border-gray-100 pt-4">
-                  <p className="font-bold uppercase tracking-wider text-gray-400 mb-1">Observações:</p>
-                  <p className="whitespace-pre-line text-gray-600">{selectedOrder.receipt?.notes || `Recibo gerado automaticamente para o pedido #${selectedOrder.id} finalizado e enviado.`}</p>
-                </div>
-
-                {/* Sign-off */}
-                <div className="mt-16 pt-6 border-t border-gray-200 text-center text-xs text-gray-500">
-                  <p>Recebemos o valor acima especificado, referente à prestação de serviços / venda de produtos.</p>
-                  <div className="mt-8 flex justify-center">
+                {/* Bottom Declaration / Footer */}
+                <div className="mt-8 border-t border-gray-100 pt-6 text-center text-[10px] text-gray-400 space-y-4">
+                  <p className="font-medium">
+                    {selectedOrder.status === 'Orçamento'
+                      ? 'Este documento trata-se de uma proposta comercial sujeita a aprovação das partes.'
+                      : 'Recebemos o valor acima especificado, referente à prestação de serviços / venda de produtos.'}
+                  </p>
+                  <p className="text-[9px] text-gray-300">Documento gerado eletronicamente por {settings.storeName || 'Inkys'}</p>
+                  
+                  {/* Centered signature logo */}
+                  <div className="flex justify-center pt-2">
                     {settings.logoUrl ? (
-                      <img src={settings.logoUrl} alt="Assinatura" className="h-16 object-contain opacity-80" />
+                      <img src={settings.logoUrl} alt="Assinatura" className="h-12 object-contain opacity-40 grayscale" referrerPolicy="no-referrer" />
                     ) : (
-                      <div className="h-16"></div>
+                      <p className="text-[12px] font-black uppercase tracking-widest text-gray-300">{settings.storeName || 'Inkys'}</p>
                     )}
                   </div>
                 </div>

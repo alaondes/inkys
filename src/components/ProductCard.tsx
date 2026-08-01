@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Product, formatPrice } from '../data/products';
-import { ShoppingCart, ChevronLeft, ChevronRight, Star } from 'lucide-react';
+import { ShoppingCart, ChevronLeft, ChevronRight, Star, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSettings } from '../context/SettingsContext';
+import { toast } from 'react-hot-toast';
 
 interface ProductCardProps {
   key?: React.Key;
@@ -46,6 +47,30 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
     window.open(`https://wa.me/${number}?text=${message}`, '_blank');
   };
 
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}/?view=product&id=${product.id}`;
+    const shareText = `Olha o que eu achei na loja Inkys: ${product.name}!`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Inkys - Personalizados',
+          text: shareText,
+          url: shareUrl
+        });
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') {
+           navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+           toast.success('Link copiado para a área de transferência!');
+        }
+      }
+    } else {
+      navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+      toast.success('Link copiado para a área de transferência!');
+    }
+  };
+
   return (
     <div className="flex flex-col items-center group bg-white border border-gray-100 rounded-xl p-2.5 sm:p-4 hover:shadow-xl transition-all duration-300 h-full w-full overflow-hidden">
       <div 
@@ -67,6 +92,14 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           )}
         </AnimatePresence>
         
+        <button 
+          onClick={handleShare}
+          title="Compartilhar Produto"
+          className="absolute right-2 top-2 bg-white/90 hover:bg-white text-gray-800 p-1.5 rounded-full shadow-md opacity-0 group-hover/image:opacity-100 transition-all z-20"
+        >
+          <Share2 size={14} />
+        </button>
+        
         {images.length > 1 && (
           <>
             <button 
@@ -87,7 +120,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
       
       <div className="flex flex-col flex-grow items-center text-center px-1 sm:px-2 w-full min-w-0">
         <h3 
-          className="text-[13px] sm:text-[15px] font-normal text-gray-700 leading-tight mb-1.5 sm:mb-2 min-h-[38px] sm:min-h-[45px] cursor-pointer hover:text-[#783884] line-clamp-2 break-words w-full"
+          className="text-[13px] sm:text-[15px] font-normal text-gray-700 leading-tight mb-1.5 sm:mb-2 min-h-[38px] sm:min-h-[45px] cursor-pointer hover:text-[#111827] line-clamp-2 break-words w-full"
           onClick={() => onAddToCart(product, selectedColor)}
         >
           {product.name}

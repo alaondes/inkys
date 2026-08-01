@@ -1,19 +1,12 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <meta name="referrer" content="no-referrer" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Inkys - Catálogo e Pedidos</title>
     <!-- Favicon (Ícone do site) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☕</text></svg>">
-    <script>
-      window.addEventListener('error', function(e) {
-        document.body.innerHTML += '<div style="color:red; background:white; padding:20px; position:absolute; top:0; z-index:9999;">Error: ' + e.message + '<br>' + e.filename + ':' + e.lineno + '</div>';
-      });
-      window.addEventListener('unhandledrejection', function(e) {
-        document.body.innerHTML += '<div style="color:red; background:white; padding:20px; position:absolute; top:50px; z-index:9999;">Promise Rejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason) + '</div>';
-      });
-    </script>
   </head>
   <body>
     <div id="root"></div>

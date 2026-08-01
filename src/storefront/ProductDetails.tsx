@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Product, formatPrice } from '../data/products';
 import { Star, ChevronLeft, ChevronRight, Share2, Heart, Video } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
@@ -26,7 +27,7 @@ const formatDescription = (desc: string) => {
 
 const ProductBannerCarousel = ({ banners }: { banners: any[] }) => {
 
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0); const navigate = useNavigate();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -45,27 +46,45 @@ const ProductBannerCarousel = ({ banners }: { banners: any[] }) => {
           const link = typeof item === 'string' ? '' : item?.link;
           
           const imgEl = (
-            <img
-              src={imgSrc}
+            <img               src={imgSrc}
               alt={`Banner ${idx + 1}`}
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-                idx === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                idx === currentIndex ? 'opacity-100' : 'opacity-0'
               }`}
-            />
+            referrerPolicy="no-referrer" />
           );
           
           return (
-            <div key={idx}>
-              {link ? (
+            <div key={idx} className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${idx === currentIndex ? 'z-20 opacity-100 pointer-events-auto' : 'z-0 opacity-0 pointer-events-none'}`}>
+              {imgEl}
+              {link && (
                 <a 
                   href={link} 
-                  target={link.startsWith('http') ? "_blank" : "_self"} 
-                  rel="noopener noreferrer"
-                  className={`absolute inset-0 ${idx === currentIndex ? 'z-20' : '-z-10'}`}
-                >
-                  {imgEl}
-                </a>
-              ) : imgEl}
+                  onClick={(e) => {
+                    try {
+                      const url = new URL(link, window.location.origin);
+                      // Navigate inside SPA if it's same origin or the production domain
+                      if (url.hostname === window.location.hostname || url.hostname.includes('inkys.com.br')) {
+                        e.preventDefault();
+                        if (url.search) {
+                          // This is going to the storefront with category or view params
+                          navigate('/' + url.search + url.hash);
+                        } else {
+                          navigate(url.pathname + url.search + url.hash);
+                        }
+                      }
+                    } catch (err) {
+                      if (link.startsWith('/') || link.startsWith('?')) {
+                        e.preventDefault();
+                        navigate(link.startsWith('?') ? '/' + link : link);
+                      }
+                    }
+                  }}
+                  target={link.startsWith('http') && !link.includes('inkys.com.br') && !link.includes(window.location.hostname) ? '_blank' : '_self'}
+                  className="absolute inset-0 z-30 block w-full h-full cursor-pointer"
+                  aria-label={`Banner ${idx + 1}`}
+                />
+              )}
             </div>
           );
         })}
@@ -134,15 +153,16 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
   const [isWishlisted, setIsWishlisted] = useState(false);
 
   const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/?view=product&id=${product.id}`;
     try {
       if (navigator.share) {
         await navigator.share({
           title: product.name,
           text: `Confira ${product.name} na ${settings.storeName}!`,
-          url: window.location.href,
+          url: shareUrl,
         });
       } else {
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(shareUrl);
         alert('Link copiado para a área de transferência!');
       }
     } catch (error) {
@@ -206,9 +226,9 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
           <span className="text-gray-900">{product.category}</span>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-12">
+        <div className="flex flex-col md:flex-row gap-12 items-start">
           {/* Gallery */}
-          <div className="w-full md:w-[60%] flex flex-col-reverse md:flex-row gap-4">
+          <div className="w-full md:w-[60%] flex flex-col-reverse md:flex-row gap-4 sticky top-6">
             {/* Thumbnails list on the left (vertical on desktop, horizontal below on mobile) */}
             {images.length > 1 && (
               <div className="flex flex-row md:flex-col gap-3 overflow-auto max-h-[85px] md:max-h-[600px] w-full md:w-20 shrink-0 justify-start pb-2 md:pb-0 scrollbar-none">
@@ -226,7 +246,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
                       src={img} 
                       alt={`Thumbnail ${idx + 1}`} 
                       className="w-full h-full object-cover mix-blend-multiply" 
-                      onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
+                      referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
                     />
                   </button>
                 ))}
@@ -234,7 +254,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
             )}
 
             {/* Main Image */}
-            <div className="flex-1 relative border border-gray-100 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
+            <div className="flex-1 aspect-square relative border border-gray-100 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
                   {images.length > 1 && (
                    <>
                      <button 
@@ -252,7 +272,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
                    </>
                  )}
 
-                 <img src={images[currentImageIndex] || undefined} alt={product.name} className="w-full h-full object-cover mix-blend-multiply" />
+                 <img src={images[currentImageIndex] || undefined} alt={product.name} className="w-full h-full object-contain mix-blend-multiply" referrerPolicy="no-referrer" />
             </div>
           </div>
           
@@ -381,7 +401,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
                        />
                        {customImage && (
                          <div className="mt-2 relative w-16 h-16 rounded-md overflow-hidden border border-gray-200">
-                           <img src={customImage} alt="Preview" className="w-full h-full object-cover" />
+                           <img src={customImage} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                          </div>
                        )}
                      </div>
@@ -516,9 +536,9 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
 
            <div className="max-w-[1200px] mx-auto px-4 relative z-10">
               <div className="flex items-center justify-center gap-4 mb-10">
-                <div className="w-16 h-[2px] bg-gradient-to-r from-transparent to-[#783884]/40"></div>
-                <h2 className="text-3xl md:text-4xl font-bold text-[#783884] tracking-tight text-center">Descrição do Produto</h2>
-                <div className="w-16 h-[2px] bg-gradient-to-l from-transparent to-[#783884]/40"></div>
+                <div className="w-16 h-[2px] bg-gradient-to-r from-transparent to-[#111827]/40"></div>
+                <h2 className="text-3xl md:text-4xl font-bold text-[#111827] tracking-tight text-center">Descrição do Produto</h2>
+                <div className="w-16 h-[2px] bg-gradient-to-l from-transparent to-[#111827]/40"></div>
               </div>
 
               <div className="bg-white/80 backdrop-blur-sm p-8 md:p-12 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-purple-100/50">
@@ -534,7 +554,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
       {/* Reviews */}
       <div className="py-16 bg-white">
          <div className="max-w-6xl mx-auto px-4 text-center">
-            <h2 className="text-3xl font-bold text-[#783884] mb-8">Avaliações dos consumidores</h2>
+            <h2 className="text-3xl font-bold text-[#111827] mb-8">Avaliações dos consumidores</h2>
             <div className="flex justify-center items-center gap-12">
                <div className="text-center">
                  <div className="text-6xl font-bold text-gray-900 leading-none">5<span className="text-3xl text-gray-500 font-normal">/5</span></div>

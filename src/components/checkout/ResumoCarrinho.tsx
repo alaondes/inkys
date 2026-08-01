@@ -25,20 +25,20 @@ export function ResumoCarrinho({
 
   return (
     <div className="bg-white border border-gray-200 rounded shadow-sm mb-6">
-      <div className="hidden md:grid grid-cols-12 border-b border-gray-100 p-4 text-sm font-bold text-gray-700 bg-gray-50">
-        <div className="col-span-8">Produtos</div>
-        <div className="col-span-2 text-center">Qtd.</div>
-        <div className="col-span-2 text-right">Preço</div>
+      <div className="hidden md:flex flex-row border-b border-gray-100 p-4 text-sm font-bold text-gray-700 bg-gray-50 gap-4">
+        <div className="flex-1">Produtos</div>
+        <div className="w-32 text-center">Qtd.</div>
+        <div className="w-32 text-right">Preço</div>
       </div>
       
       {cart.map((item) => (
-        <div key={item.cartItemId} className="flex flex-col md:grid md:grid-cols-12 p-4 border-b border-gray-100 text-sm md:items-center gap-4">
-          <div className="md:col-span-8 flex items-start gap-4">
+        <div key={item.cartItemId} className="flex flex-col md:flex-row p-4 border-b border-gray-100 text-sm md:items-center gap-4">
+          <div className="flex-1 flex items-start gap-4">
             <img 
               src={item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop'} 
               alt={item.name} 
               className="w-20 h-20 object-cover rounded-md border border-gray-200 flex-shrink-0"
-            />
+            referrerPolicy="no-referrer" />
             <div className="flex flex-col flex-1">
               <span className="text-gray-700 font-bold md:font-normal">{item.name} {item.selectedColor ? `- ${item.selectedColor}` : ''}</span>
               <span className="text-xs text-gray-500 mt-0.5">Cód: {(item.id || '').substring(0, 4).toUpperCase()}</span>
@@ -51,7 +51,7 @@ export function ResumoCarrinho({
                         src={URL.createObjectURL(item.file)} 
                         alt="Preview" 
                         className="w-10 h-10 object-cover rounded border border-gray-200" 
-                      />
+                      referrerPolicy="no-referrer" />
                     )}
                     <span className="text-xs text-[#3b9370] font-bold flex items-center gap-1 max-w-[150px] sm:max-w-[200px] truncate" title={item.file.name}>
                       <FileText size={12} className="flex-shrink-0" /> <span className="truncate">{item.file.name}</span>
@@ -78,13 +78,13 @@ export function ResumoCarrinho({
               </div>
             </div>
           </div>
-          <div className="md:col-span-2 flex items-center justify-between md:justify-center text-gray-700 bg-gray-50 md:bg-transparent p-2 md:p-0 rounded">
+          <div className="md:w-32 md:flex-shrink-0 flex items-center justify-between md:justify-center text-gray-700 bg-gray-50 md:bg-transparent p-2 md:p-0 rounded">
             <span className="md:hidden text-xs text-gray-500 uppercase font-bold">Quantidade:</span>
             <div className="flex items-center gap-2">
               <button 
                 type="button" 
                 onClick={() => updateQuantity(item.cartItemId, -1)}
-                className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 text-gray-600 transition-colors font-bold text-base"
+                className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 text-gray-600 transition-colors font-bold text-base flex-shrink-0"
                 title="Diminuir quantidade"
               >
                 <Minus size={12} />
@@ -93,14 +93,14 @@ export function ResumoCarrinho({
               <button 
                 type="button" 
                 onClick={() => updateQuantity(item.cartItemId, 1)}
-                className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 text-gray-600 transition-colors font-bold text-base"
+                className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 text-gray-600 transition-colors font-bold text-base flex-shrink-0"
                 title="Aumentar quantidade"
               >
                 <Plus size={12} />
               </button>
             </div>
           </div>
-          <div className="md:col-span-2 flex items-center justify-between md:justify-end font-bold text-[#5ba324] bg-green-50 md:bg-transparent p-2 md:p-0 rounded">
+          <div className="md:w-32 md:flex-shrink-0 flex items-center justify-between md:justify-end font-bold text-[#5ba324] bg-green-50 md:bg-transparent p-2 md:p-0 rounded">
             <span className="md:hidden text-xs text-gray-500 uppercase font-bold text-gray-700">Total item:</span>
             <div className="flex items-center gap-3">
               <span>{formatPrice(item.price * item.quantity)}</span>

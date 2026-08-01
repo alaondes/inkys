@@ -24,7 +24,7 @@ import { useSettings } from '../../context/SettingsContext';
 import { formatPrice } from '../../data/products';
 import { useProducts } from '../../context/ProductContext';
 import { db, auth } from '../../lib/firebase';
-import { withTimeout } from '../../lib/firestoreUtils';
+import { withTimeout, generateSequentialId } from '../../lib/firestoreUtils';
 import { 
   collection, 
   query, 
@@ -34,7 +34,8 @@ import {
   addDoc, 
   updateDoc, 
   deleteDoc, 
-  doc 
+  doc,
+  setDoc
 } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
@@ -188,7 +189,7 @@ export function Documents() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [validUntil, setValidUntil] = useState(''); // For quote
-  const [items, setItems] = useState([{ description: '', quantity: 1, unitPrice: 0 }]);
+  const [items, setItems] = useState<{ description: string; quantity: number; unitPrice: number; image?: string; }[]>([{ description: '', quantity: 1, unitPrice: 0 }]);
   const [notes, setNotes] = useState('');
   const [discount, setDiscount] = useState(0);
   const [quoteStatus, setQuoteStatus] = useState<'Pendente' | 'Aprovado' | 'Rejeitado'>('Pendente');
@@ -214,11 +215,22 @@ export function Documents() {
   // Payment Details
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentConditions, setPaymentConditions] = useState('');
+  const [paymentPolicy, setPaymentPolicy] = useState(() => {
+    return getSafeStorage('doc_payment_policy', `Política de Pagamento
+
+Para garantir a qualidade do atendimento e o início da produção do seu pedido, trabalhamos com as seguintes condições:
+
+- Sinal de 50% para início da produção/confirmação do pedido.
+- 50% restantes no momento da entrega/envio do produto.
+
+Agradecemos pela confiança e preferência!`);
+  });
 
   // Design/Theme Choices
   const [documentTheme, setDocumentTheme] = useState<keyof typeof THEMES>(() => (getSafeStorage('doc_theme', 'charcoal') as any));
   const [documentFont, setDocumentFont] = useState<keyof typeof FONTS>('sans');
   const [watermarkText, setWatermarkText] = useState('');
+  const [documentLogoUrl, setDocumentLogoUrl] = useState(() => getSafeStorage('doc_logo_url', settings.logoUrl || ''));
 
   // Order loading state
   const [orders, setOrders] = useState<Order[]>([]);
@@ -244,6 +256,12 @@ export function Documents() {
     setSafeStorage('doc_emitter_doc', emitterDoc);
     setSafeStorage('doc_emitter_address', emitterAddress);
   }, [emitterName, emitterDoc, emitterAddress]);
+
+  // Sync Logo and Payment Policy to localStorage
+  useEffect(() => {
+    setSafeStorage('doc_logo_url', documentLogoUrl);
+    setSafeStorage('doc_payment_policy', paymentPolicy);
+  }, [documentLogoUrl, paymentPolicy]);
 
   // Sync Theme to localStorage
   useEffect(() => {
@@ -430,10 +448,10 @@ export function Documents() {
   const total = subtotal - discount;
 
   // Save or update document to database history
-  const handleSaveDocument = async () => {
+  const handleSaveDocument = async (): Promise<string | null> => {
     if (!customerName) {
       toast.error('O nome do cliente é obrigatório.');
-      return;
+      return null;
     }
 
     setIsSaving(true);
@@ -444,19 +462,24 @@ export function Documents() {
       customerDoc,
       customerEmail,
       customerPhone,
-      items,
+      items: items.map(item => ({
+        ...item,
+        image: item.image || products.find(p => p.name === item.description)?.image || ''
+      })),
       discount,
       subtotal,
       total,
       notes,
       paymentMethod,
       paymentConditions,
+      paymentPolicy,
       validUntil: docType === 'quote' ? validUntil : '',
       status: docType === 'quote' ? quoteStatus : 'Faturado',
       emitter: {
         name: emitterName,
         doc: emitterDoc,
         address: emitterAddress,
+        logoUrl: documentLogoUrl || settings.logoUrl || ''
       },
       design: {
         theme: documentTheme,
@@ -470,13 +493,17 @@ export function Documents() {
       if (selectedSavedDocId) {
         await withTimeout(updateDoc(doc(db, 'documents', selectedSavedDocId), docPayload));
         toast.success('Documento atualizado no histórico!');
+        return selectedSavedDocId;
       } else {
-        const ref = await withTimeout(addDoc(collection(db, 'documents'), docPayload));
-        setSelectedSavedDocId(ref.id);
+        const customId = await generateSequentialId(db, docType === 'quote' ? 'Orçamento' : 'Pendente', emitterName || settings.storeName);
+        await withTimeout(setDoc(doc(db, 'documents', customId), docPayload));
+        setSelectedSavedDocId(customId);
         toast.success('Documento salvo no histórico de emissões!');
+        return customId;
       }
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, 'documents');
+      return null;
     } finally {
       setIsSaving(false);
     }
@@ -496,6 +523,14 @@ export function Documents() {
     setNotes(savedDoc.notes || '');
     setPaymentMethod(savedDoc.paymentMethod || '');
     setPaymentConditions(savedDoc.paymentConditions || '');
+    setPaymentPolicy(savedDoc.paymentPolicy || `Política de Pagamento
+
+Para garantir a qualidade do atendimento e o início da produção do seu pedido, trabalhamos com as seguintes condições:
+
+- Sinal de 50% para início da produção/confirmação do pedido.
+- 50% restantes no momento da entrega/envio do produto.
+
+Agradecemos pela confiança e preferência!`);
     
     if (savedDoc.type === 'quote') {
       setValidUntil(savedDoc.validUntil || '');
@@ -506,6 +541,7 @@ export function Documents() {
       setEmitterName(savedDoc.emitter.name || '');
       setEmitterDoc(savedDoc.emitter.doc || '');
       setEmitterAddress(savedDoc.emitter.address || '');
+      setDocumentLogoUrl(savedDoc.emitter.logoUrl || settings.logoUrl || '');
     }
 
     if (savedDoc.design) {
@@ -536,7 +572,8 @@ export function Documents() {
     delete convertedPayload.id;
 
     try {
-      await withTimeout(addDoc(collection(db, 'documents'), convertedPayload));
+      const customId = await generateSequentialId(db, 'Pendente', emitterName || settings.storeName);
+      await withTimeout(setDoc(doc(db, 'documents', customId), convertedPayload));
       toast.success('Convertido em Recibo de Pagamento com sucesso!');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'documents');
@@ -579,6 +616,73 @@ export function Documents() {
 
     return searchMatch && typeMatch;
   });
+
+  const handleShare = async (platform: 'whatsapp' | 'email' | 'copy') => {
+    let docId = selectedSavedDocId;
+    if (!docId) {
+      const confirmSave = window.confirm('Deseja salvar o documento no histórico para gerar o link de visualização automática?');
+      if (!confirmSave) return;
+      
+      const savedId = await handleSaveDocument();
+      if (!savedId) return;
+      docId = savedId;
+    }
+
+    const docUrl = `${window.location.origin}/document/${docId}`;
+    const storeNameStr = emitterName || settings.storeName || 'Loja';
+    const clientNameStr = customerName || 'Cliente';
+    const formattedTotal = formatPrice(total);
+    const docTypeLabel = docType === 'quote' ? 'Orçamento' : 'Recibo';
+
+    if (platform === 'copy') {
+      try {
+        await navigator.clipboard.writeText(docUrl);
+        toast.success('Link de visualização copiado para a área de transferência!');
+      } catch {
+        toast.error('Erro ao copiar o link.');
+      }
+    } else if (platform === 'whatsapp') {
+      let msg = `Olá, *${clientNameStr}*!\n\n`;
+      msg += `Seguem as informações do seu *${docTypeLabel}* da loja *${storeNameStr}*:\n\n`;
+      msg += `📄 *DOCUMENTO:* ${docTypeLabel} #${docId.substring(0, 8)}\n`;
+      msg += `💰 *VALOR TOTAL:* ${formattedTotal}\n`;
+      if (paymentMethod) {
+        msg += `💳 *MEIO DE PAGAMENTO:* ${paymentMethod}\n`;
+      }
+      if (paymentConditions) {
+        msg += `📝 *CONDIÇÕES:* ${paymentConditions}\n`;
+      }
+      msg += `\nVocê pode visualizar e baixar o documento profissional em PDF com a logo, foto do produto e nossa *Política de Pagamento* clicando no link abaixo:\n`;
+      msg += `🔗 ${docUrl}\n\n`;
+      msg += `Qualquer dúvida, estamos à disposição!`;
+
+      const encodedMsg = encodeURIComponent(msg);
+      const cleanPhone = customerPhone ? customerPhone.replace(/\D/g, '') : '';
+      const waUrl = cleanPhone 
+        ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMsg}`
+        : `https://api.whatsapp.com/send?text=${encodedMsg}`;
+      
+      window.open(waUrl, '_blank');
+    } else if (platform === 'email') {
+      const subject = `[${storeNameStr}] Seu ${docTypeLabel} #${docId.substring(0, 8)}`;
+      let body = `Olá, ${clientNameStr}!\n\n`;
+      body += `Seguem as informações do seu ${docTypeLabel} de ${storeNameStr}:\n\n`;
+      body += `- Documento: ${docTypeLabel} #${docId.substring(0, 8)}\n`;
+      body += `- Valor Total: ${formattedTotal}\n`;
+      if (paymentMethod) {
+        body += `- Meio de Pagamento: ${paymentMethod}\n`;
+      }
+      if (paymentConditions) {
+        body += `- Condições: ${paymentConditions}\n\n`;
+      }
+      body += `Você pode visualizar, imprimir ou baixar o documento em formato PDF com a logo, fotos do produto e dados da nossa Política de Pagamento acessando o link abaixo:\n`;
+      body += `${docUrl}\n\n`;
+      body += `Qualquer dúvida, por favor responda a este e-mail.\n\nAtenciosamente,\n${storeNameStr}`;
+
+      const mailtoUrl = `mailto:${customerEmail || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.open(mailtoUrl, '_blank');
+    }
+  };
 
   const selectedTheme = THEMES[documentTheme] || THEMES.charcoal;
   const fontClass = FONTS[documentFont]?.class || 'font-sans';
@@ -801,6 +905,13 @@ export function Documents() {
                     className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:border-pink-500"
                   />
                 </div>
+                <input 
+                  type="text" 
+                  placeholder="URL do Logotipo da Loja (Opcional - deixe em branco para usar o padrão)" 
+                  value={documentLogoUrl}
+                  onChange={(e) => setDocumentLogoUrl(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:border-pink-500"
+                />
               </div>
             </div>
 
@@ -975,6 +1086,16 @@ export function Documents() {
                   className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:border-pink-500"
                 />
               </div>
+              <div>
+                <label className="block text-xs font-black text-gray-500 uppercase mb-1.5">Política de Pagamento (Exibida no Documento)</label>
+                <textarea 
+                  rows={4}
+                  placeholder="Defina as diretrizes, prazos, sinal e regras de pagamento..." 
+                  value={paymentPolicy}
+                  onChange={(e) => setPaymentPolicy(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:border-pink-500 resize-none font-medium leading-relaxed"
+                />
+              </div>
             </div>
 
             {/* Design customization & Visual details */}
@@ -1055,6 +1176,34 @@ export function Documents() {
               </button>
             </div>
 
+            {/* Share & Send Actions Bar (Hidden on printing) */}
+            <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 print:hidden">
+              <div className="flex items-center gap-2">
+                <Share2 className="text-pink-600 animate-pulse" size={16} />
+                <span className="text-xs font-black uppercase tracking-wider text-gray-700">Enviar Documento</span>
+              </div>
+              <div className="flex items-center flex-wrap gap-2">
+                <button
+                  onClick={() => handleShare('whatsapp')}
+                  className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-black uppercase tracking-wider px-4 py-2 rounded-xl transition-colors shadow-xs cursor-pointer"
+                >
+                  WhatsApp
+                </button>
+                <button
+                  onClick={() => handleShare('email')}
+                  className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider px-4 py-2 rounded-xl transition-colors shadow-xs cursor-pointer"
+                >
+                  E-mail
+                </button>
+                <button
+                  onClick={() => handleShare('copy')}
+                  className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-black uppercase tracking-wider px-4 py-2 rounded-xl transition-colors shadow-xs border border-gray-200 cursor-pointer"
+                >
+                  Copiar Link
+                </button>
+              </div>
+            </div>
+
             {/* Document Printable Sheet */}
             <div className={`bg-white p-8 sm:p-12 rounded-2xl border border-gray-200 shadow-sm print:shadow-none print:border-none print:p-0 min-h-[750px] relative overflow-hidden flex flex-col justify-between ${fontClass}`}>
               
@@ -1071,8 +1220,8 @@ export function Documents() {
                 {/* Store Header */}
                 <div className={`flex flex-col sm:flex-row justify-between items-start gap-4 border-b-2 pb-6 ${selectedTheme.border}`}>
                   <div>
-                    {settings.logoUrl ? (
-                      <img src={settings.logoUrl || undefined} alt="Logo" className="h-16 object-contain mb-3" />
+                    {documentLogoUrl || settings.logoUrl ? (
+                      <img src={documentLogoUrl || settings.logoUrl || undefined} alt="Logo" className="h-16 object-contain mb-3" referrerPolicy="no-referrer" />
                     ) : (
                       <h2 className="text-2xl font-black tracking-tight uppercase mb-2 text-gray-900">
                         {settings.storeName || 'Minha Loja'}
@@ -1132,16 +1281,35 @@ export function Documents() {
                       </tr>
                     </thead>
                     <tbody>
-                      {items.filter(item => item.description || item.unitPrice > 0).map((item, idx) => (
-                        <tr key={idx} className="border-b border-gray-100 text-xs">
-                          <td className="py-3 pl-2 font-semibold text-gray-900 leading-relaxed">
-                            {item.description || 'Item sem descrição'}
-                          </td>
-                          <td className="py-3 text-center text-gray-600 font-medium">{item.quantity}</td>
-                          <td className="py-3 text-right text-gray-600 font-semibold">{formatPrice(item.unitPrice)}</td>
-                          <td className="py-3 text-right pr-2 font-extrabold text-gray-900">{formatPrice(item.quantity * item.unitPrice)}</td>
-                        </tr>
-                      ))}
+                      {items.filter(item => item.description || item.unitPrice > 0).map((item, idx) => {
+                        const matchedProduct = products.find(p => p.name === item.description || p.name?.toLowerCase() === item.description?.toLowerCase());
+                        const imgUrl = item.image || matchedProduct?.image;
+                        return (
+                          <tr key={idx} className="border-b border-gray-100 text-xs">
+                            <td className="py-3 pl-2 font-semibold text-gray-900 leading-relaxed">
+                              <div className="flex items-center gap-3">
+                                {imgUrl && (
+                                  <img 
+                                    src={imgUrl} 
+                                    alt={item.description} 
+                                    className="w-12 h-12 object-cover rounded-lg border border-gray-100 shrink-0" 
+                                    referrerPolicy="no-referrer"
+                                  />
+                                )}
+                                <div>
+                                  <p className="font-extrabold text-gray-900">{item.description || 'Item sem descrição'}</p>
+                                  {matchedProduct?.sku && (
+                                    <p className="text-[10px] text-gray-400 font-mono mt-0.5">SKU: {matchedProduct.sku}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 text-center text-gray-600 font-medium">{item.quantity}</td>
+                            <td className="py-3 text-right text-gray-600 font-semibold">{formatPrice(item.unitPrice)}</td>
+                            <td className="py-3 text-right pr-2 font-extrabold text-gray-900">{formatPrice(item.quantity * item.unitPrice)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1198,6 +1366,13 @@ export function Documents() {
                 </div>
 
                 {/* Print notes block */}
+                {paymentPolicy && (
+                  <div className="text-xs text-blue-900 border border-blue-100 bg-blue-50/40 p-4 rounded-xl leading-relaxed">
+                    <p className="font-extrabold uppercase tracking-wider text-blue-800 mb-1">Política de Pagamento:</p>
+                    <p className="whitespace-pre-line font-medium">{paymentPolicy}</p>
+                  </div>
+                )}
+
                 {notes && (
                   <div className="text-xs text-gray-600 border-t border-gray-100 pt-4 bg-gray-50/50 p-4 rounded-xl leading-relaxed">
                     <p className="font-extrabold uppercase tracking-wider text-gray-400 mb-1.5">Observações:</p>
@@ -1207,12 +1382,22 @@ export function Documents() {
               </div>
 
               {/* Bottom Declaration (Always at page footer on print) */}
-              <div className="mt-8 border-t border-gray-100 pt-6 text-center text-[10px] text-gray-400">
+              <div className="mt-8 border-t border-gray-100 pt-6 text-center text-[10px] text-gray-400 space-y-4">
                 <div>
                   {docType === 'receipt' ? (
                     <p className="font-medium">Recebemos de {customerName || 'Cliente'} a quantia líquida de {formatPrice(total)} descrita acima.</p>
                   ) : (
                     <p className="font-medium">Este documento trata-se de uma proposta comercial sujeita a aprovação das partes.</p>
+                  )}
+                </div>
+                <p className="text-[9px] text-gray-300">Documento gerado eletronicamente por {emitterName || settings.storeName || 'Inkys'}</p>
+                
+                {/* Centered signature logo */}
+                <div className="flex justify-center pt-2">
+                  {documentLogoUrl || settings.logoUrl ? (
+                    <img src={documentLogoUrl || settings.logoUrl || undefined} alt="Logo Rodapé" className="h-12 object-contain opacity-40 grayscale" referrerPolicy="no-referrer" />
+                  ) : (
+                    <p className="text-[12px] font-black uppercase tracking-widest text-gray-300">{emitterName || settings.storeName || 'Inkys'}</p>
                   )}
                 </div>
               </div>

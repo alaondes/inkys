@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useSettings } from '../context/SettingsContext';
-import { Send, Image as ImageIcon, Paintbrush, ArrowLeft, Upload, X, Loader2, Download, FileText, ChevronRight, ChevronLeft, ShoppingCart } from 'lucide-react';
+import { Send, Image as ImageIcon, Paintbrush, ArrowLeft, Upload, X, Loader2, Download, FileText, ChevronRight, ChevronLeft, ShoppingCart, Share2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const getProductPlaceholderIcon = (name: string) => {
@@ -174,16 +174,46 @@ export function CustomProductPage({ onBack, onAddToCart }: { onBack: () => void,
     }
   };
 
+  const handleShare = async () => {
+    const shareUrl = window.location.href;
+    const shareText = `Olha o que eu achei na loja Inkys: ${productType}! Crie o seu item personalizado.`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Inkys - Personalizados',
+          text: shareText,
+          url: shareUrl
+        });
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') {
+           navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+           toast.success('Link copiado para a área de transferência!');
+        }
+      }
+    } else {
+      navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+      toast.success('Link copiado para a área de transferência!');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FDFDFD] font-sans pb-24" id="configurator-top">
       {/* Header Minimalista */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm/50">
-        <div className="max-w-[1200px] mx-auto px-4 py-4 flex items-center gap-4">
+        <div className="max-w-[1200px] mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <button 
             onClick={onBack}
             className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors bg-gray-50 hover:bg-gray-100 px-4 py-2 rounded-full cursor-pointer"
           >
             <ArrowLeft size={16} /> Voltar para a loja
+          </button>
+          
+          <button 
+            onClick={handleShare}
+            className="flex items-center gap-2 text-sm font-bold text-[var(--color-primary)] hover:text-purple-700 transition-colors bg-purple-50 hover:bg-purple-100 px-4 py-2 rounded-full cursor-pointer"
+          >
+            <Share2 size={16} /> Compartilhar
           </button>
         </div>
       </div>
@@ -329,7 +359,7 @@ export function CustomProductPage({ onBack, onAddToCart }: { onBack: () => void,
                               src={guideImage} 
                               alt="Guia de Medidas" 
                               className="w-full max-h-48 object-contain rounded-xl mt-3 border border-blue-100/50 bg-white"
-                            />
+                            referrerPolicy="no-referrer" />
                           )}
                         </div>
                       </div>

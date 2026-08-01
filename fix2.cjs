@@ -1,20 +1,13 @@
 const fs = require('fs');
-let lines = fs.readFileSync('src/admin/views/Products.tsx', 'utf8').split('\n');
-let replaced = false;
 
-for (let i = 0; i < lines.length; i++) {
-  if (lines[i].trim() === '))}'){
-    if (lines[i+1].trim() === '{filteredProducts.length === 0 && (') {
-      lines[i] = '        );\n      })}\n    </React.Fragment>\n  ))}';
-      replaced = true;
-      break;
-    }
-  }
-}
+// Fix Products.tsx
+let productsContent = fs.readFileSync('src/admin/views/Products.tsx', 'utf8');
+productsContent = productsContent.replace(/updateProduct\(p\.id, \{ \.\.\.p, category: newCat \}\);/g, 'updateProduct({ ...p, category: newCat });');
+fs.writeFileSync('src/admin/views/Products.tsx', productsContent);
 
-if (replaced) {
-  fs.writeFileSync('src/admin/views/Products.tsx', lines.join('\n'));
-  console.log('replaced successfully');
-} else {
-  console.log('not found');
-}
+// Fix Settings.tsx
+let settingsContent = fs.readFileSync('src/admin/views/Settings.tsx', 'utf8');
+settingsContent = settingsContent.replace(/const reader = new FileReader\(\);\s*reader\.onloadend = async \(\) => \{\s*const base64String = reader\.result as string;\s*const resized = await resizeImage\(base64String, 200, 200\);\s*setFooterSettings\(\{ \.\.\.footerSettings, footerLogoUrl: resized \}\);\s*\};\s*reader\.readAsDataURL\(file\);/g, 'const resized = await resizeImage(file, 200, 200);\nsetFooterSettings({ ...footerSettings, footerLogoUrl: resized });');
+fs.writeFileSync('src/admin/views/Settings.tsx', settingsContent);
+
+console.log("Fixed files");

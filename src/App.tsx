@@ -2,6 +2,8 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Storefront } from './storefront/Storefront';
 import { AdminApp } from './admin/AdminApp';
+import { LoginRoute } from './admin/components/LoginRoute';
+import { PublicDocumentViewer } from './components/PublicDocumentViewer';
 import { ProductProvider } from './context/ProductContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { Toaster } from 'react-hot-toast';
@@ -59,9 +61,9 @@ function AppContent() {
         <div className="flex flex-col items-center space-y-5">
           {/* Pulsating logo/icon placeholder */}
           <div 
-            className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-100/50 animate-pulse transition-transform duration-500 hover:scale-105"
+            className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg shadow-yellow-100/50 animate-pulse transition-transform duration-500 hover:scale-105"
             style={{ 
-              background: `linear-gradient(135deg, ${settings?.headerColor || '#8b3887'} 0%, ${settings?.topBarColor || '#d64c71'} 100%)` 
+              background: `linear-gradient(135deg, ${settings?.headerColor || '#facc15'} 0%, ${settings?.topBarColor || '#eab308'} 100%)` 
             }}
           >
             <span className="text-white font-black text-2xl tracking-tighter">i</span>
@@ -79,8 +81,8 @@ function AppContent() {
 
         {/* Elegant modern step indicator dots */}
         <div className="mt-8 flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full animate-bounce bg-purple-600" style={{ animationDelay: '0ms' }}></div>
-          <div className="w-2 h-2 rounded-full animate-bounce bg-pink-500" style={{ animationDelay: '150ms' }}></div>
+          <div className="w-2 h-2 rounded-full animate-bounce bg-yellow-400" style={{ animationDelay: '0ms' }}></div>
+          <div className="w-2 h-2 rounded-full animate-bounce bg-yellow-500" style={{ animationDelay: '150ms' }}></div>
           <div className="w-2 h-2 rounded-full animate-bounce bg-yellow-500" style={{ animationDelay: '300ms' }}></div>
         </div>
       </div>
@@ -92,7 +94,9 @@ function AppContent() {
       <Toaster position="top-center" />
       <Routes>
         <Route path="/" element={<Storefront />} />
+        <Route path="/login" element={<LoginRoute />} />
         <Route path="/admin/*" element={<AdminApp />} />
+        <Route path="/document/:id" element={<PublicDocumentViewer />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

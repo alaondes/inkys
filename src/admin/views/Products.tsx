@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft, Tags, CheckCircle, Loader2 } from 'lucide-react';
+import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import { formatPrice, Product } from '../../data/products';
 import { useProducts } from '../../context/ProductContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -433,7 +434,7 @@ export function Products() {
                     e.preventDefault();
                     const val = e.currentTarget.value.trim();
                     if (val) {
-                      setLocalBanners(prev => [...prev, { image: val, link: "" }]);
+                      setLocalBanners(prev => [...prev, { image: convertGoogleDriveUrl(val), link: "" }]);
                       e.currentTarget.value = '';
                       toast.success('Banner adicionado! Não se esqueça de salvar.');
                     }
@@ -446,7 +447,7 @@ export function Products() {
                   const input = document.getElementById('banner-url-input') as HTMLInputElement;
                   const val = input?.value.trim();
                   if (val) {
-                    setLocalBanners(prev => [...prev, { image: val, link: "" }]);
+                    setLocalBanners(prev => [...prev, { image: convertGoogleDriveUrl(val), link: "" }]);
                     input.value = '';
                     toast.success('Banner adicionado! Não se esqueça de salvar.');
                   }
@@ -470,7 +471,7 @@ export function Products() {
                         src={img} 
                         alt={`Banner Produto ${index + 1}`} 
                         className="w-full h-full object-cover" 
-                        onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
+                        referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
                       />
                       <button 
                         type="button" 
@@ -695,7 +696,7 @@ export function Products() {
                         src={product.image || (product.gallery && product.gallery[0]) || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop'} 
                         alt={product.name} 
                         className="w-12 h-12 rounded-lg object-contain border border-gray-200 bg-white shrink-0 shadow-sm" 
-                        onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
+                        referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
                       />
                     ) : (
                       <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 shrink-0"></div>
@@ -846,7 +847,7 @@ export function Products() {
                   src={product.image || (product.gallery && product.gallery[0]) || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop'} 
                   alt={product.name} 
                   className="w-16 h-16 rounded-xl object-contain border border-gray-100 bg-white shrink-0 shadow-sm" 
-                  onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
+                  referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
                 />
               ) : (
                 <div className="w-16 h-16 rounded-xl bg-gray-100 border border-gray-200 shrink-0"></div>
@@ -1142,7 +1143,7 @@ export function Products() {
                         type="text" 
                         placeholder="Adicionar por URL da imagem principal..." 
                         value={formData.image || ''}
-                        onChange={e => setFormData({...formData, image: e.target.value})}
+                        onChange={e => setFormData({...formData, image: convertGoogleDriveUrl(e.target.value)})}
                         className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" 
                       />
                     </div>
@@ -1152,7 +1153,7 @@ export function Products() {
                           src={formData.image} 
                           alt="Principal" 
                           className="w-full h-full object-contain" 
-                          onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
+                          referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
                         />
                         <button 
                           type="button" 
@@ -1183,9 +1184,10 @@ export function Products() {
                             e.preventDefault();
                             const val = e.currentTarget.value;
                             if (val) {
+                              const urls = val.split(/\s+/).filter(u => u.trim() !== '');
                               setFormData(prev => ({
                                 ...prev,
-                                gallery: [...(prev.gallery || []), val]
+                                gallery: [...(prev.gallery || []), ...urls.map(convertGoogleDriveUrl)]
                               }));
                               e.currentTarget.value = '';
                             }
@@ -1198,9 +1200,10 @@ export function Products() {
                           const input = e.currentTarget.previousElementSibling as HTMLInputElement;
                           const val = input.value;
                           if (val) {
+                            const urls = val.split(/\s+/).filter(u => u.trim() !== '');
                             setFormData(prev => ({
                               ...prev,
-                              gallery: [...(prev.gallery || []), val]
+                              gallery: [...(prev.gallery || []), ...urls.map(convertGoogleDriveUrl)]
                             }));
                             input.value = '';
                           }
@@ -1218,7 +1221,7 @@ export function Products() {
                               src={img || undefined} 
                               alt={`Galeria ${index}`} 
                               className="w-full h-full object-contain" 
-                              onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
+                              referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
                             />
                             <button 
                               type="button" 
@@ -1310,6 +1313,46 @@ export function Products() {
             </div>
             
             <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    id="new-group"
+                    placeholder="Novo grupo..." 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = e.currentTarget.value.trim();
+                        if (val) {
+                          const newGroups = { ...(settings.categoryGroups || {}) };
+                          if (!newGroups[val]) newGroups[val] = [];
+                          updateSettings({ categoryGroups: newGroups });
+                          toast.success(`Grupo "${val}" criado!`);
+                          e.currentTarget.value = '';
+                        }
+                      }
+                    }}
+                  />
+                  <button 
+                    onClick={() => {
+                      const input = document.getElementById('new-group') as HTMLInputElement;
+                      const val = input.value.trim();
+                      if (val) {
+                        const newGroups = { ...(settings.categoryGroups || {}) };
+                        if (!newGroups[val]) newGroups[val] = [];
+                        updateSettings({ categoryGroups: newGroups });
+                        toast.success(`Grupo "${val}" criado!`);
+                        input.value = '';
+                      }
+                    }}
+                    className="bg-[var(--color-primary)] text-white p-2 rounded-lg hover:brightness-110"
+                    title="Adicionar Novo Grupo"
+                  >
+                    <Plus size={20} />
+                  </button>
+                </div>
+
               <div className="flex gap-2">
                 <input 
                   type="text" 
@@ -1341,66 +1384,152 @@ export function Products() {
                   <Plus size={20} />
                 </button>
               </div>
+              </div>
 
               <div className="space-y-2 mt-4">
                 {settings.categories?.map((cat, idx) => {
                   const isFirst = idx === 0;
                   const isLast = idx === (settings.categories?.length || 0) - 1;
                   return (
-                    <div key={idx} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 gap-2 hover:border-gray-200 transition-all">
-                      <span className="text-sm font-medium text-gray-900 flex-1 truncate">{cat}</span>
-                      
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          disabled={isFirst}
-                          onClick={() => {
-                            const cats = [...(settings.categories || [])];
-                            if (idx > 0) {
-                              const temp = cats[idx];
-                              cats[idx] = cats[idx - 1];
-                              cats[idx - 1] = temp;
-                              updateSettings({ categories: cats });
-                            }
-                          }}
-                          className={`p-1.5 rounded-md hover:bg-gray-200 text-gray-600 transition-all ${isFirst ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer hover:text-gray-900'}`}
-                          title="Mover para cima"
-                        >
-                          <ChevronUp size={16} />
-                        </button>
+                    <div key={idx} className="flex flex-col bg-gray-50 p-3 rounded-lg border border-gray-100 gap-2 hover:border-gray-200 transition-all">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900 flex-1 truncate">{cat}</span>
                         
-                        <button
-                          type="button"
-                          disabled={isLast}
-                          onClick={() => {
-                            const cats = [...(settings.categories || [])];
-                            if (idx < cats.length - 1) {
-                              const temp = cats[idx];
-                              cats[idx] = cats[idx + 1];
-                              cats[idx + 1] = temp;
-                              updateSettings({ categories: cats });
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            disabled={isFirst}
+                            onClick={() => {
+                              const cats = [...(settings.categories || [])];
+                              if (idx > 0) {
+                                const temp = cats[idx];
+                                cats[idx] = cats[idx - 1];
+                                cats[idx - 1] = temp;
+                                updateSettings({ categories: cats });
+                              }
+                            }}
+                            className={`p-1.5 rounded-md hover:bg-gray-200 text-gray-600 transition-all ${isFirst ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer hover:text-gray-900'}`}
+                            title="Mover para cima"
+                          >
+                            <ChevronUp size={16} />
+                          </button>
+                          
+                          <button
+                            type="button"
+                            disabled={isLast}
+                            onClick={() => {
+                              const cats = [...(settings.categories || [])];
+                              if (idx < cats.length - 1) {
+                                const temp = cats[idx];
+                                cats[idx] = cats[idx + 1];
+                                cats[idx + 1] = temp;
+                                updateSettings({ categories: cats });
+                              }
+                            }}
+                            className={`p-1.5 rounded-md hover:bg-gray-200 text-gray-600 transition-all ${isLast ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer hover:text-gray-900'}`}
+                            title="Mover para baixo"
+                          >
+                            <ChevronDown size={16} />
+                          </button>
+                          <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const newName = prompt(`Editar categoria "${cat}":`, cat);
+                              if (newName && newName.trim() && newName.trim() !== cat) {
+                                const newCat = newName.trim();
+                                if (settings.categories?.includes(newCat)) {
+                                  toast.error('Esta categoria já existe!');
+                                  return;
+                                }
+                                const cats = [...(settings.categories || [])];
+                                cats[idx] = newCat;
+                                
+                                // Update group reference if it exists
+                                const newGroups = { ...(settings.categoryGroups || {}) };
+                                let groupChanged = false;
+                                Object.keys(newGroups).forEach(g => {
+                                  if (newGroups[g].includes(cat)) {
+                                    newGroups[g] = newGroups[g].map(c => c === cat ? newCat : c);
+                                    groupChanged = true;
+                                  }
+                                });
+
+                                updateSettings({ 
+                                  categories: cats, 
+                                  ...(groupChanged ? { categoryGroups: newGroups } : {}) 
+                                });
+                                
+                                products.forEach(p => {
+                                  if (p.category === cat) {
+                                    updateProduct({ ...p, category: newCat });
+                                  }
+                                });
+                                toast.success('Categoria atualizada com sucesso!');
+                              }
+                            }}
+                            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-md transition-all cursor-pointer"
+                            title="Editar categoria"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Tem certeza de que deseja excluir a categoria "${cat}"?`)) {
+                                const newGroups = { ...(settings.categoryGroups || {}) };
+                                Object.keys(newGroups).forEach(g => {
+                                  newGroups[g] = newGroups[g].filter(c => c !== cat);
+                                  if (newGroups[g].length === 0) {
+                                    delete newGroups[g];
+                                  }
+                                });
+                                updateSettings({ 
+                                  categories: settings.categories?.filter(c => c !== cat),
+                                  categoryGroups: newGroups
+                                });
+                              }
+                            }}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-md transition-all cursor-pointer"
+                            title="Excluir categoria"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Group Assignment */}
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] uppercase font-bold text-gray-500 w-12 shrink-0">Grupo:</span>
+                        <select
+                          className="flex-1 bg-white border border-gray-200 rounded p-1 text-xs outline-none focus:border-gray-300"
+                          value={Object.entries(settings.categoryGroups || {}).find(([_, cats]) => cats.includes(cat))?.[0] || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const newGroups = { ...(settings.categoryGroups || {}) };
+                            
+                            // Remove from all existing groups first
+                            Object.keys(newGroups).forEach(g => {
+                              newGroups[g] = newGroups[g].filter(c => c !== cat);
+                              if (newGroups[g].length === 0) {
+                                delete newGroups[g];
+                              }
+                            });
+
+                            if (val) {
+                              if (!newGroups[val]) newGroups[val] = [];
+                              newGroups[val].push(cat);
+                              updateSettings({ categoryGroups: newGroups });
+                            } else {
+                              updateSettings({ categoryGroups: newGroups });
                             }
                           }}
-                          className={`p-1.5 rounded-md hover:bg-gray-200 text-gray-600 transition-all ${isLast ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer hover:text-gray-900'}`}
-                          title="Mover para baixo"
                         >
-                          <ChevronDown size={16} />
-                        </button>
-
-                        <div className="w-px h-4 bg-gray-200 mx-1"></div>
-
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            if (confirm(`Tem certeza de que deseja excluir a categoria "${cat}"?`)) {
-                              updateSettings({ categories: settings.categories?.filter(c => c !== cat) });
-                            }
-                          }}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-md transition-all cursor-pointer"
-                          title="Excluir categoria"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                          <option value="">Nenhum (Solto no Menu)</option>
+                          {Object.keys(settings.categoryGroups || {}).map(g => (
+                            <option key={g} value={g}>{g}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   );

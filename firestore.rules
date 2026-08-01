@@ -1,73 +1,94 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default Deny
+    // Default-deny catch-all
     match /{document=**} {
       allow read, write: if false;
     }
-
-    // Helper functions
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
     
-    function incoming() {
-      return request.resource.data;
-    }
-    
-    function existing() {
-      return resource.data;
-    }
-    
+    // Core helpers
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isAdmin() {
-      return isSignedIn();
+    function getAdminUserDoc(email) {
+      return get(/databases/$(database)/documents/admin_users/$(email));
     }
 
-    // Orders Collection
+    function existsAdminUserDoc(email) {
+      return exists(/databases/$(database)/documents/admin_users/$(email));
+    }
+
+    function hasPermission(permission) {
+      return isSignedIn() && 
+        request.auth.token.email != null &&
+        existsAdminUserDoc(request.auth.token.email.lower()) &&
+        getAdminUserDoc(request.auth.token.email.lower()).data.permissions[permission] == true;
+    }
+
+    // Collection: admin_users
+    match /admin_users/{email} {
+      allow read: if isSignedIn() && (
+        request.auth.token.email.lower() == email.lower() ||
+        hasPermission('users')
+      );
+      allow write: if isSignedIn() && (
+        // Allow user to auto-provision their own user document on first login (if it does not exist)
+        (request.auth.token.email.lower() == email.lower() && !existsAdminUserDoc(email.lower())) ||
+        // Admin or users manager can write any user document
+        hasPermission('users')
+      );
+    }
+
+    // Collection: orders
     match /orders/{orderId} {
-      function isValidOrder(data) {
-        return data.keys().hasAll(['customer', 'email', 'phone', 'total', 'status', 'items', 'shippingInfo', 'date'])
-          && data.customer is string && data.customer.size() <= 200
-          && data.email is string && data.email.size() <= 200
-          && data.phone is string && data.phone.size() <= 50
-          && data.total is number
-          && data.status is string && data.status.size() <= 50
-          && data.items is list
-          && data.shippingInfo is map;
-      }
-
-      allow create: if isValidId(orderId) && isValidOrder(incoming());
-      allow read: if isAdmin();
-      allow update: if isAdmin() && isValidOrder(incoming());
-      allow delete: if isAdmin();
+      allow read: if hasPermission('orders');
+      allow write: if hasPermission('orders');
+      allow create: if true; // Any client checkout
     }
-
-    // Products Collection
+    
+    // Collection: avulso_products
+    match /avulso_products/{productId} {
+      allow read: if true;
+      allow write: if hasPermission('avulsos');
+    }
+    
+    // Collection: products
     match /products/{productId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, delete: if hasPermission('products');
+      allow update: if hasPermission('products') || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock'])
+      );
     }
-
-    // Coupons Collection
+    
+    // Collection: coupons
     match /coupons/{couponId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if hasPermission('coupons');
     }
-
-    // Settings Collection
+    
+    // Collection: config
     match /config/{settingId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if hasPermission('settings');
+    }
+    
+    // Collection: documents
+    match /documents/{documentId} {
+      allow read: if true;
+      allow write: if hasPermission('documents');
     }
 
-    // Documents Collection
-    match /documents/{documentId} {
-      allow read, write: if isAdmin();
+    // Collection: customers
+    match /customers/{customerId} {
+      allow read: if hasPermission('customers');
+      allow write: if hasPermission('customers') || true;
+    }
+
+    // Collection: counters
+    match /counters/{counterId} {
+      allow read, write: if true;
     }
   }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Menu, MessageCircle, CreditCard, Truck, ShieldCheck, User, Star, Heart, Gift, X, Plus, Minus } from 'lucide-react';
+import { ShoppingCart, Search, Menu, MessageCircle, CreditCard, Truck, ShieldCheck, User, Star, Heart, Gift, X, Plus, Minus, ChevronDown, ChevronRight, Mail, Clock, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatPrice, Product } from '../data/products';
 import { generateWhatsAppLink, CheckoutData } from '../utils/whatsapp';
@@ -31,6 +31,17 @@ export function Storefront() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartLoaded, setIsCartLoaded] = useState(false);
   const [isAdminHovered, setIsAdminHovered] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.dropdown-container')) {
+        setActiveDropdown(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     import('localforage').then((localforage) => {
@@ -66,6 +77,7 @@ export function Storefront() {
   const [searchParams, setSearchParams] = useSearchParams();
   const viewParam = searchParams.get('view');
   const categoryParam = searchParams.get('category');
+  const productIdParam = searchParams.get('id');
 
   const [currentView, setCurrentView] = useState<'home' | 'product' | 'cart' | 'checkout' | 'custom'>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -73,21 +85,36 @@ export function Storefront() {
     if (view === 'custom' || view === 'personalizado' || view === 'personalizados') {
       return 'custom';
     }
+    if (view === 'product') {
+      return 'product';
+    }
     return 'home';
   });
+  
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
   useEffect(() => {
-    if (viewParam === 'custom' || viewParam === 'personalizado' || viewParam === 'personalizados') {
+    if (viewParam === 'product' && productIdParam) {
+      if (products.length > 0) {
+        const product = products.find(p => p.id === productIdParam);
+        if (product) {
+          setSelectedProduct(product);
+          if (currentView !== 'product') {
+            setCurrentView('product');
+          }
+        }
+      }
+    } else if (viewParam === 'custom' || viewParam === 'personalizado' || viewParam === 'personalizados') {
       if (currentView !== 'custom') {
         setCurrentView('custom');
       }
-    } else if (!viewParam && currentView === 'custom') {
+    } else if (!viewParam && (currentView === 'custom' || currentView === 'product')) {
       setCurrentView('home');
+      setSelectedProduct(null);
     }
-  }, [viewParam, currentView]);
+  }, [viewParam, productIdParam, products]);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
   const [currentBannerIdx, setCurrentBannerIdx] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -165,7 +192,7 @@ export function Storefront() {
     
     const toast = (await import('react-hot-toast')).default;
     const { db } = await import('../lib/firebase');
-    const { collection, addDoc, doc, writeBatch, increment, serverTimestamp } = await import('firebase/firestore');
+    const { collection, addDoc, setDoc, doc, writeBatch, increment, serverTimestamp } = await import('firebase/firestore');
 
     try {
       const updatedCart = [...cart];
@@ -263,11 +290,24 @@ export function Storefront() {
         shippingInfo: cleanShippingInfo
       };
 
-      const { withTimeout } = await import('../lib/firestoreUtils');
+      const { withTimeout, generateSequentialId } = await import('../lib/firestoreUtils');
       let orderId = "";
       try {
-        const docRef = await withTimeout(addDoc(collection(db, 'orders'), orderData));
-        orderId = docRef.id;
+        orderId = await generateSequentialId(db, 'Pendente', settings.storeName);
+        await withTimeout(setDoc(doc(db, 'orders', orderId), orderData));
+        
+        const identifier = data.email?.toLowerCase().trim() || data.phone?.trim() || data.name?.trim();
+        if (identifier) {
+          const cId = identifier.replace(/\//g, '_');
+          await setDoc(doc(db, 'customers', cId), {
+            identifier,
+            name: data.name || 'Cliente Site',
+            email: data.email || '',
+            phone: data.phone || '',
+            doc: data.cpf || '',
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }
         
         // Trigger automatic email
         fetch('/api/email/order', {
@@ -298,6 +338,7 @@ export function Storefront() {
   const openProduct = (product: Product) => {
     setSelectedProduct(product);
     setCurrentView('product');
+    setSearchParams({ view: 'product', id: product.id });
     window.scrollTo(0, 0);
   };
 
@@ -321,6 +362,44 @@ export function Storefront() {
     ...visibleProducts.map(p => p.category || 'Outros')
   ]));
 
+  const superCategoryMap: Record<string, string> = {};
+  const groupedCategories: Record<string, string[]> = {};
+  
+  if (settings.categoryGroups) {
+    Object.entries(settings.categoryGroups).forEach(([group, cats]) => {
+      groupedCategories[group] = [];
+      cats.forEach(cat => {
+        superCategoryMap[cat] = group;
+      });
+    });
+  } else {
+    // Fallback if not configured
+    const defaultGroups = {
+      'Datas Especiais': ['Dia dos Pais', 'Dia das Mães', 'Dia dos Avós', 'Dia dos Namorados', 'Dia dos Professores', 'Dia das Mulheres', 'Aniversário'],
+      'Temas': ['Anos 80/90', '80/90', 'Música', 'Divertidas', 'Geek/Nerd'],
+      'Para Quem': ['Casais', 'Amigo(a)', 'Família']
+    };
+    Object.entries(defaultGroups).forEach(([group, cats]) => {
+      groupedCategories[group] = [];
+      cats.forEach(cat => {
+        superCategoryMap[cat] = group;
+      });
+    });
+  }
+
+  const ungroupedCategories: string[] = [];
+
+  categories.forEach(cat => {
+    const group = superCategoryMap[cat];
+    if (group) {
+      if (!groupedCategories[group].includes(cat)) {
+        groupedCategories[group].push(cat);
+      }
+    } else {
+      ungroupedCategories.push(cat);
+    }
+  });
+
   return (
     <div className="min-h-screen transition-colors duration-300" style={{ backgroundColor: settings.siteBackgroundColor || '#f9fafb' }}>
       
@@ -340,7 +419,7 @@ export function Storefront() {
                 ) : (
                   cart.map(item => (
                     <div key={item.cartItemId} className="flex gap-4 border-b border-gray-50 pb-4">
-                      <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-md" />
+                      <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-md" referrerPolicy="no-referrer" />
                       <div className="flex-1">
                         <h4 className="font-bold text-sm text-gray-800 line-clamp-2">{item.name}</h4>
                         {item.selectedColor && <p className="text-xs text-gray-500 mt-1">Cor: {item.selectedColor}</p>}
@@ -348,12 +427,12 @@ export function Storefront() {
                         {item.customMusic && <p className="text-xs text-blue-500 mt-1 line-clamp-1 truncate hover:underline"><a href={item.customMusic} target="_blank" rel="noreferrer">Música (Link)</a></p>}
                         {item.customImage && (
                           <div className="mt-2 flex items-center gap-2 border border-gray-100 p-1 rounded-md w-fit bg-gray-50">
-                             <img src={item.customImage} alt="Custom upload" className="w-8 h-8 object-cover rounded shadow-sm" />
+                             <img src={item.customImage} alt="Custom upload" className="w-8 h-8 object-cover rounded shadow-sm" referrerPolicy="no-referrer" />
                              <span className="text-[10px] text-gray-500 font-bold uppercase pr-2">Foto enviada</span>
                           </div>
                         )}
                         <div className="flex items-center justify-between mt-2">
-                           <span className="font-bold text-[#783884]">{formatPrice(item.price)}</span>
+                           <span className="font-bold text-[#111827]">{formatPrice(item.price)}</span>
                            <div className="flex items-center gap-3 bg-gray-50 rounded-full px-2 py-1">
                              <button onClick={() => updateQuantity(item.cartItemId, -1)} className="text-gray-500 hover:text-gray-800"><Minus size={14}/></button>
                              <span className="text-sm font-bold">{item.quantity}</span>
@@ -402,9 +481,27 @@ export function Storefront() {
                       <button onClick={() => { setSearchParams({ view: 'custom' }); setIsMobileMenuOpen(false); }} className="text-left font-bold text-[#713f12]">Personalizados ✨</button>
                       <button onClick={() => { goHome(); setIsMobileMenuOpen(false); }} className="text-left font-medium text-gray-800">Início</button>
                       <button onClick={() => { setSearchParams({ category: 'all' }); setIsMobileMenuOpen(false); }} className="text-left font-medium text-gray-800">Todos os Produtos</button>
-                      {categories.map(cat => (
-                        <button key={cat} onClick={() => { setSearchParams({ category: cat }); setIsMobileMenuOpen(false); }} className="text-left font-medium text-gray-600">{cat}</button>
-                      ))}
+                      
+                      {Object.entries(groupedCategories).map(([groupName, groupCats]) => {
+                        if (groupCats.length === 0) return null;
+                        return (
+                          <div key={groupName} className="flex flex-col gap-2 mt-2">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{groupName}</span>
+                            {groupCats.map(cat => (
+                              <button key={cat} onClick={() => { setSearchParams({ category: cat }); setIsMobileMenuOpen(false); }} className="text-left font-medium text-gray-600 pl-2 border-l-2 border-gray-200">{cat}</button>
+                            ))}
+                          </div>
+                        );
+                      })}
+
+                      {ungroupedCategories.length > 0 && (
+                        <div className="flex flex-col gap-2 mt-2">
+                          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Outros Temas</span>
+                          {ungroupedCategories.map(cat => (
+                            <button key={cat} onClick={() => { setSearchParams({ category: cat }); setIsMobileMenuOpen(false); }} className="text-left font-medium text-gray-600 pl-2 border-l-2 border-gray-200">{cat}</button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   {/* Atalhos */}
@@ -451,7 +548,7 @@ export function Storefront() {
             {/* Logo */}
             <div className="flex-shrink-0 cursor-pointer" onClick={goHome}>
               {logoUrl ? (
-                <img src={logoUrl || undefined} alt="Logo" className="h-10 sm:h-12 md:h-16 w-auto object-contain" />
+                <img src={logoUrl || undefined} alt="Logo" className="h-10 sm:h-12 md:h-16 w-auto object-contain" referrerPolicy="no-referrer" />
               ) : (
                 <div className="text-xl sm:text-2xl md:text-3xl font-extrabold italic tracking-tighter" style={{ color: settings.topBarColor || '#f9a8d4' }}>
                   {settings.storeName ? (
@@ -547,9 +644,9 @@ export function Storefront() {
         
         {/* Dynamic Navigation Menu */}
         {currentView === 'home' && (
-          <div style={{ backgroundColor: settings.navBarColor && settings.navBarColor !== 'transparent' ? settings.navBarColor : 'transparent' }}>
-            <div className="max-w-[1400px] mx-auto px-4">
-              <nav className="flex items-center justify-start md:justify-center gap-6 py-4 overflow-x-auto whitespace-nowrap hide-scrollbar text-sm font-bold px-2 md:px-0">
+          <div className="hidden md:block" style={{ backgroundColor: settings.navBarColor && settings.navBarColor !== 'transparent' ? settings.navBarColor : 'transparent' }}>
+            <div className="max-w-[1400px] mx-auto">
+              <nav className="flex items-center justify-center gap-x-4 lg:gap-x-8 gap-y-3 py-3 flex-wrap text-[13px] lg:text-sm font-bold px-4">
                 <button 
                   onClick={() => setSearchParams({ view: 'custom' })}
                   className="px-3 py-1 rounded-full hover:brightness-110 transition-colors uppercase flex items-center gap-1 shadow-sm shrink-0"
@@ -577,7 +674,46 @@ export function Storefront() {
                 >
                   Todos os Produtos
                 </button>
-                {categories.map(category => (
+                
+                {Object.entries(groupedCategories).map(([groupName, groupCats]) => {
+                  if (groupCats.length === 0) return null;
+                  const isActive = groupCats.includes(categoryParam || '');
+                  const isOpen = activeDropdown === groupName;
+                  return (
+                    <div 
+                      key={groupName} 
+                      className="relative shrink-0 dropdown-container group"
+                      onMouseEnter={() => setActiveDropdown(groupName)}
+                      onMouseLeave={() => setActiveDropdown(null)}
+                    >
+                      <button 
+                        onClick={(e) => { e.preventDefault(); setActiveDropdown(isOpen ? null : groupName); }}
+                        className={`hover:opacity-100 transition-all uppercase py-1 border-b-2 flex items-center gap-1 ${isActive ? 'opacity-100 font-extrabold' : 'opacity-70 border-transparent'}`}
+                        style={{ 
+                          color: settings.navBarTextColor || 'inherit',
+                          borderColor: isActive ? (settings.navBarTextColor || 'currentColor') : 'transparent'
+                        }}
+                      >
+                        {groupName} <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : 'group-hover:rotate-180'}`} />
+                      </button>
+                      <div className={`absolute top-[100%] left-0 pt-2 transition-all z-50 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none group-hover:opacity-100 group-hover:visible group-hover:pointer-events-auto'}`}>
+                        <div className="bg-white shadow-xl rounded-xl py-2 min-w-[220px] border border-gray-100 flex flex-col overflow-hidden">
+                          {groupCats.map(cat => (
+                            <button 
+                              key={cat}
+                              onClick={() => { setSearchParams({ category: cat }); setActiveDropdown(null); }}
+                              className={`block w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors ${categoryParam === cat ? 'text-[var(--color-primary)] font-bold bg-purple-50/50' : 'text-gray-700'}`}
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {ungroupedCategories.map(category => (
                   <button 
                     key={category}
                     onClick={() => setSearchParams({ category })}
@@ -617,7 +753,7 @@ export function Storefront() {
           />
         ) : (
           <div className="max-w-[1400px] mx-auto px-4 pt-6 md:pt-8">
-            {categoryParam ? (
+            {(categoryParam || searchQuery) ? (
               // Category View (Dedicated Page)
               <div>
                 {/* Breadcrumbs */}
@@ -625,19 +761,25 @@ export function Storefront() {
                   <button onClick={goHome} className="hover:text-gray-800 hover:underline cursor-pointer transition-all">Início</button>
                   <span className="text-gray-300">/</span>
                   <span className="text-gray-400">
-                    {categoryParam === 'all' ? 'Todos os Produtos' : categoryParam}
+                    {searchQuery ? `Busca: ${searchQuery}` : (categoryParam === 'all' ? 'Todos os Produtos' : categoryParam)}
                   </span>
                 </div>
 
                 {/* Header Title */}
                 <div className="border-b border-gray-100 pb-6 mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-                    <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ color: settings.headerColor || '#783884' }}>
-                      {categoryParam === 'all' ? 'Todos os Produtos' : categoryParam}
+                    <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ color: settings.headerTextColor || '#111827' }}>
+                      {searchQuery ? 'Resultados da Busca' : (categoryParam === 'all' ? 'Todos os Produtos' : categoryParam)}
                     </h1>
                     <p className="text-gray-500 text-sm mt-1">
                       {(() => {
-                        const count = products.filter(p => !p.hidden && (categoryParam === 'all' || (p.category || 'Outros') === categoryParam)).length;
+                        const count = products.filter(p => {
+                          if (p.hidden) return false;
+                          const matchesCategory = !categoryParam || categoryParam === 'all' || (p.category || 'Outros') === categoryParam;
+                          const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                                (p.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+                          return matchesCategory && matchesSearch;
+                        }).length;
                         return `${count} ${count === 1 ? 'produto encontrado' : 'produtos encontrados'}`;
                       })()}
                     </p>
@@ -693,8 +835,8 @@ export function Storefront() {
                 {/* Product Grid */}
                 {(() => {
                   let filteredProducts = visibleProducts.filter(p => {
-                    const matchesCategory = categoryParam === 'all' || (p.category || 'Outros') === categoryParam;
-                    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                    const matchesCategory = !categoryParam || categoryParam === 'all' || (p.category || 'Outros') === categoryParam;
+                    const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                                           (p.description || '').toLowerCase().includes(searchQuery.toLowerCase());
                     
                     let matchesStock = true;
@@ -756,7 +898,7 @@ export function Storefront() {
                   if (!currentBanner?.image) return null;
 
                   return (
-                    <section className="w-full bg-[#f9e5e6] overflow-hidden relative rounded-2xl mb-12" style={{ height: '400px' }}>
+                    <section className="w-full bg-[#f9e5e6] overflow-hidden relative rounded-2xl mb-12 aspect-[1920/633]">
                       <AnimatePresence mode="wait">
                         <motion.div
                           key={currentBannerIdx}
@@ -771,40 +913,61 @@ export function Storefront() {
                           }`}
                           style={{ backgroundImage: `url(${currentBanner?.image})` }}
                         >
-                           <div className="absolute inset-0 bg-white/40" />
-                           <div className={`relative z-10 flex flex-col ${
+                          {currentBanner?.buttonLink && (
+                            <a 
+                              href={currentBanner.buttonLink}
+                              onClick={(e) => {
+                                try {
+                                  const url = new URL(currentBanner.buttonLink, window.location.origin);
+                                  if (url.hostname === window.location.hostname || url.hostname.includes('inkys.com.br')) {
+                                    e.preventDefault();
+                                    const params = new URLSearchParams(url.search);
+                                    const newParams: Record<string, string> = {};
+                                    params.forEach((value, key) => { newParams[key] = value; });
+                                    setSearchParams(newParams);
+                                  }
+                                } catch (err) {
+                                  if (currentBanner.buttonLink?.startsWith('#')) {
+                                    e.preventDefault();
+                                    const id = currentBanner.buttonLink.substring(1);
+                                    const el = document.getElementById(id);
+                                    if (el) {
+                                      el.scrollIntoView({ behavior: 'smooth' });
+                                    }
+                                  } else if (currentBanner.buttonLink?.startsWith('?')) {
+                                    e.preventDefault();
+                                    const params = new URLSearchParams(currentBanner.buttonLink);
+                                    const newParams: Record<string, string> = {};
+                                    params.forEach((value, key) => { newParams[key] = value; });
+                                    setSearchParams(newParams);
+                                  }
+                                }
+                              }}
+                              target={currentBanner.buttonLink?.startsWith('http') && !currentBanner.buttonLink.includes('inkys.com.br') && !currentBanner.buttonLink.includes(window.location.hostname) ? '_blank' : '_self'}
+                              className="absolute inset-0 z-20 cursor-pointer block"
+                              aria-label={currentBanner.titleHtml?.replace(/<[^>]+>/g, '') || 'Banner link'}
+                            >
+                              <span className="sr-only">Ver detalhes da promoção</span>
+                            </a>
+                          )}
+                           <div className={`relative z-10 flex flex-col pointer-events-none ${
                             currentBanner?.textAlign === 'left' ? 'text-left items-start' : 
                             currentBanner?.textAlign === 'right' ? 'text-right items-end' : 
                             'text-center items-center'
                            }`}>
                               <div dangerouslySetInnerHTML={{ __html: currentBanner?.titleHtml || '' }} className={`font-bold mb-4 ${currentBanner?.titleSize || 'text-5xl'} ${currentBanner?.titleFont || 'font-sans'}`} style={{ color: currentBanner?.titleColor || settings.topBarColor }} />
                               <p className={`font-medium max-w-lg ${currentBanner?.description ? 'mb-2' : 'mb-6'} ${currentBanner?.subtitleSameSize ? (currentBanner?.titleSize || 'text-5xl') : (currentBanner?.subtitleSize || 'text-xl')} ${currentBanner?.subtitleFont || 'font-sans'}`} style={{ color: currentBanner?.subtitleColor || '#592c60' }}>{currentBanner?.subtitle}</p>
-                               {currentBanner?.description && (
-                                 <p className={`font-medium max-w-lg mb-6 ${currentBanner?.descriptionSize || 'text-xl'} ${currentBanner?.descriptionFont || 'font-sans'}`} style={{ color: currentBanner?.descriptionColor || '#592c60' }}>{currentBanner?.description}</p>
-                               )}
                               
-                              {currentBanner?.buttonLink ? (
-                                <a 
-                                  href={currentBanner.buttonLink}
-                                  onClick={(e) => {
-                                    if (currentBanner.buttonLink?.startsWith('#')) {
-                                      e.preventDefault();
-                                      const id = currentBanner.buttonLink.substring(1);
-                                      const el = document.getElementById(id);
-                                      if (el) {
-                                        el.scrollIntoView({ behavior: 'smooth' });
-                                      }
-                                    }
-                                  }}
-                                  className="text-white px-8 py-3 rounded-md font-bold text-lg hover:brightness-90 transition-colors shadow-lg inline-block text-center cursor-pointer"
-                                  style={{ backgroundColor: currentBanner?.buttonColor }}
-                                >
-                                  {currentBanner?.buttonText}
-                                </a>
-                              ) : (
-                                <button className="text-white px-8 py-3 rounded-md font-bold text-lg hover:brightness-90 transition-colors shadow-lg cursor-pointer" style={{ backgroundColor: currentBanner?.buttonColor }}>
-                                  {currentBanner?.buttonText}
-                                </button>
+                              {currentBanner?.description && (
+                                <p className={`font-medium max-w-lg mb-6 ${currentBanner?.descriptionSize || 'text-xl'} ${currentBanner?.descriptionFont || 'font-sans'}`} style={{ color: currentBanner?.descriptionColor || '#592c60' }}>{currentBanner?.description}</p>
+                              )}
+
+                              {currentBanner?.buttonText && (
+                                <div className="relative z-30 inline-block mt-2 pointer-events-none">
+                                  <span className="font-bold text-lg uppercase tracking-wider" style={{ color: currentBanner?.buttonColor || '#000' }}>
+                                    {currentBanner.buttonText} &rarr;
+                                  </span>
+                                </div>
                               )}
                            </div>
                         </motion.div>
@@ -874,23 +1037,47 @@ export function Storefront() {
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {settings.promoBanner1TitleHtml && (
                           <div className="rounded-3xl overflow-hidden relative h-[200px] md:h-[250px] flex items-center px-6 md:px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner1ColorStart}, ${settings.promoBanner1ColorEnd})` }} onClick={() => {
-                            setSearchParams({ category: 'Música' });
+                            const link = settings.promoBanner1Link || '?category=Música';
+                            if (link.startsWith('#')) {
+                              const id = link.substring(1);
+                              const el = document.getElementById(id);
+                              if (el) el.scrollIntoView({ behavior: 'smooth' });
+                            } else if (link.startsWith('?')) {
+                              const params = new URLSearchParams(link);
+                              const newParams: Record<string, string> = {};
+                              params.forEach((value, key) => { newParams[key] = value; });
+                              setSearchParams(newParams);
+                            } else {
+                              window.location.href = link;
+                            }
                           }}>
-                             <div className="z-10 text-white">
+                             <div className="z-10 text-white pointer-events-none">
                                <h3 className="text-3xl font-bold text-yellow-300 mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner1TitleHtml }} />
                                {settings.promoBanner1SubtitleHtml && <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner1SubtitleHtml }} />}
-                               <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f] cursor-pointer">{settings.promoBanner1ButtonText}</button>
+                               <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg">{settings.promoBanner1ButtonText}</button>
                              </div>
                           </div>
                         )}
                         {settings.promoBanner2TitleHtml && (
                           <div className="rounded-3xl overflow-hidden relative h-[200px] md:h-[250px] flex items-center px-6 md:px-10 cursor-pointer group" style={{ background: `linear-gradient(to right, ${settings.promoBanner2ColorStart}, ${settings.promoBanner2ColorEnd})` }} onClick={() => {
-                            setSearchParams({ category: 'Canecas' });
+                            const link = settings.promoBanner2Link || '?category=Canecas';
+                            if (link.startsWith('#')) {
+                              const id = link.substring(1);
+                              const el = document.getElementById(id);
+                              if (el) el.scrollIntoView({ behavior: 'smooth' });
+                            } else if (link.startsWith('?')) {
+                              const params = new URLSearchParams(link);
+                              const newParams: Record<string, string> = {};
+                              params.forEach((value, key) => { newParams[key] = value; });
+                              setSearchParams(newParams);
+                            } else {
+                              window.location.href = link;
+                            }
                           }}>
-                             <div className="z-10 text-white">
+                             <div className="z-10 text-white pointer-events-none">
                                <h3 className="text-3xl font-bold text-white mb-2 drop-shadow-md" dangerouslySetInnerHTML={{ __html: settings.promoBanner2TitleHtml }} />
                                {settings.promoBanner2SubtitleHtml && <p className="mb-4 font-medium drop-shadow-sm" dangerouslySetInnerHTML={{ __html: settings.promoBanner2SubtitleHtml }} />}
-                               <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg group-hover:bg-[#4d8b1f] cursor-pointer">{settings.promoBanner2ButtonText}</button>
+                               <button className="bg-[#5ba324] text-white px-8 py-2 font-bold rounded shadow-lg">{settings.promoBanner2ButtonText}</button>
                              </div>
                           </div>
                         )}
@@ -901,7 +1088,7 @@ export function Storefront() {
                 {/* Category Sections */}
                 <div className="space-y-16 max-w-[1400px] mx-auto">
                   <section id="category-all">
-                    <h2 className="text-[#783884] text-3xl font-bold text-center mb-10">Todos os Produtos</h2>
+                    <h2 className="text-[#111827] text-3xl font-bold text-center mb-10">Todos os Produtos</h2>
                     <ProductCarousel products={products} onAddToCart={openProduct} />
                   </section>
 
@@ -910,7 +1097,7 @@ export function Storefront() {
                     if (categoryProducts.length === 0) return null;
                     return (
                       <section key={category} id={`category-${category}`}>
-                        <h2 className="text-[#783884] text-3xl font-bold text-center mb-10">{category}</h2>
+                        <h2 className="text-[#111827] text-3xl font-bold text-center mb-10">{category}</h2>
                         <ProductCarousel products={categoryProducts} onAddToCart={openProduct} />
                       </section>
                     );
@@ -921,6 +1108,81 @@ export function Storefront() {
           </div>
         )}
       </main>
+
+      {/* Footer */}
+      <footer className="py-12 md:py-16" style={{ backgroundColor: settings.footerBgColor || '#111827', color: settings.footerTextColor || '#9ca3af' }}>
+        <div className="max-w-[1400px] mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="col-span-1 md:col-span-1">
+            {settings.footerLogoUrl ? (
+              <img src={settings.footerLogoUrl} alt={settings.storeName || 'Logo'} className="h-12 w-auto mb-4 object-contain" referrerPolicy="no-referrer" />
+            ) : settings.logoUrl ? (
+              <img src={settings.logoUrl} alt={settings.storeName || 'Logo'} className="h-12 w-auto mb-4 object-contain brightness-0 invert" referrerPolicy="no-referrer" />
+            ) : (
+              <h2 className="text-2xl font-bold mb-4 tracking-tight" style={{ color: settings.footerHeadingColor || '#ffffff' }}>{settings.storeName || 'Nossa Loja'}</h2>
+            )}
+            <p className="text-sm leading-relaxed mb-6" style={{ color: settings.footerTextColor || '#9ca3af' }}>
+              {settings.footerDescription || 'Especializados em produtos criativos e personalizados. Transforme suas ideias em presentes inesquecíveis.'}
+            </p>
+            <div className="flex items-center gap-4">
+              <a href="#" className="hover:opacity-75 transition-opacity" style={{ color: settings.footerTextColor || '#9ca3af' }}><Star size={20} /></a>
+              <a href="#" className="hover:opacity-75 transition-opacity" style={{ color: settings.footerTextColor || '#9ca3af' }}><Heart size={20} /></a>
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="font-bold mb-4 uppercase text-sm tracking-wider" style={{ color: settings.footerHeadingColor || '#ffffff' }}>Navegação</h3>
+            <ul className="space-y-3 text-sm">
+              <li><button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="hover:opacity-75 transition-opacity">Página Inicial</button></li>
+              <li><button onClick={() => setSearchParams({ category: 'all' })} className="hover:opacity-75 transition-opacity">Todos os Produtos</button></li>
+              <li><button onClick={() => setIsCartOpen(true)} className="hover:opacity-75 transition-opacity">Meu Carrinho</button></li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="font-bold mb-4 uppercase text-sm tracking-wider" style={{ color: settings.footerHeadingColor || '#ffffff' }}>Atendimento</h3>
+            <ul className="space-y-3 text-sm">
+              {settings.whatsappNumber && (
+                <li>
+                  <a href={`https://wa.me/${settings.whatsappNumber.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:opacity-75 transition-opacity">
+                    <MessageCircle size={16} /> WhatsApp
+                  </a>
+                </li>
+              )}
+              {settings.adminEmail && (
+                <li>
+                  <a href={`mailto:${settings.adminEmail}`} className="flex items-center gap-2 hover:opacity-75 transition-opacity">
+                    <Mail size={16} /> E-mail
+                  </a>
+                </li>
+              )}
+              <li>
+                <span className="flex items-center gap-2">
+                  <Clock size={16} /> Seg - Sáb, 9h às 18h
+                </span>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="font-bold mb-4 uppercase text-sm tracking-wider" style={{ color: settings.footerHeadingColor || '#ffffff' }}>Pagamento Seguro</h3>
+            <div className="flex flex-wrap gap-2 mb-6">
+              {settings.paymentMethods?.pix && <div className="bg-black/20 p-2 rounded" title="PIX"><CreditCard size={20} /></div>}
+              {settings.paymentMethods?.credit && <div className="bg-black/20 p-2 rounded" title="Cartão de Crédito"><CreditCard size={20} /></div>}
+              {settings.paymentMethods?.boleto && <div className="bg-black/20 p-2 rounded" title="Boleto"><FileText size={20} /></div>}
+            </div>
+            <p className="text-xs opacity-75">
+              Ambiente 100% seguro. Seus dados são criptografados e protegidos.
+            </p>
+          </div>
+        </div>
+        
+        <div className="max-w-[1400px] mx-auto px-4 mt-12 pt-8 border-t border-black/20 text-sm flex flex-col md:flex-row justify-between items-center gap-4 opacity-75">
+          <p>© {new Date().getFullYear()} {settings.storeName || 'Nossa Loja'}. Todos os direitos reservados.</p>
+          <p>
+            Desenvolvido por {settings.storeName || 'Nossa Loja'}
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

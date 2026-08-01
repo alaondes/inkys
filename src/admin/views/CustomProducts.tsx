@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Plus, Trash2, Upload, Sparkles, Download, FileText, X, Tag, DollarSign } from 'lucide-react';
+import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import { useSettings } from '../../context/SettingsContext';
 
 const detectProgramFromFileName = (name: string): string | undefined => {
@@ -212,7 +213,7 @@ export function CustomProductsAdmin() {
                           value={cp.image}
                           onChange={(e) => {
                             const newProds = [...customProducts];
-                            newProds[idx].image = e.target.value;
+                            newProds[idx].image = convertGoogleDriveUrl(e.target.value);
                             setCustomProducts(newProds);
                           }}
                           className="flex-1 bg-gray-50/50 hover:bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs focus:border-[var(--color-primary)] focus:bg-white focus:ring-4 focus:ring-purple-100 outline-none transition-all text-gray-600 font-mono"
@@ -580,7 +581,7 @@ export function CustomProductsAdmin() {
                       {cp.image ? (
                         <div className="flex flex-col items-center gap-1 w-20">
                           <div className="w-16 h-16 flex items-center justify-center bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xs hover:scale-105 transition-transform" title="Imagem Principal">
-                            <img src={cp.image} alt="Preview" className="w-full h-full object-cover" />
+                            <img src={cp.image} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           </div>
                           <span className="text-[8px] text-gray-400 font-bold uppercase">Principal</span>
                         </div>
@@ -596,7 +597,7 @@ export function CustomProductsAdmin() {
                       {cp.guideImage ? (
                         <div className="flex flex-col items-center gap-1 w-20">
                           <div className="w-16 h-16 flex items-center justify-center bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xs hover:scale-105 transition-transform" title="Imagem Guia">
-                            <img src={cp.guideImage} alt="Preview Guia" className="w-full h-full object-cover" />
+                            <img src={cp.guideImage} alt="Preview Guia" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           </div>
                           <span className="text-[8px] text-gray-400 font-bold uppercase">Guia</span>
                         </div>

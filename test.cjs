@@ -1,6 +1,2 @@
-const fs = require('fs');
-let lines = fs.readFileSync('src/admin/views/Products.tsx', 'utf8').split('\n');
-
-for (let i = 885; i < 895; i++) {
-  console.log(i + ':', JSON.stringify(lines[i]));
-}
+const { convertGoogleDriveUrl } = require('./dist/server.cjs');
+console.log(convertGoogleDriveUrl('https://drive.google.com/file/d/1B638AMwcC_ugR7ZT5Z--lOsjrdkMAxp8/view?usp=drive_link'));

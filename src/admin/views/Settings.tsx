@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { CreditCard, Smartphone, Banknote, Save, MessageCircle, Plus, Trash2, Upload, Layout, Palette, Store, Truck, Shield, ShoppingCart, Image, Settings as SettingsIcon, Link, Sparkles, Type } from 'lucide-react';
+import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import { useSettings } from '../../context/SettingsContext';
 import { BannersTab } from '../components/BannersTab';
 
@@ -19,6 +20,14 @@ export function AdminSettings() {
   const [whatsappNumber, setWhatsappNumber] = useState(settings.whatsappNumber);
   const [adminEmail, setAdminEmail] = useState(settings.adminEmail || '');
   const [paymentMethods, setPaymentMethods] = useState(settings.paymentMethods);
+  
+  const [footerSettings, setFooterSettings] = useState({
+    footerBgColor: settings.footerBgColor || '#111827',
+    footerTextColor: settings.footerTextColor || '#9ca3af',
+    footerHeadingColor: settings.footerHeadingColor || '#ffffff',
+    footerLogoUrl: settings.footerLogoUrl || '',
+    footerDescription: settings.footerDescription || 'Especializados em produtos criativos e personalizados. Transforme suas ideias em presentes inesquecíveis.',
+  });
   
   const [storefrontSettings, setStorefrontSettings] = useState({
     topBarColor: settings.topBarColor || '#d64c71',
@@ -44,12 +53,14 @@ export function AdminSettings() {
     promoBanner1ButtonText: settings.promoBanner1ButtonText ?? 'COMPRAR',
     promoBanner1ColorStart: settings.promoBanner1ColorStart ?? '#4a8bf5',
     promoBanner1ColorEnd: settings.promoBanner1ColorEnd ?? '#68abfa',
+    promoBanner1Link: settings.promoBanner1Link ?? '?category=Música',
     
     promoBanner2TitleHtml: settings.promoBanner2TitleHtml ?? '',
     promoBanner2SubtitleHtml: settings.promoBanner2SubtitleHtml ?? '',
     promoBanner2ButtonText: settings.promoBanner2ButtonText ?? 'COMPRAR',
     promoBanner2ColorStart: settings.promoBanner2ColorStart ?? '#b861ff',
     promoBanner2ColorEnd: settings.promoBanner2ColorEnd ?? '#c37aff',
+    promoBanner2Link: settings.promoBanner2Link ?? '?category=Canecas',
     
     storeName: settings.storeName || 'inkys',
     productRating: settings.productRating || 5,
@@ -102,11 +113,13 @@ export function AdminSettings() {
       promoBanner1ButtonText: settings.promoBanner1ButtonText ?? prev.promoBanner1ButtonText,
       promoBanner1ColorStart: settings.promoBanner1ColorStart ?? prev.promoBanner1ColorStart,
       promoBanner1ColorEnd: settings.promoBanner1ColorEnd ?? prev.promoBanner1ColorEnd,
+      promoBanner1Link: settings.promoBanner1Link ?? prev.promoBanner1Link,
       promoBanner2TitleHtml: settings.promoBanner2TitleHtml ?? prev.promoBanner2TitleHtml,
       promoBanner2SubtitleHtml: settings.promoBanner2SubtitleHtml ?? prev.promoBanner2SubtitleHtml,
       promoBanner2ButtonText: settings.promoBanner2ButtonText ?? prev.promoBanner2ButtonText,
       promoBanner2ColorStart: settings.promoBanner2ColorStart ?? prev.promoBanner2ColorStart,
       promoBanner2ColorEnd: settings.promoBanner2ColorEnd ?? prev.promoBanner2ColorEnd,
+      promoBanner2Link: settings.promoBanner2Link ?? prev.promoBanner2Link,
       storeName: settings.storeName || prev.storeName,
       productRating: settings.productRating || prev.productRating,
       productReviews: settings.productReviews || prev.productReviews,
@@ -182,6 +195,11 @@ export function AdminSettings() {
       storeFeatures: storeFeatures
     });
     showToast('Aparência atualizada com sucesso!');
+  };
+
+  const handleSaveFooter = () => {
+    updateSettings(footerSettings);
+    showToast('Rodapé atualizado com sucesso!');
   };
 
   const handleSavePaymentMethods = () => {
@@ -269,6 +287,14 @@ export function AdminSettings() {
           <Shield size={20} />
           <span className="font-bold text-sm uppercase tracking-wider">Segurança</span>
         </button>
+
+        <button 
+          onClick={() => setActiveTab('footer')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'footer' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+        >
+          <Layout size={20} />
+          <span className="font-bold text-sm uppercase tracking-wider">Rodapé</span>
+        </button>
       </div>
 
       {/* Main Content Area */}
@@ -297,15 +323,15 @@ export function AdminSettings() {
                   <div className="flex items-center gap-4">
                     {logoUrl ? (
                       <div className="w-24 h-24 rounded-xl border border-gray-200 overflow-hidden bg-white flex items-center justify-center p-2">
-                        <img src={logoUrl || undefined} alt="Logo" className="w-full h-full object-contain" />
+                        <img src={logoUrl || undefined} alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                       </div>
                     ) : (
                       <div className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400">
                         <Image size={24} />
                       </div>
                     )}
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-lg font-medium text-sm cursor-pointer hover:bg-gray-200 transition-colors">
+                    <div className="flex-1 space-y-3">
+                      <label className="flex items-center justify-center gap-2 w-full bg-gray-100 px-4 py-2 rounded-lg font-medium text-sm cursor-pointer hover:bg-gray-200 transition-colors">
                         <Upload size={16} />
                         Escolher Imagem
                         <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
@@ -318,25 +344,36 @@ export function AdminSettings() {
                           }
                         }} />
                       </label>
-                      <p className="text-xs text-gray-500">Recomendado: PNG transparente, 800x800px</p>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <Link size={14} className="text-gray-400" />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Ou cole a URL..."
+                          value={logoUrl?.startsWith('data:') ? '' : logoUrl}
+                          onChange={(e) => setLogoUrl(e.target.value)}
+                          className="w-full bg-white border border-gray-200 rounded-lg py-2 pl-9 pr-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 text-center">Recomendado: PNG transparente, 800x800px</p>
                     </div>
                   </div>
                 </div>
-
                 <div className="space-y-2 pt-4 border-t border-gray-100">
                   <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Favicon (Ícone da Aba)</label>
                   <div className="flex items-center gap-4">
                     {faviconUrl ? (
                       <div className="w-12 h-12 rounded-xl border border-gray-200 overflow-hidden bg-white flex items-center justify-center p-2">
-                        <img src={faviconUrl || undefined} alt="Favicon" className="w-full h-full object-contain" />
+                        <img src={faviconUrl || undefined} alt="Favicon" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                       </div>
                     ) : (
                       <div className="w-12 h-12 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400">
                         <Image size={16} />
                       </div>
                     )}
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-lg font-medium text-sm cursor-pointer hover:bg-gray-200 transition-colors">
+                    <div className="flex-1 space-y-3">
+                      <label className="flex items-center justify-center gap-2 w-full bg-gray-100 px-4 py-2 rounded-lg font-medium text-sm cursor-pointer hover:bg-gray-200 transition-colors">
                         <Upload size={16} />
                         Escolher Favicon
                         <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
@@ -349,7 +386,19 @@ export function AdminSettings() {
                           }
                         }} />
                       </label>
-                      <p className="text-xs text-gray-500">Recomendado: Ícone quadrado pequeno (PNG/ICO)</p>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <Link size={14} className="text-gray-400" />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Ou cole a URL..."
+                          value={faviconUrl?.startsWith('data:') ? '' : faviconUrl}
+                          onChange={(e) => setFaviconUrl(e.target.value)}
+                          className="w-full bg-white border border-gray-200 rounded-lg py-2 pl-9 pr-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 text-center">Recomendado: Ícone quadrado pequeno (PNG/ICO)</p>
                     </div>
                   </div>
                 </div>
@@ -573,7 +622,11 @@ export function AdminSettings() {
                     <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Texto do Botão</label>
                     <input type="text" value={storefrontSettings.promoBanner1ButtonText} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner1ButtonText: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none" />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Link do Botão/Banner</label>
+                    <input type="text" value={storefrontSettings.promoBanner1Link} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner1Link: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none" placeholder="Ex: ?category=Música" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:col-span-2">
                     <div className="space-y-1">
                       <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor Inicial</label>
                       <div className="flex gap-1.5">
@@ -608,7 +661,11 @@ export function AdminSettings() {
                     <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Texto do Botão</label>
                     <input type="text" value={storefrontSettings.promoBanner2ButtonText} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner2ButtonText: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none" />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Link do Botão/Banner</label>
+                    <input type="text" value={storefrontSettings.promoBanner2Link} onChange={(e) => setStorefrontSettings({...storefrontSettings, promoBanner2Link: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none" placeholder="Ex: ?category=Canecas" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:col-span-2">
                     <div className="space-y-1">
                       <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor Inicial</label>
                       <div className="flex gap-1.5">
@@ -746,7 +803,7 @@ export function AdminSettings() {
             <div className="grid sm:grid-cols-2 gap-6 p-6 border border-gray-100 rounded-xl bg-gray-50/50">
               <div className="space-y-1">
                 <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Desconto no Pix (%)</label>
-                <input type="number" step="0.01" min="0" value={storefrontSettings.pixDiscount} onChange={(e) => setStorefrontSettings({...storefrontSettings, pixDiscount: parseFloat(e.target.value) || 0})} className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
+                <input type="number" step="0.01" min="0" value={Math.round((storefrontSettings.pixDiscount || 0) * 100)} onChange={(e) => { const val = parseFloat(e.target.value); setStorefrontSettings({...storefrontSettings, pixDiscount: isNaN(val) ? 0 : val / 100}); }} className="w-full bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Parcelas s/ Juros (Max)</label>
@@ -813,6 +870,149 @@ export function AdminSettings() {
                 <Shield size={18} /> Atualizar Senha
               </button>
             </form>
+          </div>
+        )}
+
+        {activeTab === 'footer' && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wider mb-1">Aparência do Rodapé</h3>
+              <p className="text-gray-500 text-sm">Configure o logotipo, textos e cores exibidos no rodapé do site.</p>
+            </div>
+            
+            <div className="space-y-6 max-w-xl">
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Logotipo do Rodapé</label>
+                <p className="text-xs text-gray-400 mb-2">Se vazio, usará o logotipo principal da loja.</p>
+                <div className="flex items-center gap-4">
+                  {footerSettings.footerLogoUrl ? (
+                    <div className="w-24 h-24 rounded-xl border border-gray-200 overflow-hidden bg-white flex items-center justify-center p-2 relative group">
+                      <img src={footerSettings.footerLogoUrl} alt="Logo Rodapé" className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
+                      <button 
+                        onClick={() => setFooterSettings({ ...footerSettings, footerLogoUrl: '' })}
+                        className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={24} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-24 h-24 rounded-xl border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400">
+                      <Image size={32} />
+                    </div>
+                  )}
+                  <div className="flex-1 space-y-3">
+                    <label className="flex items-center justify-center gap-2 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-bold text-sm uppercase tracking-wider cursor-pointer transition-colors">
+                      <Upload size={18} /> {footerSettings.footerLogoUrl ? 'Trocar Logo' : 'Enviar Logo'}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          
+                          if (file.size > 200 * 1024) {
+                            alert('A imagem deve ter no máximo 200KB.');
+                            return;
+                          }
+                          
+                          const resized = await resizeImage(file, 200, 200);
+setFooterSettings({ ...footerSettings, footerLogoUrl: resized });
+                        }}
+                      />
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Link size={14} className="text-gray-400" />
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Ou cole a URL da imagem..."
+                        value={footerSettings.footerLogoUrl.startsWith('data:') ? '' : footerSettings.footerLogoUrl}
+                        onChange={(e) => setFooterSettings({ ...footerSettings, footerLogoUrl: convertGoogleDriveUrl(e.target.value) })}
+                        className="w-full bg-white border border-gray-200 rounded-lg py-2 pl-9 pr-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2 text-center">Tamanho recomendado: 200x200px (Máx: 200KB para upload)</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Descrição</label>
+                <textarea 
+                  value={footerSettings.footerDescription} 
+                  onChange={e => setFooterSettings({...footerSettings, footerDescription: e.target.value})}
+                  rows={3}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none resize-none"
+                  placeholder="Especializados em produtos criativos..."
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-6 p-6 border border-gray-100 rounded-xl bg-gray-50/50">
+                <h4 className="col-span-full text-sm font-bold uppercase tracking-widest text-gray-700">Cores do Rodapé</h4>
+                
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor de Fundo</label>
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="color" 
+                      value={footerSettings.footerBgColor} 
+                      onChange={e => setFooterSettings({...footerSettings, footerBgColor: e.target.value})}
+                      className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0"
+                    />
+                    <input 
+                      type="text" 
+                      value={footerSettings.footerBgColor} 
+                      onChange={e => setFooterSettings({...footerSettings, footerBgColor: e.target.value})}
+                      className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-mono uppercase"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor dos Textos Gerais</label>
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="color" 
+                      value={footerSettings.footerTextColor} 
+                      onChange={e => setFooterSettings({...footerSettings, footerTextColor: e.target.value})}
+                      className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0"
+                    />
+                    <input 
+                      type="text" 
+                      value={footerSettings.footerTextColor} 
+                      onChange={e => setFooterSettings({...footerSettings, footerTextColor: e.target.value})}
+                      className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-mono uppercase"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Cor dos Títulos (H3)</label>
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="color" 
+                      value={footerSettings.footerHeadingColor} 
+                      onChange={e => setFooterSettings({...footerSettings, footerHeadingColor: e.target.value})}
+                      className="w-12 h-12 rounded-lg cursor-pointer border-0 p-0"
+                    />
+                    <input 
+                      type="text" 
+                      value={footerSettings.footerHeadingColor} 
+                      onChange={e => setFooterSettings({...footerSettings, footerHeadingColor: e.target.value})}
+                      className="flex-1 bg-white border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-mono uppercase"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-gray-100">
+                <button onClick={handleSaveFooter} className="flex items-center justify-center gap-2 w-full sm:w-auto bg-[var(--color-primary)] text-white px-6 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all">
+                  <Save size={18} /> Salvar Rodapé
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
