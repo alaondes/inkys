@@ -9,9 +9,11 @@ import toast from 'react-hot-toast';
 import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import { maskCEP } from '../../utils/validation';
 import { generateSequentialId } from '../../lib/firestoreUtils';
+import { useLocation } from 'react-router-dom';
 
 export function Pos() {
   const { products } = useProducts();
+  const location = useLocation();
   
   React.useEffect(() => {
     const q = query(collection(db, 'avulso_products'), orderBy('createdAt', 'desc'));
@@ -65,7 +67,49 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
     return () => unsubscribe();
   }, []);
   const [isSaving, setIsSaving] = useState(false);
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   
+  React.useEffect(() => {
+    if (location.state?.editOrder) {
+      const order = location.state.editOrder;
+      setEditingOrderId(order.id);
+      setCart(order.items.map((i: any) => ({ ...i, id: i.id || Date.now().toString() + Math.random().toString() })));
+      setCustomerInfo({
+        name: order.customer || '',
+        email: order.email || '',
+        phone: order.phone || '',
+        doc: order.shippingInfo?.cpf || ''
+      });
+      setNotes(order.notes || '');
+      setPaymentPolicy(order.paymentPolicy || paymentPolicy);
+      setShippingMode(order.shippingMode || 'retirada');
+      setShippingCost(order.shippingCost || 0);
+      if (order.shippingInfo && order.shippingMode !== 'retirada') {
+        setShippingAddress({
+          zipCode: order.shippingInfo.zipCode || '',
+          street: order.shippingInfo.street || '',
+          number: order.shippingInfo.number || '',
+          complement: order.shippingInfo.complement || '',
+          neighborhood: order.shippingInfo.neighborhood || '',
+          city: order.shippingInfo.city || '',
+          state: order.shippingInfo.state || ''
+        });
+      }
+      setExtraDiscount(order.discount || 0);
+      setPaymentMethod(order.paymentMethod || '');
+      setInstallments(order.installments || 1);
+      setDownPayment(order.downPayment || 0);
+      if (order.paymentConditions === 'Sinal 50% / Entrega 50%') {
+        setPaymentCondition('50_50');
+      } else {
+        setPaymentCondition('a_vista');
+      }
+      
+      // Clean up state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [showEditAvulsoModal, setShowEditAvulsoModal] = useState<any>(null);
   const [customItem, setCustomItem] = useState({ name: '', price: 0, image: '', quantity: 1, saveToAvulsos: false });
@@ -232,11 +276,16 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                            : '',
         installments,
         downPayment,
-        createdAt: serverTimestamp(),
       };
 
-      const customId = await generateSequentialId(db, status, settings.storeName);
-      await setDoc(doc(db, 'orders', customId), orderData);
+      let finalId;
+      if (editingOrderId) {
+        finalId = editingOrderId;
+        await setDoc(doc(db, 'orders', finalId), { ...orderData, updatedAt: serverTimestamp() }, { merge: true });
+      } else {
+        finalId = await generateSequentialId(db, status, settings.storeName);
+        await setDoc(doc(db, 'orders', finalId), { ...orderData, createdAt: serverTimestamp() });
+      }
       
       const identifier = customerInfo.email?.toLowerCase().trim() || customerInfo.phone?.trim() || customerInfo.name?.trim();
       if (identifier) {
@@ -253,7 +302,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
       
       toast.success(status === 'Orçamento' ? "Orçamento gerado com sucesso!" : "Venda registrada com sucesso!");
       
-      setSavedOrder({ ...orderData, id: customId, displayDate: new Date().toLocaleDateString('pt-BR') });
+      setSavedOrder({ ...orderData, id: finalId, displayDate: new Date().toLocaleDateString('pt-BR') });
       setShowReceiptPreview(true);
       
     } catch (error) {
@@ -270,6 +319,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
     setCustomerInfo({ name: '', email: '', phone: '', doc: '' });
     setNotes('');
     setSavedOrder(null);
+    setEditingOrderId(null);
     setShippingAddress({
       zipCode: '',
       street: '',
@@ -324,7 +374,12 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
       toast.success("PDF gerado com sucesso!", { id: loadingToast });
     } catch (e: any) {
       console.error("Failed to generate PDF", e);
-      toast.error(`Erro ao gerar PDF: ${e.message || 'Erro desconhecido'}`, { id: loadingToast });
+      if (e.message && e.message.includes('Failed to fetch dynamically imported module')) {
+        toast.error("Nova versão detectada. Atualizando a página...", { id: loadingToast });
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        toast.error(`Erro ao gerar PDF: ${e.message || 'Erro desconhecido'}`, { id: loadingToast });
+      }
     } finally {
       element.style.width = originalWidth;
       element.style.maxWidth = originalMaxWidth;

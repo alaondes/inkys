@@ -245,7 +245,12 @@ Agradecemos pela confiança e preferência!`,
       await html2pdf().from(element).set(opt).save();
     } catch (e: any) {
       console.error("Failed to generate PDF", e);
-      alert(`Erro ao gerar PDF: ${e.message || 'Erro desconhecido'}`);
+      if (e.message && e.message.includes('Failed to fetch dynamically imported module')) {
+        alert("Nova versão detectada. A página será atualizada.");
+        window.location.reload();
+      } else {
+        alert(`Erro ao gerar PDF: ${e.message || 'Erro desconhecido'}`);
+      }
     } finally {
       element.style.width = originalWidth;
       element.style.maxWidth = originalMaxWidth;

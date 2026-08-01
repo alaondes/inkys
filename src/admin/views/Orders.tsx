@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink, FileText, Printer, User, Calendar, MapPin, Trash2, ClipboardList, MessageCircle, Download } from 'lucide-react';
+import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink, FileText, Printer, User, Calendar, MapPin, Trash2, ClipboardList, MessageCircle, Download, Edit2 } from 'lucide-react';
 import { formatPrice } from '../../data/products';
 import { db } from '../../lib/firebase';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
+import { useNavigate } from 'react-router-dom';
 
 type OrderStatus = 'Pendente' | 'Pago' | 'Enviado' | 'Cancelado' | 'Orçamento';
 
@@ -61,6 +62,7 @@ const statusConfig = {
 };
 
 export function Orders() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'Todos'>('Todos');
@@ -306,7 +308,12 @@ export function Orders() {
       toast.success("PDF gerado com sucesso!", { id: loadingToast });
     } catch (e: any) {
       console.error("Failed to generate PDF", e);
-      toast.error(`Erro ao gerar PDF: ${e.message || 'Erro desconhecido'}`, { id: loadingToast });
+      if (e.message && e.message.includes('Failed to fetch dynamically imported module')) {
+        toast.error("Nova versão detectada. Atualizando a página...", { id: loadingToast });
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        toast.error(`Erro ao gerar PDF: ${e.message || 'Erro desconhecido'}`, { id: loadingToast });
+      }
     } finally {
       element.style.width = originalWidth;
       element.style.maxWidth = originalMaxWidth;
@@ -699,7 +706,7 @@ export function Orders() {
 
             {/* Footer with Save/Cancel Buttons */}
             <div className="flex justify-between items-center gap-3 pt-4 border-t border-gray-100 shrink-0 mt-4">
-              <div>
+              <div className="flex gap-2">
                 {selectedOrder.status === 'Cancelado' && (
                   <button
                     onClick={handleDelete}
@@ -707,6 +714,16 @@ export function Orders() {
                     className="px-4 py-2 text-sm font-bold uppercase tracking-wider text-red-500 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors flex items-center gap-2"
                   >
                     <Trash2 size={16} /> Excluir Pedido
+                  </button>
+                )}
+                {selectedOrder.status === 'Orçamento' && (
+                  <button
+                    onClick={() => {
+                      navigate('/admin/pos', { state: { editOrder: selectedOrder } });
+                    }}
+                    className="px-4 py-2 text-sm font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-xl transition-colors flex items-center gap-2"
+                  >
+                    <Edit2 size={16} /> Editar Orçamento
                   </button>
                 )}
               </div>
