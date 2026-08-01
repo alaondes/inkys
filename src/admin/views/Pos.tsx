@@ -85,8 +85,10 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
   });
   const [cepLoading, setCepLoading] = useState(false);
   const [applyPixDiscount, setApplyPixDiscount] = useState(false);
+  const [extraDiscount, setExtraDiscount] = useState<number>(0);
 
   const allItems = [...products.map(p => ({...p, isAvulso: false})), ...avulsos.map(a => ({...a, isAvulso: true}))];
+
   const filteredProducts = allItems.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(search.toLowerCase()));
     if (!matchesSearch) return false;
@@ -163,7 +165,8 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
   };
 
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const discountAmount = applyPixDiscount ? subtotal * (settings.pixDiscount || 0) : 0;
+  const pixDiscountAmount = applyPixDiscount ? subtotal * (settings.pixDiscount || 0) : 0;
+  const discountAmount = pixDiscountAmount + (extraDiscount || 0);
   const total = subtotal - discountAmount + (shippingMode === 'pago' ? shippingCost : 0);
 
   const handleSave = async (status: 'Pendente' | 'Orçamento') => {
@@ -599,6 +602,19 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                 />
                 <span className="text-sm font-bold text-gray-700">Aplicar Desconto PIX/Dinheiro ({(settings.pixDiscount || 0) * 100}%)</span>
               </label>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-gray-700">Desconto Extra (R$):</span>
+                <input 
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={extraDiscount || ''}
+                  onChange={(e) => setExtraDiscount(Number(e.target.value))}
+                  className="w-24 bg-white border border-gray-200/60 rounded-lg p-1.5 text-sm focus:border-[var(--color-primary)] outline-none transition-colors font-medium text-gray-800 text-right"
+                  placeholder="0.00"
+                />
+              </div>
             </div>
 
             <div className="bg-gray-50 rounded-xl p-4 space-y-2 border border-gray-100">
@@ -609,7 +625,13 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
               {applyPixDiscount && (
                 <div className="flex justify-between items-center text-xs text-green-600 font-medium pb-2 border-b border-gray-200/50 border-dashed">
                   <span>Desconto PIX/Dinheiro</span>
-                  <span>-{formatPrice(discountAmount)}</span>
+                  <span>-{formatPrice(pixDiscountAmount)}</span>
+                </div>
+              )}
+              {extraDiscount > 0 && (
+                <div className="flex justify-between items-center text-xs text-green-600 font-medium pb-2 border-b border-gray-200/50 border-dashed">
+                  <span>Desconto Extra</span>
+                  <span>-{formatPrice(extraDiscount)}</span>
                 </div>
               )}
               {shippingMode !== 'retirada' && (

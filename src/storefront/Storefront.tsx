@@ -280,33 +280,41 @@ export function Storefront() {
 
       // Create order in Firestore
       const orderData = {
-        customer: data.name,
-        email: data.email,
-        phone: data.phone,
-        total: finalTotal,
+        customer: data.name || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        total: finalTotal || 0,
         status: 'Pendente',
         date: serverTimestamp(),
         items: cleanItems,
         shippingInfo: cleanShippingInfo
       };
 
-      const { withTimeout, generateSequentialId } = await import('../lib/firestoreUtils');
+      const { generateSequentialId } = await import('../lib/firestoreUtils');
       let orderId = "";
       try {
         orderId = await generateSequentialId(db, 'Pendente', settings.storeName);
-        await withTimeout(setDoc(doc(db, 'orders', orderId), orderData));
+      } catch (e) {
+        console.warn("Failed to generate sequential ID, using fallback", e);
+        orderId = `WEB-${Date.now().toString().slice(-6)}`;
+      }
+
+      try {
+        // We don't await these so they don't block the WhatsApp redirect if offline, 
+        // Firestore will queue them and sync when online.
+        setDoc(doc(db, 'orders', orderId), orderData).catch(e => console.error("Error saving order:", e));
         
         const identifier = data.email?.toLowerCase().trim() || data.phone?.trim() || data.name?.trim();
         if (identifier) {
           const cId = identifier.replace(/\//g, '_');
-          await setDoc(doc(db, 'customers', cId), {
+          setDoc(doc(db, 'customers', cId), {
             identifier,
             name: data.name || 'Cliente Site',
             email: data.email || '',
             phone: data.phone || '',
             doc: data.cpf || '',
             updatedAt: serverTimestamp()
-          }, { merge: true });
+          }, { merge: true }).catch(e => console.error("Error saving customer:", e));
         }
         
         // Trigger automatic email
@@ -319,8 +327,9 @@ export function Storefront() {
           })
         }).catch(err => console.error("Error triggering email:", err));
         
-      } catch (dbError) {
+      } catch (dbError: any) {
         console.warn("Could not save order to db, proceeding with WhatsApp only:", dbError);
+        toast.error("Aviso: " + (dbError.message || 'Erro ao registrar no sistema. Contate a loja.'));
       }
       const url = generateWhatsAppLink(updatedCart, data, settings.whatsappNumber, orderId);
       window.open(url, '_blank');

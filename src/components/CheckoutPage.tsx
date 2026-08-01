@@ -184,7 +184,7 @@ export function CheckoutPage({
         email: formData.email,
         type: tipo,
         name: formData.nome,
-        
+        cpf: formData.cpf,
         gender: gender,
         birthDate: birthDate,
         phone: formData.celular,
