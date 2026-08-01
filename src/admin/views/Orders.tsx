@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink, FileText, Printer, User, Calendar, MapPin, Trash2, ClipboardList, MessageCircle } from 'lucide-react';
+import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink, FileText, Printer, User, Calendar, MapPin, Trash2, ClipboardList, MessageCircle, Download } from 'lucide-react';
 import { formatPrice } from '../../data/products';
 import { db } from '../../lib/firebase';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
+import html2pdf from 'html2pdf.js';
 
 type OrderStatus = 'Pendente' | 'Pago' | 'Enviado' | 'Cancelado' | 'Orçamento';
 
@@ -256,6 +257,27 @@ export function Orders() {
       toast.error('Erro ao salvar o pedido');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!selectedOrder) return;
+    const element = document.getElementById('printable-receipt-area');
+    if (!element) return;
+    
+    try {
+      const opt = {
+        margin:       10,
+        filename:     `${selectedOrder.status === 'Orçamento' ? 'orcamento' : 'recibo'}-${selectedOrder.id}.pdf`,
+        image:        { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
+      };
+      
+      html2pdf().from(element).set(opt).save();
+    } catch (e) {
+      console.error("Failed to generate PDF", e);
+      toast.error("Erro ao gerar PDF.");
     }
   };
 
@@ -673,7 +695,7 @@ export function Orders() {
         </div>
       )}
 
-      {showReceiptPreview && selectedOrder && (selectedOrder.receipt || localStatus === 'Pago' || localStatus === 'Enviado') && (
+      {showReceiptPreview && selectedOrder && (selectedOrder.receipt || localStatus === 'Pago' || localStatus === 'Enviado' || localStatus === 'Orçamento') && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:z-0">
           <style>{`
             @media print {
@@ -749,7 +771,13 @@ export function Orders() {
                   onClick={() => window.print()}
                   className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors"
                 >
-                  <Printer size={14} /> Imprimir / PDF
+                  <Printer size={14} /> Imprimir
+                </button>
+                <button
+                  onClick={handleDownloadPDF}
+                  className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors"
+                >
+                  <Download size={14} /> Baixar PDF
                 </button>
                 <button 
                   onClick={() => setShowReceiptPreview(false)} 

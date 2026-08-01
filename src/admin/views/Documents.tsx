@@ -18,7 +18,8 @@ import {
   Clock, 
   AlertCircle,
   FileCheck2,
-  Share2
+  Share2,
+  Download
 } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
 import { formatPrice } from '../../data/products';
@@ -38,6 +39,7 @@ import {
   setDoc
 } from 'firebase/firestore';
 import toast from 'react-hot-toast';
+import html2pdf from 'html2pdf.js';
 
 interface OrderItem {
   name: string;
@@ -602,6 +604,26 @@ Agradecemos pela confiança e preferência!`);
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    const element = document.getElementById('printable-document-area');
+    if (!element) return;
+    
+    try {
+      const opt = {
+        margin:       10,
+        filename:     `${docType === 'quote' ? 'orcamento' : 'recibo'}-${selectedSavedDocId || 'novo'}.pdf`,
+        image:        { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
+      };
+      
+      html2pdf().from(element).set(opt).save();
+    } catch (e) {
+      console.error("Failed to generate PDF", e);
+      toast.error("Erro ao gerar PDF.");
+    }
   };
 
   // Filter saved docs
@@ -1172,7 +1194,13 @@ Agradecemos pela confiança e preferência!`);
                 onClick={handlePrint}
                 className="flex items-center gap-1.5 bg-white hover:bg-gray-100 text-gray-900 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors"
               >
-                <Printer size={13} /> Imprimir / PDF
+                <Printer size={13} /> Imprimir
+              </button>
+              <button 
+                onClick={handleDownloadPDF}
+                className="flex items-center gap-1.5 bg-white hover:bg-gray-100 text-gray-900 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors"
+              >
+                <Download size={13} /> Baixar PDF
               </button>
             </div>
 
