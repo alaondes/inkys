@@ -5,8 +5,6 @@ import { db } from '../lib/firebase';
 import { Printer, FileText, Calendar, CheckCircle2, ChevronLeft, CreditCard, Clock, AlertCircle, Download } from 'lucide-react';
 import { formatPrice } from '../data/products';
 
-import html2pdf from 'html2pdf.js';
-
 const THEMES = {
   charcoal: {
     name: 'Grafite Clássico',
@@ -206,21 +204,27 @@ Agradecemos pela confiança e preferência!`,
   const handleDownloadPDF = async () => {
     if (!documentData) return;
     const element = document.getElementById('printable-document');
-    if (!element) return;
+    if (!element) {
+      alert("Erro: Área de impressão não encontrada.");
+      return;
+    }
     
     try {
+      const html2pdfModule = await import('html2pdf.js');
+      const html2pdf = (html2pdfModule.default || html2pdfModule) as any;
+
       const opt = {
         margin:       10,
         filename:     `${documentData.type === 'quote' ? 'orcamento' : 'recibo'}-${documentData.id}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
+        html2canvas:  { scale: 2, useCORS: true, logging: true },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
       
-      html2pdf().from(element).set(opt).save();
-    } catch (e) {
+      await html2pdf().from(element).set(opt).save();
+    } catch (e: any) {
       console.error("Failed to generate PDF", e);
-      alert("Erro ao gerar PDF.");
+      alert(`Erro ao gerar PDF: ${e.message || 'Erro desconhecido'}`);
     }
   };
 

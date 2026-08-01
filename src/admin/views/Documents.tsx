@@ -39,7 +39,6 @@ import {
   setDoc
 } from 'firebase/firestore';
 import toast from 'react-hot-toast';
-import html2pdf from 'html2pdf.js';
 
 interface OrderItem {
   name: string;
@@ -608,21 +607,30 @@ Agradecemos pela confiança e preferência!`);
 
   const handleDownloadPDF = async () => {
     const element = document.getElementById('printable-document-area');
-    if (!element) return;
+    if (!element) {
+      toast.error("Erro: Área de impressão não encontrada.");
+      return;
+    }
     
+    const loadingToast = toast.loading("Gerando PDF...");
     try {
+      const html2pdfModule = await import('html2pdf.js');
+      const html2pdf = (html2pdfModule.default || html2pdfModule) as any;
+
       const opt = {
         margin:       10,
         filename:     `${docType === 'quote' ? 'orcamento' : 'recibo'}-${selectedSavedDocId || 'novo'}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
+        html2canvas:  { scale: 2, useCORS: true, logging: true },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
       
-      html2pdf().from(element).set(opt).save();
-    } catch (e) {
+      await html2pdf().from(element).set(opt).save();
+      
+      toast.success("PDF gerado com sucesso!", { id: loadingToast });
+    } catch (e: any) {
       console.error("Failed to generate PDF", e);
-      toast.error("Erro ao gerar PDF.");
+      toast.error(`Erro ao gerar PDF: ${e.message || 'Erro desconhecido'}`, { id: loadingToast });
     }
   };
 
