@@ -389,7 +389,7 @@ Agradecemos pela confiança e preferência!`);
       setItems([{ description: '', quantity: 1, unitPrice: 0 }]);
     }
 
-    setDiscount(order.shippingInfo?.couponDiscount || 0);
+    setDiscount(order.receipt?.discount || order.discount || order.shippingInfo?.couponDiscount || 0);
     setNotes(`Referente ao pedido realizado em ${order.dateFormatted}.\nID do pedido: #${order.id}`);
     
     setShowOrderDropdown(false);

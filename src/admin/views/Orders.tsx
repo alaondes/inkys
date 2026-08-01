@@ -967,10 +967,10 @@ export function Orders() {
                           )}
                         </span>
                       </div>
-                      {(selectedOrder.receipt?.discount || selectedOrder.shippingInfo?.couponDiscount) ? (
+                      {(selectedOrder.receipt?.discount || selectedOrder.discount || selectedOrder.shippingInfo?.couponDiscount) ? (
                         <div className="flex justify-between text-red-600 font-bold">
                           <span>Desconto:</span>
-                          <span>-{formatPrice(selectedOrder.receipt?.discount || selectedOrder.shippingInfo?.couponDiscount || 0)}</span>
+                          <span>-{formatPrice(selectedOrder.receipt?.discount || selectedOrder.discount || selectedOrder.shippingInfo?.couponDiscount || 0)}</span>
                         </div>
                       ) : null}
                       {selectedOrder.shippingMode && selectedOrder.shippingMode !== 'retirada' && (

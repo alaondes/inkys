@@ -145,7 +145,7 @@ export function PublicDocumentViewer() {
               unitPrice: item.price || item.unitPrice || 0,
               image: item.image || item.customImage || ''
             })),
-            discount: orderData.discount || 0,
+            discount: orderData.receipt?.discount || orderData.discount || orderData.shippingInfo?.couponDiscount || 0,
             subtotal: orderData.subtotal || orderData.total || 0,
             total: orderData.total || 0,
             notes: orderData.notes || '',
