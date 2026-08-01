@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useProducts } from '../../context/ProductContext';
 import { useSettings } from '../../context/SettingsContext';
-import { Search, Plus, Trash2, ShoppingCart, Save, User, FileText, XCircle, Printer, X, Image as ImageIcon, Truck, Store, Edit2, MessageCircle, Download } from 'lucide-react';
+import { Search, Plus, Trash2, ShoppingCart, Save, User, FileText, XCircle, Printer, X, Image as ImageIcon, Truck, Store, Edit2, MessageCircle, Download, CreditCard } from 'lucide-react';
 import { formatPrice } from '../../data/products';
 import { db } from '../../lib/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, onSnapshot, query, orderBy, setDoc } from 'firebase/firestore';
@@ -78,7 +78,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
         name: order.customer || '',
         email: order.email || '',
         phone: order.phone || '',
-        doc: order.shippingInfo?.cpf || ''
+        doc: order.doc || order.shippingInfo?.cpf || ''
       });
       setNotes(order.notes || '');
       setPaymentPolicy(order.paymentPolicy || paymentPolicy);
@@ -240,6 +240,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
         customer: customerInfo.name || 'Cliente Balcão',
         email: customerInfo.email || '',
         phone: customerInfo.phone || '',
+        doc: customerInfo.doc || '',
         date: serverTimestamp(),
         subtotal,
         discount: discountAmount,
@@ -1196,6 +1197,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                     <h3 className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">CLIENTE:</h3>
                     <p className="text-base font-extrabold text-gray-900">{savedOrder.customer}</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 text-xs text-gray-600 font-medium">
+                      {(savedOrder.doc || savedOrder.shippingInfo?.cpf) && <p><strong>CPF/CNPJ:</strong> {savedOrder.doc || savedOrder.shippingInfo?.cpf}</p>}
                       {savedOrder.phone && <p><strong>WhatsApp:</strong> {savedOrder.phone}</p>}
                       {savedOrder.email && <p className="truncate"><strong>E-mail:</strong> {savedOrder.email}</p>}
                     </div>

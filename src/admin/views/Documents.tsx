@@ -647,7 +647,12 @@ Agradecemos pela confiança e preferência!`);
       toast.success("PDF gerado com sucesso!", { id: loadingToast });
     } catch (e: any) {
       console.error("Failed to generate PDF", e);
-      toast.error(`Erro ao gerar PDF: ${e.message || 'Erro desconhecido'}`, { id: loadingToast });
+      if (e.message && e.message.includes('Failed to fetch dynamically imported module')) {
+        toast.error("Nova versão detectada. Atualizando a página...", { id: loadingToast });
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        toast.error(`Erro ao gerar PDF: ${e.message || 'Erro desconhecido'}`, { id: loadingToast });
+      }
     } finally {
       element.style.width = originalWidth;
       element.style.maxWidth = originalMaxWidth;

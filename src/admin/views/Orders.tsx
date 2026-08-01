@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink, FileText, Printer, User, Calendar, MapPin, Trash2, ClipboardList, MessageCircle, Download, Edit2 } from 'lucide-react';
+import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink, FileText, Printer, User, Calendar, MapPin, Trash2, ClipboardList, MessageCircle, Download, Edit2, CreditCard } from 'lucide-react';
 import { formatPrice } from '../../data/products';
 import { db } from '../../lib/firebase';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -42,6 +42,7 @@ interface Order {
   paymentConditions?: string;
   installments?: number;
   downPayment?: number;
+  doc?: string;
   receipt?: {
     date: string;
     items: Array<{ description: string; quantity: number; unitPrice: number }>;
@@ -112,6 +113,16 @@ export function Orders() {
           shippingInfo: data.shippingInfo || null,
           notes: data.notes || '',
           receipt: data.receipt || null,
+          subtotal: data.subtotal,
+          discount: data.discount,
+          shippingMode: data.shippingMode,
+          shippingCost: data.shippingCost,
+          paymentPolicy: data.paymentPolicy,
+          paymentMethod: data.paymentMethod,
+          paymentConditions: data.paymentConditions,
+          installments: data.installments,
+          downPayment: data.downPayment,
+          doc: data.doc || '',
           _rawDate: data.date?.toDate ? data.date.toDate() : new Date(0) // Internal use for filtering
         } as Order & { _rawDate: Date };
       });
@@ -882,8 +893,8 @@ export function Orders() {
                       {selectedOrder.receipt?.customerName || selectedOrder.customer}
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 text-xs text-gray-600 font-medium">
-                      {(selectedOrder.receipt?.customerDoc || selectedOrder.shippingInfo?.cpf) && (
-                        <p><strong>CPF/CNPJ:</strong> {selectedOrder.receipt?.customerDoc || selectedOrder.shippingInfo?.cpf}</p>
+                      {(selectedOrder.receipt?.customerDoc || selectedOrder.doc || selectedOrder.shippingInfo?.cpf) && (
+                        <p><strong>CPF/CNPJ:</strong> {selectedOrder.receipt?.customerDoc || selectedOrder.doc || selectedOrder.shippingInfo?.cpf}</p>
                       )}
                       {selectedOrder.phone && (
                         <p><strong>WhatsApp:</strong> {selectedOrder.phone}</p>
