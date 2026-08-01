@@ -290,6 +290,7 @@ export function Orders() {
     const originalHeight = element.style.height;
     
     element.style.width = '800px';
+    element.style.minWidth = '800px';
     element.style.maxWidth = '800px';
     element.style.height = 'max-content';
     
@@ -309,7 +310,7 @@ export function Orders() {
         margin:       10,
         filename:     `${selectedOrder.status === 'Orçamento' ? 'orcamento' : 'recibo'}-${selectedOrder.id}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: true, windowWidth: 800, scrollY: 0 },
+        html2canvas:  { scale: 2, useCORS: true, logging: true, windowWidth: 800, width: 800, scrollY: 0, scrollX: 0 },
         pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
@@ -953,12 +954,7 @@ export function Orders() {
                           {selectedOrder.receipt?.notes || selectedOrder.notes || `Recibo gerado automaticamente para o pedido #${selectedOrder.id} finalizado.`}
                         </p>
                       </div>
-                      {selectedOrder.paymentPolicy && (
-                        <div className="bg-blue-50/40 border border-blue-100 p-4 rounded-xl space-y-1">
-                          <p className="text-[10px] font-black text-blue-800 uppercase tracking-wider mb-0.5">Política de Pagamento</p>
-                          <p className="text-[11px] text-blue-900/90 whitespace-pre-wrap font-medium leading-relaxed">{selectedOrder.paymentPolicy}</p>
-                        </div>
-                      )}
+
                     </div>
 
                     <div className="w-full sm:w-64 space-y-2 text-xs font-semibold">

@@ -618,6 +618,7 @@ Agradecemos pela confiança e preferência!`);
     const originalHeight = element.style.height;
     
     element.style.width = '800px';
+    element.style.minWidth = '800px';
     element.style.maxWidth = '800px';
     element.style.height = 'max-content';
     
@@ -637,7 +638,7 @@ Agradecemos pela confiança e preferência!`);
         margin:       10,
         filename:     `${docType === 'quote' ? 'orcamento' : 'recibo'}-${selectedSavedDocId || 'novo'}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: true, windowWidth: 800, scrollY: 0 },
+        html2canvas:  { scale: 2, useCORS: true, logging: true, windowWidth: 800, width: 800, scrollY: 0, scrollX: 0 },
         pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
