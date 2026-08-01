@@ -288,6 +288,12 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
             
             <h1 className="text-2xl font-normal text-gray-800 mb-2">{product.name}</h1>
             
+            {product.observation && (
+              <div className="w-full mb-4 bg-yellow-50 border border-yellow-100 rounded-md p-3 text-sm text-yellow-800">
+                {product.observation}
+              </div>
+            )}
+            
             <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
                <span className="text-xs text-gray-500">Cód: {(product.id || '').padStart(4, '0')}-xyz</span>
                <div className="flex items-center gap-1">

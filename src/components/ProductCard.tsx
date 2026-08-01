@@ -125,6 +125,12 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         >
           {product.name}
         </h3>
+
+        {product.observation && (
+          <div className="w-full mb-2 bg-yellow-50 border border-yellow-100 rounded-md p-1.5 sm:p-2 text-[10px] sm:text-xs text-yellow-800 shrink-0 text-center">
+            {product.observation}
+          </div>
+        )}
         
         <div className="flex items-center gap-0.5 sm:gap-1 mb-1.5 sm:mb-2 shrink-0">
           {[...Array(5)].map((_, i) => (

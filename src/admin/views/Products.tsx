@@ -1259,6 +1259,17 @@ export function Products() {
                   </div>
 
                   <div className="space-y-1 col-span-2">
+                    <label className="text-[10px] uppercase font-bold text-gray-500">Observação do Produto (Opcional)</label>
+                    <input 
+                      type="text" 
+                      placeholder="Ex: Prazo de produção: 5 dias úteis" 
+                      value={formData.observation || ''}
+                      onChange={e => setFormData({...formData, observation: e.target.value})}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
+                    />
+                  </div>
+
+                  <div className="space-y-1 col-span-2">
                     <div className="flex justify-between items-end mb-1">
                       <label className="text-[10px] uppercase font-bold text-gray-500">Descrição</label>
                       <div className="flex gap-1">

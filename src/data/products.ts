@@ -16,6 +16,7 @@ export interface Product {
   hidden?: boolean;
   stock?: number;
   order?: number;
+  observation?: string;
 }
 
 export const INITIAL_PRODUCTS: Product[] = [
