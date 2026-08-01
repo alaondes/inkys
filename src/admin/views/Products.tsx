@@ -33,6 +33,7 @@ export function Products() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [initialCategory, setInitialCategory] = useState('');
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   
@@ -133,9 +134,14 @@ export function Products() {
 
   const productCategories = Object.keys(groupedProducts).sort();
 
-  const handleOpenModal = (product?: Product) => {
-    if (product) setEditingProduct(product);
-    else setEditingProduct(null);
+  const handleOpenModal = (product?: Product, category?: string) => {
+    if (product) {
+      setEditingProduct(product);
+      setInitialCategory('');
+    } else {
+      setEditingProduct(null);
+      setInitialCategory(category || '');
+    }
     setIsModalOpen(true);
   };
 
@@ -337,9 +343,9 @@ export function Products() {
   // Update formData when modal opens
   React.useEffect(() => {
     if (isModalOpen) {
-      setFormData(editingProduct ? { ...editingProduct, colors: editingProduct.colors ? [...editingProduct.colors] : [] } : currentProductEmptyTemplate);
+      setFormData(editingProduct ? { ...editingProduct, colors: editingProduct.colors ? [...editingProduct.colors] : [] } : { ...currentProductEmptyTemplate, category: initialCategory });
     }
-  }, [isModalOpen, editingProduct]);
+  }, [isModalOpen, editingProduct, initialCategory]);
 
   const handleAddColor = () => {
     const currentColors = formData.colors || [];
@@ -776,6 +782,16 @@ export function Products() {
                 </tr>
               );
             })}
+            <tr className="bg-gray-50/50">
+              <td colSpan={5} className="px-4 py-3 text-center border-t border-gray-100 border-b border-gray-200">
+                <button 
+                  onClick={() => handleOpenModal(undefined, category)}
+                  className="text-[11px] font-bold text-[var(--color-primary)] hover:text-[var(--color-primary-dark)] flex items-center justify-center gap-1.5 w-full uppercase tracking-wider transition-colors"
+                >
+                  <Plus size={14} /> Novo produto em {category}
+                </button>
+              </td>
+            </tr>
           </React.Fragment>
         ))}
               {filteredProducts.length === 0 && (
@@ -923,6 +939,12 @@ export function Products() {
           </div>
         );
       })}
+      <button
+        onClick={() => handleOpenModal(undefined, category)}
+        className="w-full flex items-center justify-center gap-1.5 py-3 px-4 mt-2 mb-4 bg-gray-50 border border-dashed border-gray-300 rounded-xl text-[11px] font-bold uppercase tracking-wider text-[var(--color-primary)] hover:bg-gray-100 hover:border-[var(--color-primary)] transition-all shadow-sm"
+      >
+        <Plus size={14} /> Novo produto em {category}
+      </button>
     </React.Fragment>
   ))}
 
