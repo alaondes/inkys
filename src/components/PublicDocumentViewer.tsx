@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Printer, FileText, Calendar, CheckCircle2, ChevronLeft, CreditCard, Clock, AlertCircle } from 'lucide-react';
+import { Printer, FileText, Calendar, CheckCircle2, ChevronLeft, CreditCard, Clock, AlertCircle, Download } from 'lucide-react';
 import { formatPrice } from '../data/products';
+
+import html2pdf from 'html2pdf.js';
 
 const THEMES = {
   charcoal: {
@@ -201,6 +203,27 @@ Agradecemos pela confiança e preferência!`,
     window.print();
   };
 
+  const handleDownloadPDF = async () => {
+    if (!documentData) return;
+    const element = document.getElementById('printable-document');
+    if (!element) return;
+    
+    try {
+      const opt = {
+        margin:       10,
+        filename:     `${documentData.type === 'quote' ? 'orcamento' : 'recibo'}-${documentData.id}.pdf`,
+        image:        { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
+      };
+      
+      html2pdf().from(element).set(opt).save();
+    } catch (e) {
+      console.error("Failed to generate PDF", e);
+      alert("Erro ao gerar PDF.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -298,7 +321,13 @@ Agradecemos pela confiança e preferência!`,
               onClick={handlePrint}
               className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-xs shrink-0"
             >
-              <Printer size={14} /> Imprimir / Salvar PDF
+              <Printer size={14} /> Imprimir
+            </button>
+            <button
+              onClick={handleDownloadPDF}
+              className={`flex items-center gap-1.5 ${selectedTheme.bg} ${selectedTheme.primary} hover:opacity-80 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-xs shrink-0`}
+            >
+              <Download size={14} /> Baixar PDF
             </button>
           </div>
         </div>
@@ -308,7 +337,7 @@ Agradecemos pela confiança e preferência!`,
       <div className="max-w-4xl mx-auto px-4 mt-8 print:mt-0">
         
         {/* Printable Document Area */}
-        <div className={`bg-white p-6 sm:p-12 rounded-2xl border border-gray-200/80 shadow-md print:shadow-none print:border-none print:p-0 min-h-[750px] relative overflow-hidden flex flex-col justify-between ${fontClass}`}>
+        <div id="printable-document" className={`bg-white p-6 sm:p-12 rounded-2xl border border-gray-200/80 shadow-md print:shadow-none print:border-none print:p-0 min-h-[750px] relative overflow-hidden flex flex-col justify-between ${fontClass}`}>
           
           {/* Watermark */}
           {watermarkText && (

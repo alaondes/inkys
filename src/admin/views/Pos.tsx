@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useProducts } from '../../context/ProductContext';
 import { useSettings } from '../../context/SettingsContext';
-import { Search, Plus, Trash2, ShoppingCart, Save, User, FileText, XCircle, Printer, X, Image as ImageIcon, Truck, Store, Edit2, MessageCircle } from 'lucide-react';
+import { Search, Plus, Trash2, ShoppingCart, Save, User, FileText, XCircle, Printer, X, Image as ImageIcon, Truck, Store, Edit2, MessageCircle, Download } from 'lucide-react';
 import { formatPrice } from '../../data/products';
 import { db } from '../../lib/firebase';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, onSnapshot, query, orderBy, setDoc } from 'firebase/firestore';
@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import { maskCEP } from '../../utils/validation';
 import { generateSequentialId } from '../../lib/firestoreUtils';
+import html2pdf from 'html2pdf.js';
 
 export function Pos() {
   const { products } = useProducts();
@@ -262,6 +263,27 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
       city: '',
       state: '',
     });
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!savedOrder) return;
+    const element = document.getElementById('printable-receipt-area');
+    if (!element) return;
+    
+    try {
+      const opt = {
+        margin:       10,
+        filename:     `${savedOrder.status === 'Orçamento' ? 'orcamento' : 'recibo'}-${savedOrder.id}.pdf`,
+        image:        { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
+      };
+      
+      html2pdf().from(element).set(opt).save();
+    } catch (e) {
+      console.error("Failed to generate PDF", e);
+      toast.error("Erro ao gerar PDF.");
+    }
   };
 
   return (
@@ -955,7 +977,13 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                   onClick={() => window.print()}
                   className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors"
                 >
-                  <Printer size={14} /> Imprimir / PDF
+                  <Printer size={14} /> Imprimir
+                </button>
+                <button
+                  onClick={handleDownloadPDF}
+                  className="flex items-center gap-1.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white text-xs font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg transition-colors"
+                >
+                  <Download size={14} /> Baixar PDF
                 </button>
                 <button 
                   onClick={closeReceipt} 
