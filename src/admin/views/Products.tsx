@@ -314,6 +314,20 @@ export function Products() {
     });
   };
 
+  const [draggedGalleryIndex, setDraggedGalleryIndex] = useState<number | null>(null);
+
+  const handleGalleryDrop = (targetIndex: number) => {
+    if (draggedGalleryIndex === null || draggedGalleryIndex === targetIndex) return;
+    setFormData(prev => {
+      const newGallery = [...(prev.gallery || [])];
+      const draggedItem = newGallery[draggedGalleryIndex];
+      newGallery.splice(draggedGalleryIndex, 1);
+      newGallery.splice(targetIndex, 0, draggedItem);
+      return { ...prev, gallery: newGallery };
+    });
+    setDraggedGalleryIndex(null);
+  };
+
   const currentProductEmptyTemplate: Partial<Product> = {
     name: '', category: '', sku: '', description: '', price: 0, image: '', colors: []
   };
@@ -1216,11 +1230,19 @@ export function Products() {
                     {formData.gallery && formData.gallery.length > 0 && (
                       <div className="flex flex-wrap gap-3">
                         {formData.gallery.map((img, index) => (
-                          <div key={index} className="relative group w-16 h-16 rounded border border-gray-200 overflow-hidden">
+                          <div 
+                            key={index} 
+                            className={`relative group w-16 h-16 rounded border border-gray-200 overflow-hidden cursor-move transition-transform ${draggedGalleryIndex === index ? 'opacity-50 scale-95' : ''}`}
+                            draggable
+                            onDragStart={() => setDraggedGalleryIndex(index)}
+                            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                            onDrop={(e) => { e.preventDefault(); handleGalleryDrop(index); }}
+                            onDragEnd={() => setDraggedGalleryIndex(null)}
+                          >
                             <img 
                               src={img || undefined} 
                               alt={`Galeria ${index}`} 
-                              className="w-full h-full object-contain" 
+                              className="w-full h-full object-contain pointer-events-none" 
                               referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
                             />
                             <button 
