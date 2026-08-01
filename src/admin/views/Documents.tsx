@@ -615,8 +615,18 @@ Agradecemos pela confiança e preferência!`);
     // Temporarily set a fixed width to ensure the PDF layout is correctly proportioned
     const originalWidth = element.style.width;
     const originalMaxWidth = element.style.maxWidth;
+    const originalHeight = element.style.height;
+    
     element.style.width = '800px';
     element.style.maxWidth = '800px';
+    element.style.height = 'max-content';
+    
+    // If parent has overflow, it might clip. Temporarily change parent overflow
+    const parent = element.parentElement;
+    const originalParentOverflow = parent ? parent.style.overflow : '';
+    if (parent) {
+      parent.style.overflow = 'visible';
+    }
     
     const loadingToast = toast.loading("Gerando PDF...");
     try {
@@ -627,7 +637,8 @@ Agradecemos pela confiança e preferência!`);
         margin:       10,
         filename:     `${docType === 'quote' ? 'orcamento' : 'recibo'}-${selectedSavedDocId || 'novo'}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: true, windowWidth: 800 },
+        html2canvas:  { scale: 2, useCORS: true, logging: true, windowWidth: 800, scrollY: 0 },
+        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
       
@@ -640,6 +651,10 @@ Agradecemos pela confiança e preferência!`);
     } finally {
       element.style.width = originalWidth;
       element.style.maxWidth = originalMaxWidth;
+      element.style.height = originalHeight;
+      if (parent) {
+        parent.style.overflow = originalParentOverflow;
+      }
     }
   };
 

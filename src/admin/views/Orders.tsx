@@ -37,6 +37,9 @@ interface Order {
   shippingMode?: string;
   shippingCost?: number;
   paymentPolicy?: string;
+  paymentMethod?: string;
+  installments?: number;
+  downPayment?: number;
   receipt?: {
     date: string;
     items: Array<{ description: string; quantity: number; unitPrice: number }>;
@@ -270,8 +273,18 @@ export function Orders() {
     // Temporarily set a fixed width to ensure the PDF layout is correctly proportioned
     const originalWidth = element.style.width;
     const originalMaxWidth = element.style.maxWidth;
+    const originalHeight = element.style.height;
+    
     element.style.width = '800px';
     element.style.maxWidth = '800px';
+    element.style.height = 'max-content';
+    
+    // If parent has overflow, it might clip. Temporarily change parent overflow
+    const parent = element.parentElement;
+    const originalParentOverflow = parent ? parent.style.overflow : '';
+    if (parent) {
+      parent.style.overflow = 'visible';
+    }
     
     const loadingToast = toast.loading("Gerando PDF...");
     try {
@@ -282,7 +295,8 @@ export function Orders() {
         margin:       10,
         filename:     `${selectedOrder.status === 'Orçamento' ? 'orcamento' : 'recibo'}-${selectedOrder.id}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: true, windowWidth: 800 },
+        html2canvas:  { scale: 2, useCORS: true, logging: true, windowWidth: 800, scrollY: 0 },
+        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
       
@@ -295,6 +309,10 @@ export function Orders() {
     } finally {
       element.style.width = originalWidth;
       element.style.maxWidth = originalMaxWidth;
+      element.style.height = originalHeight;
+      if (parent) {
+        parent.style.overflow = originalParentOverflow;
+      }
     }
   };
 
@@ -936,7 +954,28 @@ export function Orders() {
                           <span>{selectedOrder.shippingMode === 'gratis' ? 'Grátis' : formatPrice(selectedOrder.shippingCost || 0)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between text-lg font-black border-t-2 pt-2 border-gray-800 text-gray-900">
+
+                      {selectedOrder.paymentMethod && (
+                        <div className="flex justify-between text-gray-700 font-semibold border-t border-dashed border-gray-200 pt-2 mt-2">
+                          <span>Forma de Pagamento:</span>
+                          <span>{selectedOrder.paymentMethod} {selectedOrder.paymentMethod === 'Cartão de Crédito' && selectedOrder.installments && selectedOrder.installments > 1 ? `(${selectedOrder.installments}x)` : ''}</span>
+                        </div>
+                      )}
+
+                      {selectedOrder.downPayment && selectedOrder.downPayment > 0 ? (
+                        <>
+                          <div className="flex justify-between text-green-600 font-semibold pt-1">
+                            <span>Entrada:</span>
+                            <span>-{formatPrice(selectedOrder.downPayment)}</span>
+                          </div>
+                          <div className="flex justify-between text-blue-600 font-semibold pt-1">
+                            <span>Falta Pagar:</span>
+                            <span>{formatPrice((selectedOrder.receipt?.total || selectedOrder.total) - selectedOrder.downPayment)}</span>
+                          </div>
+                        </>
+                      ) : null}
+
+                      <div className="flex justify-between text-lg font-black border-t-2 pt-2 border-gray-800 text-gray-900 mt-2">
                         <span>Total Geral:</span>
                         <span className="text-gray-900">{formatPrice(selectedOrder.receipt?.total || selectedOrder.total)}</span>
                       </div>

@@ -1,0 +1,12 @@
+--- src/admin/views/Orders.tsx
++++ src/admin/views/Orders.tsx
+@@ -37,6 +37,9 @@
+   shippingMode?: string;
+   shippingCost?: number;
+   paymentPolicy?: string;
++  paymentMethod?: string;
++  installments?: number;
++  downPayment?: number;
+   receipt?: {
+     date: string;
+     items: Array<{ description: string; quantity: number; unitPrice: number }>;

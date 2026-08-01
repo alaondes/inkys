@@ -149,6 +149,8 @@ export function PublicDocumentViewer() {
             notes: orderData.notes || '',
             paymentMethod: orderData.shippingInfo?.paymentMethod || orderData.paymentMethod || '',
             paymentConditions: orderData.paymentConditions || '',
+            installments: orderData.installments || 1,
+            downPayment: orderData.downPayment || 0,
             paymentPolicy: orderData.paymentPolicy || activeSettings?.paymentPolicy || `Política de Pagamento
 
 Para garantir a qualidade do atendimento e o início da produção do seu pedido, trabalhamos com as seguintes condições:
@@ -212,8 +214,18 @@ Agradecemos pela confiança e preferência!`,
     // Temporarily set a fixed width to ensure the PDF layout is correctly proportioned
     const originalWidth = element.style.width;
     const originalMaxWidth = element.style.maxWidth;
+    const originalHeight = element.style.height;
+    
     element.style.width = '800px';
     element.style.maxWidth = '800px';
+    element.style.height = 'max-content';
+    
+    // If parent has overflow, it might clip. Temporarily change parent overflow
+    const parent = element.parentElement;
+    const originalParentOverflow = parent ? parent.style.overflow : '';
+    if (parent) {
+      parent.style.overflow = 'visible';
+    }
     
     try {
       const html2pdfModule = await import('html2pdf.js');
@@ -223,7 +235,8 @@ Agradecemos pela confiança e preferência!`,
         margin:       10,
         filename:     `${documentData.type === 'quote' ? 'orcamento' : 'recibo'}-${documentData.id}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: true, windowWidth: 800 },
+        html2canvas:  { scale: 2, useCORS: true, logging: true, windowWidth: 800, scrollY: 0 },
+        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
       
@@ -234,6 +247,10 @@ Agradecemos pela confiança e preferência!`,
     } finally {
       element.style.width = originalWidth;
       element.style.maxWidth = originalMaxWidth;
+      element.style.height = originalHeight;
+      if (parent) {
+        parent.style.overflow = originalParentOverflow;
+      }
     }
   };
 
@@ -285,6 +302,8 @@ Agradecemos pela confiança e preferência!`,
     total = 0,
     notes,
     paymentMethod,
+    installments,
+    downPayment,
     paymentConditions,
     paymentPolicy,
     validUntil,
@@ -507,11 +526,32 @@ Agradecemos pela confiança e preferência!`,
                   <span>{formatPrice(subtotal)}</span>
                 </div>
                 {discount > 0 && (
-                  <div className="flex justify-between text-red-600 font-bold">
+                  <div className="flex justify-between text-red-600 font-bold mb-2">
                     <span>Desconto:</span>
                     <span>-{formatPrice(discount)}</span>
                   </div>
                 )}
+                
+                {paymentMethod && (
+                  <div className="flex justify-between text-gray-700 font-semibold border-t border-dashed border-gray-200 pt-2 mb-2">
+                    <span>Forma de Pagamento:</span>
+                    <span>{paymentMethod} {paymentMethod === 'Cartão de Crédito' && installments && installments > 1 ? `(${installments}x)` : ''}</span>
+                  </div>
+                )}
+
+                {downPayment && downPayment > 0 ? (
+                  <>
+                    <div className="flex justify-between text-green-600 font-semibold mb-1">
+                      <span>Entrada:</span>
+                      <span>-{formatPrice(downPayment)}</span>
+                    </div>
+                    <div className="flex justify-between text-blue-600 font-semibold mb-2">
+                      <span>Falta Pagar:</span>
+                      <span>{formatPrice(total - downPayment)}</span>
+                    </div>
+                  </>
+                ) : null}
+
                 <div className={`flex justify-between text-lg font-black border-t-2 pt-2 text-gray-900 ${selectedTheme.border}`}>
                   <span>Total Geral:</span>
                   <span className={`${selectedTheme.primary}`}>{formatPrice(total)}</span>

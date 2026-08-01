@@ -86,6 +86,9 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
   const [cepLoading, setCepLoading] = useState(false);
   const [applyPixDiscount, setApplyPixDiscount] = useState(false);
   const [extraDiscount, setExtraDiscount] = useState<number>(0);
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [installments, setInstallments] = useState(1);
+  const [downPayment, setDownPayment] = useState<number>(0);
 
   const allItems = [...products.map(p => ({...p, isAvulso: false})), ...avulsos.map(a => ({...a, isAvulso: true}))];
 
@@ -215,6 +218,9 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
         },
         notes,
         paymentPolicy,
+        paymentMethod,
+        installments,
+        downPayment,
         createdAt: serverTimestamp(),
       };
 
@@ -275,8 +281,18 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
     // Temporarily set a fixed width to ensure the PDF layout is correctly proportioned
     const originalWidth = element.style.width;
     const originalMaxWidth = element.style.maxWidth;
+    const originalHeight = element.style.height;
+    
     element.style.width = '800px';
     element.style.maxWidth = '800px';
+    element.style.height = 'max-content';
+    
+    // If parent has overflow, it might clip. Temporarily change parent overflow
+    const parent = element.parentElement;
+    const originalParentOverflow = parent ? parent.style.overflow : '';
+    if (parent) {
+      parent.style.overflow = 'visible';
+    }
     
     const loadingToast = toast.loading("Gerando PDF...");
     try {
@@ -287,7 +303,8 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
         margin:       10,
         filename:     `${savedOrder.status === 'Orçamento' ? 'orcamento' : 'recibo'}-${savedOrder.id}.pdf`,
         image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: true, windowWidth: 800 },
+        html2canvas:  { scale: 2, useCORS: true, logging: true, windowWidth: 800, scrollY: 0 },
+        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
       };
       
@@ -300,6 +317,10 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
     } finally {
       element.style.width = originalWidth;
       element.style.maxWidth = originalMaxWidth;
+      element.style.height = originalHeight;
+      if (parent) {
+        parent.style.overflow = originalParentOverflow;
+      }
     }
   };
 
@@ -653,6 +674,52 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                   className="w-24 bg-white border border-gray-200/60 rounded-lg p-1.5 text-sm focus:border-[var(--color-primary)] outline-none transition-colors font-medium text-gray-800 text-right"
                   placeholder="0.00"
                 />
+              </div>
+
+              <div className="space-y-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-gray-700">Forma de Pagamento:</span>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-40 bg-white border border-gray-200/60 rounded-lg p-1.5 text-sm focus:border-[var(--color-primary)] outline-none transition-colors font-medium text-gray-800"
+                  >
+                    <option value="">Selecione...</option>
+                    <option value="Pix">Pix</option>
+                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                    <option value="Cartão de Débito">Cartão de Débito</option>
+                    <option value="Boleto">Boleto</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                  </select>
+                </div>
+                
+                {paymentMethod === 'Cartão de Crédito' && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-gray-700">Parcelas:</span>
+                    <select
+                      value={installments}
+                      onChange={(e) => setInstallments(Number(e.target.value))}
+                      className="w-24 bg-white border border-gray-200/60 rounded-lg p-1.5 text-sm focus:border-[var(--color-primary)] outline-none transition-colors font-medium text-gray-800"
+                    >
+                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(num => (
+                        <option key={num} value={num}>{num}x</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-gray-700">Valor de Entrada (R$):</span>
+                  <input 
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={downPayment || ''}
+                    onChange={(e) => setDownPayment(Number(e.target.value))}
+                    className="w-24 bg-white border border-gray-200/60 rounded-lg p-1.5 text-sm focus:border-[var(--color-primary)] outline-none transition-colors font-medium text-gray-800 text-right"
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1150,7 +1217,28 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                           <span>{savedOrder.shippingMode === 'gratis' ? 'Grátis' : formatPrice(savedOrder.shippingCost || 0)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between text-lg font-black border-t-2 pt-2 border-gray-800 text-gray-900">
+                      
+                      {savedOrder.paymentMethod && (
+                        <div className="flex justify-between text-gray-700 font-semibold border-t border-dashed border-gray-200 pt-2 mt-2">
+                          <span>Forma de Pagamento:</span>
+                          <span>{savedOrder.paymentMethod} {savedOrder.paymentMethod === 'Cartão de Crédito' && savedOrder.installments > 1 ? `(${savedOrder.installments}x)` : ''}</span>
+                        </div>
+                      )}
+
+                      {savedOrder.downPayment > 0 && (
+                        <>
+                          <div className="flex justify-between text-green-600 font-semibold pt-1">
+                            <span>Entrada:</span>
+                            <span>-{formatPrice(savedOrder.downPayment)}</span>
+                          </div>
+                          <div className="flex justify-between text-blue-600 font-semibold pt-1">
+                            <span>Falta Pagar:</span>
+                            <span>{formatPrice(savedOrder.total - savedOrder.downPayment)}</span>
+                          </div>
+                        </>
+                      )}
+
+                      <div className="flex justify-between text-lg font-black border-t-2 pt-2 border-gray-800 text-gray-900 mt-2">
                         <span>Total Geral:</span>
                         <span className="text-gray-900">{formatPrice(savedOrder.total)}</span>
                       </div>
