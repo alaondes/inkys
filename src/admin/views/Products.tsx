@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft, Tags, CheckCircle, Loader2 } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft, Tags, CheckCircle, Loader2, Barcode } from 'lucide-react';
 import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import { formatPrice, Product } from '../../data/products';
 import { useProducts } from '../../context/ProductContext';
@@ -32,6 +32,11 @@ export function Products() {
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
+  const [isSkuModalOpen, setIsSkuModalOpen] = useState(false);
+  const [skuPrefix, setSkuPrefix] = useState('PROD-');
+  const [skuStartNumber, setSkuStartNumber] = useState(1);
+  const [skuCategory, setSkuCategory] = useState('');
+  const [overwriteSkus, setOverwriteSkus] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [initialCategory, setInitialCategory] = useState('');
 
@@ -87,6 +92,33 @@ export function Products() {
       }, 3000);
     } catch (err) {
       setSaveStatus('error');
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
+  const handleGenerateSkus = async () => {
+    setIsSavingOrder(true);
+    const loadToast = toast.loading('Gerando SKUs...');
+    try {
+      let currentNumber = skuStartNumber;
+      const updatedProducts = localProducts.map((p) => {
+        if (!skuCategory || p.category === skuCategory) {
+          if (overwriteSkus || !p.sku) {
+            const sku = `${skuPrefix}${String(currentNumber).padStart(3, '0')}`;
+            currentNumber++;
+            return { ...p, sku };
+          }
+        }
+        return p;
+      });
+      setLocalProducts(updatedProducts);
+      await setProducts(updatedProducts);
+      setHasUnsavedOrder(false);
+      toast.success('SKUs gerados com sucesso!', { id: loadToast });
+      setIsSkuModalOpen(false);
+    } catch (err) {
+      toast.error('Erro ao gerar SKUs.', { id: loadToast });
     } finally {
       setIsSavingOrder(false);
     }
@@ -340,10 +372,42 @@ export function Products() {
 
   const [formData, setFormData] = useState<Partial<Product>>(currentProductEmptyTemplate);
 
+  const generateNextSku = (categoryName: string) => {
+    if (!categoryName) return '';
+    const catProds = localProducts.filter(p => p.category === categoryName && p.sku);
+    let prefix = '';
+    let maxNumber = 0;
+    
+    if (catProds.length > 0) {
+      for (const p of catProds) {
+        const match = p.sku?.match(/^([a-zA-Z-]+?)(\d+)$/);
+        if (match) {
+          if (!prefix) prefix = match[1];
+          const num = parseInt(match[2], 10);
+          if (num > maxNumber) {
+            maxNumber = num;
+            prefix = match[1]; // keep prefix of the highest number
+          }
+        }
+      }
+    }
+    
+    if (!prefix) {
+      prefix = categoryName.substring(0, 3).toUpperCase() + '-';
+    }
+    
+    return `${prefix}${String(maxNumber + 1).padStart(3, '0')}`;
+  };
+
   // Update formData when modal opens
   React.useEffect(() => {
     if (isModalOpen) {
-      setFormData(editingProduct ? { ...editingProduct, colors: editingProduct.colors ? [...editingProduct.colors] : [] } : { ...currentProductEmptyTemplate, category: initialCategory });
+      if (editingProduct) {
+        setFormData({ ...editingProduct, colors: editingProduct.colors ? [...editingProduct.colors] : [] });
+      } else {
+        const autoSku = generateNextSku(initialCategory);
+        setFormData({ ...currentProductEmptyTemplate, category: initialCategory, sku: autoSku });
+      }
     }
   }, [isModalOpen, editingProduct, initialCategory]);
 
@@ -624,6 +688,12 @@ export function Products() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setIsSkuModalOpen(true)}
+            className="flex items-center gap-2 bg-gray-100 text-gray-700 border border-gray-200 px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider hover:bg-gray-200 transition-all"
+          >
+            <Barcode size={18} /> SKUs
+          </button>
           <button 
             onClick={() => setIsCategoriesModalOpen(true)}
             className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider hover:bg-gray-800 transition-all"
@@ -1029,7 +1099,14 @@ export function Products() {
                     <label className="text-[10px] uppercase font-bold text-gray-500">Categoria</label>
                     <select 
                       value={formData.category || ""} 
-                      onChange={e => setFormData({...formData, category: e.target.value})} 
+                      onChange={e => {
+                        const newCat = e.target.value;
+                        const updates: Partial<Product> = { category: newCat };
+                        if (!editingProduct) {
+                          updates.sku = generateNextSku(newCat);
+                        }
+                        setFormData({...formData, ...updates});
+                      }} 
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
                     >
                       <option value="">Selecione uma categoria...</option>
@@ -1356,6 +1433,85 @@ export function Products() {
           </div>
         </div>
       )}
+      {/* SKU Generator Modal */}
+      {isSkuModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-2xl p-6 relative border border-gray-200 shadow-xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100 shrink-0">
+              <h3 className="text-xl font-bold uppercase tracking-wider flex items-center gap-3">
+                <Barcode size={24} className="text-[var(--color-primary)]" /> Gerar SKUs
+              </h3>
+              <button onClick={() => setIsSkuModalOpen(false)} className="text-gray-400 hover:text-gray-900"><X size={24} /></button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto space-y-4">
+              <p className="text-sm text-gray-600 mb-4 font-medium leading-relaxed">
+                Esta ação gerará automaticamente SKUs para {skuCategory ? <strong className="text-gray-900">produtos da categoria selecionada</strong> : <strong className="text-gray-900">todos</strong>} os seus produtos.
+              </p>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <input 
+                    type="checkbox" 
+                    id="overwrite-skus" 
+                    checked={overwriteSkus} 
+                    onChange={e => setOverwriteSkus(e.target.checked)} 
+                    className="w-4 h-4 text-[var(--color-primary)] border-gray-300 rounded focus:ring-[var(--color-primary)]"
+                  />
+                  <label htmlFor="overwrite-skus" className="text-sm font-medium text-gray-700">Substituir SKUs já existentes</label>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Categoria (Opcional)</label>
+                  <select 
+                    value={skuCategory} 
+                    onChange={e => setSkuCategory(e.target.value)} 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                  >
+                    <option value="">Todas as Categorias</option>
+                    {settings.categories?.map((cat, idx) => (
+                      <option key={idx} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Prefixo do Código</label>
+                  <input 
+                    type="text" 
+                    value={skuPrefix}
+                    onChange={e => setSkuPrefix(e.target.value)}
+                    placeholder="Ex: PROD-" 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Número Inicial</label>
+                  <input 
+                    type="number" 
+                    min="1"
+                    value={skuStartNumber}
+                    onChange={e => setSkuStartNumber(parseInt(e.target.value) || 1)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                  />
+                </div>
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-800 font-medium mt-2">
+                  <span className="font-bold">Exemplo:</span> Seus produtos receberão códigos como: {skuPrefix}{String(skuStartNumber).padStart(3, '0')}, {skuPrefix}{String(skuStartNumber + 1).padStart(3, '0')}...
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-6 pt-4 border-t border-gray-100">
+              <button 
+                onClick={handleGenerateSkus}
+                disabled={isSavingOrder}
+                className="w-full bg-[var(--color-primary)] text-white p-3 rounded-xl font-bold uppercase tracking-wider text-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+              >
+                {isSavingOrder ? <Loader2 size={18} className="animate-spin" /> : <Barcode size={18} />}
+                {isSavingOrder ? 'Gerando...' : 'Gerar Códigos'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Categories Modal */}
       {isCategoriesModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">

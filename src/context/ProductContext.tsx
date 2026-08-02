@@ -236,12 +236,10 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     let hasChanges = false;
     
     newProducts.forEach((p, index) => {
-      if (p.order !== index) {
-        const docRef = doc(productsRef, p.id);
-        batch.set(docRef, { order: index }, { merge: true });
-        p.order = index;
-        hasChanges = true;
-      }
+      const docRef = doc(productsRef, p.id);
+      batch.set(docRef, { ...p, order: index }, { merge: true });
+      p.order = index;
+      hasChanges = true;
     });
     
     if (hasChanges) {
