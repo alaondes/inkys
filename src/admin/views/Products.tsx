@@ -379,14 +379,38 @@ export function Products() {
     let maxNumber = 0;
     
     if (catProds.length > 0) {
+      const newestProduct = [...catProds].sort((a, b) => b.id.localeCompare(a.id))[0];
+      const matchNewest = newestProduct.sku?.match(/^(.+?)(\d+)$/);
+      if (matchNewest) {
+        prefix = matchNewest[1];
+      }
+
       for (const p of catProds) {
-        const match = p.sku?.match(/^([a-zA-Z-]+?)(\d+)$/);
+        const match = p.sku?.match(/^(.+?)(\d+)$/);
         if (match) {
-          if (!prefix) prefix = match[1];
           const num = parseInt(match[2], 10);
           if (num > maxNumber) {
             maxNumber = num;
-            prefix = match[1]; // keep prefix of the highest number
+          }
+        }
+      }
+    } else {
+      // Se a categoria estiver vazia, busca o maior número em todos os produtos
+      // para manter a sequência global, caso o usuário use um prefixo único
+      const allProds = localProducts.filter(p => p.sku);
+      if (allProds.length > 0) {
+        const newestProduct = [...allProds].sort((a, b) => b.id.localeCompare(a.id))[0];
+        const matchNewest = newestProduct.sku?.match(/^(.+?)(\d+)$/);
+        if (matchNewest) {
+          prefix = matchNewest[1];
+        }
+      }
+      for (const p of allProds) {
+        const match = p.sku?.match(/^(.+?)(\d+)$/);
+        if (match) {
+          const num = parseInt(match[2], 10);
+          if (num > maxNumber) {
+            maxNumber = num;
           }
         }
       }
@@ -439,9 +463,42 @@ export function Products() {
     try {
       if (editingProduct) {
         const updatedProduct = { ...editingProduct, ...finalFormData } as Product;
-        await updateProduct(updatedProduct);
-        setLocalProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-        toast.success('Produto atualizado com sucesso!', { id: loadToast });
+        let productsToUpdate = [updatedProduct];
+        
+        // CHECK IF SKU PREFIX CHANGED
+        const oldMatch = editingProduct.sku?.match(/^(.+?)(\d+)$/);
+        const newMatch = updatedProduct.sku?.match(/^(.+?)(\d+)$/);
+        
+        if (oldMatch && newMatch && oldMatch[1] !== newMatch[1]) {
+           const oldPrefix = oldMatch[1];
+           const newPrefix = newMatch[1];
+           
+           const categoryProductsToUpdate = localProducts
+             .filter(p => p.id !== updatedProduct.id && p.category === updatedProduct.category && p.sku?.startsWith(oldPrefix))
+             .map(p => ({
+                 ...p,
+                 sku: p.sku!.replace(oldPrefix, newPrefix)
+             }));
+             
+           if (categoryProductsToUpdate.length > 0) {
+              productsToUpdate = [updatedProduct, ...categoryProductsToUpdate];
+           }
+        }
+        
+        if (productsToUpdate.length === 1) {
+          await updateProduct(updatedProduct);
+          setLocalProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+          toast.success('Produto atualizado com sucesso!', { id: loadToast });
+        } else {
+          // Bulk update
+          const newLocal = localProducts.map(p => {
+             const found = productsToUpdate.find(pu => pu.id === p.id);
+             return found || p;
+          });
+          setLocalProducts(newLocal);
+          await setProducts(newLocal); // saves all and their orders
+          toast.success(`Produto e ${productsToUpdate.length - 1} SKUs atualizados!`, { id: loadToast });
+        }
       } else {
         const newProduct = { ...finalFormData, id: Date.now().toString() } as Product;
         await addProduct(newProduct);
@@ -1103,7 +1160,10 @@ export function Products() {
                         const newCat = e.target.value;
                         const updates: Partial<Product> = { category: newCat };
                         if (!editingProduct) {
-                          updates.sku = generateNextSku(newCat);
+                          const previousAutoSku = generateNextSku(formData.category || "");
+                          if (!formData.sku || formData.sku === previousAutoSku) {
+                            updates.sku = generateNextSku(newCat);
+                          }
                         }
                         setFormData({...formData, ...updates});
                       }} 
