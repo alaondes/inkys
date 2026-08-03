@@ -7,11 +7,13 @@ import {
   DollarSign, TrendingUp, TrendingDown, Percent, ShoppingBag, 
   Award, Ticket, Calendar, Download, Printer, Filter, ShieldCheck, 
   PieChart as PieIcon, BarChart3, AlertCircle, ArrowUpRight, ArrowDownRight, 
-  Layers, ChevronRight, RefreshCw, FileSpreadsheet, Sparkles
+  Layers, ChevronRight, RefreshCw, FileSpreadsheet, Sparkles, Edit2, X, Check, Truck
 } from 'lucide-react';
 import { formatPrice, Product } from '../../data/products';
 import { useSettings } from '../../context/SettingsContext';
 import { useProducts } from '../../context/ProductContext';
+import { db } from '../../lib/firebase';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
 export interface RawOrder {
@@ -31,6 +33,7 @@ export interface RawOrder {
     name: string;
     quantity: number;
     price: number;
+    costPrice?: number;
   }>;
 }
 
@@ -53,6 +56,22 @@ const PAYMENT_COLORS: Record<string, string> = {
 export function FinancialReports({ orders }: FinancialReportsProps) {
   const { settings } = useSettings();
   const { products } = useProducts();
+  const [avulsos, setAvulsos] = useState<any[]>([]);
+  const [editingCostModal, setEditingCostModal] = useState<{
+    productName: string;
+    unitPrice: number;
+    currentCost?: number;
+  } | null>(null);
+  const [costInputValue, setCostInputValue] = useState<string>('');
+
+  React.useEffect(() => {
+    const q = query(collection(db, 'avulso_products'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAvulsos(data);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Filters State
   const [preset, setPreset] = useState<DateFilterPreset>('month');
@@ -66,6 +85,10 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
   });
   const [statusFilter, setStatusFilter] = useState<StatusFilterOption>('paid_only');
   const [activeTab, setActiveTab] = useState<'dre' | 'abc' | 'coupons'>('dre');
+
+  // Product cost filter & sort for ABC table
+  const [productCostFilter, setProductCostFilter] = useState<'all' | 'has_cost' | 'missing_cost' | 'high_margin' | 'mid_margin' | 'low_margin'>('all');
+  const [productSortBy, setProductSortBy] = useState<'revenue' | 'profit' | 'margin' | 'markup' | 'quantity' | 'cost'>('revenue');
 
   // Handle Preset Changes
   const handlePresetChange = (newPreset: DateFilterPreset) => {
@@ -108,15 +131,62 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
     }
   };
 
-  // Map products cost price for fast lookup
+  // Map products cost price for fast lookup (combining catalog products and avulso products)
   const productCostMap = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, { cost: number; isRealCost: boolean; source: 'catalog' | 'avulso'; id?: string }>();
     products.forEach(p => {
-      if (p.name) map.set(p.name.toLowerCase().trim(), p.costPrice || 0);
-      if (p.id) map.set(p.id, p.costPrice || 0);
+      const isRealCost = p.costPrice !== undefined && p.costPrice > 0;
+      const cost = p.costPrice || 0;
+      const info = { cost, isRealCost, source: 'catalog' as const, id: p.id };
+      if (p.name) map.set(p.name.toLowerCase().trim(), info);
+      if (p.id) map.set(p.id, info);
     });
+
+    avulsos.forEach(a => {
+      const isRealCost = a.costPrice !== undefined && a.costPrice > 0;
+      const cost = a.costPrice || 0;
+      const info = { cost, isRealCost, source: 'avulso' as const, id: a.id };
+      if (a.name) map.set(a.name.toLowerCase().trim(), info);
+      if (a.id) map.set(a.id, info);
+    });
+
     return map;
-  }, [products]);
+  }, [products, avulsos]);
+
+  const handleSaveProductCost = async () => {
+    if (!editingCostModal) return;
+    const newCost = costInputValue ? parseFloat(costInputValue.replace(/\./g, '').replace(',', '.')) : 0;
+    
+    try {
+      const keyName = editingCostModal.productName.toLowerCase().trim();
+      const existingMap = productCostMap.get(keyName);
+
+      if (existingMap?.source === 'catalog' && existingMap.id) {
+        await updateDoc(doc(db, 'products', existingMap.id), {
+          costPrice: newCost
+        });
+        toast.success(`Custo do produto "${editingCostModal.productName}" atualizado no Catálogo!`);
+      } else if (existingMap?.source === 'avulso' && existingMap.id) {
+        await updateDoc(doc(db, 'avulso_products', existingMap.id), {
+          costPrice: newCost
+        });
+        toast.success(`Custo do produto avulso "${editingCostModal.productName}" atualizado!`);
+      } else {
+        await addDoc(collection(db, 'avulso_products'), {
+          name: editingCostModal.productName,
+          price: editingCostModal.unitPrice || 0,
+          costPrice: newCost,
+          createdAt: serverTimestamp()
+        });
+        toast.success(`Custo salvo para "${editingCostModal.productName}"!`);
+      }
+
+      setEditingCostModal(null);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao salvar custo do produto.');
+    }
+  };
 
   // Filtered Orders Calculation
   const filteredOrders = useMemo(() => {
@@ -161,10 +231,14 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
   // Comprehensive DRE Financial Metrics
   const dreMetrics = useMemo(() => {
     let grossRevenueGMV = 0; // Preço Produtos + Frete
+    let totalProductsRevenue = 0; // Subtotal apenas Produtos
+    let totalShippingRevenue = 0; // Total de Frete Cobrado
     let totalDiscounts = 0;  // Cupons + Descontos
     let totalCanceledValue = 0;
     let cmvTotal = 0;
     let validPaidOrdersCount = 0;
+    let realCostItemsCount = 0;
+    let totalItemsCount = 0;
 
     canceledOrders.forEach(o => {
       totalCanceledValue += (Number(o.total) || 0);
@@ -173,8 +247,11 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
     filteredOrders.forEach(order => {
       const total = Number(order.total) || 0;
       const discount = Number(order.discount) || 0;
-      const subtotal = Number(order.subtotal) || (total + discount);
       const shipping = Number(order.shippingCost) || 0;
+      const subtotal = Number(order.subtotal) || Math.max(0, total + discount - shipping);
+
+      totalProductsRevenue += subtotal;
+      totalShippingRevenue += shipping;
 
       // GMV = Subtotal produtos + Frete
       const orderGMV = subtotal + shipping;
@@ -188,33 +265,54 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
           const qty = Number(item.quantity) || 1;
           const itemPrice = Number(item.price) || 0;
           let cost = 0;
+          let isRealCost = false;
 
-          if (item.name && productCostMap.has(item.name.toLowerCase().trim())) {
-            cost = productCostMap.get(item.name.toLowerCase().trim())!;
-          } else if (item.productId && productCostMap.has(item.productId)) {
-            cost = productCostMap.get(item.productId)!;
+          const keyName = item.name ? item.name.toLowerCase().trim() : '';
+          const keyId = item.productId || '';
+
+          if (item.costPrice !== undefined && item.costPrice > 0) {
+            cost = Number(item.costPrice);
+            isRealCost = true;
+          } else if (keyName && productCostMap.has(keyName)) {
+            const info = productCostMap.get(keyName)!;
+            cost = info.cost;
+            isRealCost = info.isRealCost;
+          } else if (keyId && productCostMap.has(keyId)) {
+            const info = productCostMap.get(keyId)!;
+            cost = info.cost;
+            isRealCost = info.isRealCost;
           }
 
-          // If no cost was registered, estimate default 35% cost margin
-          if (cost <= 0 && itemPrice > 0) {
-            cost = itemPrice * 0.35;
+          if (!isRealCost && itemPrice > 0) {
+            cost = itemPrice * 0.35; // Default 35% fallback
           }
+
+          if (isRealCost) {
+            realCostItemsCount += qty;
+          }
+          totalItemsCount += qty;
 
           cmvTotal += (cost * qty);
         });
       } else {
-        // Fallback estimate if no item details attached
         cmvTotal += (subtotal * 0.35);
+        totalItemsCount += 1;
       }
     });
 
     const netRevenue = grossRevenueGMV - totalDiscounts; // Receita Líquida Real
     const grossProfit = netRevenue - cmvTotal; // Lucro Bruto Estimado
     const grossMarginPercent = netRevenue > 0 ? (grossProfit / netRevenue) * 100 : 0;
+    const markupPercent = cmvTotal > 0 ? (grossProfit / cmvTotal) * 100 : 0;
     const averageTicket = validPaidOrdersCount > 0 ? netRevenue / validPaidOrdersCount : 0;
+    const averageShippingPerOrder = validPaidOrdersCount > 0 ? totalShippingRevenue / validPaidOrdersCount : 0;
+    const averageProfitPerOrder = validPaidOrdersCount > 0 ? grossProfit / validPaidOrdersCount : 0;
+    const realCostCoveragePct = totalItemsCount > 0 ? (realCostItemsCount / totalItemsCount) * 100 : 0;
 
     return {
       grossRevenueGMV,
+      totalProductsRevenue,
+      totalShippingRevenue,
       totalDiscounts,
       totalCanceledValue,
       canceledCount: canceledOrders.length,
@@ -222,8 +320,15 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
       cmvTotal,
       grossProfit,
       grossMarginPercent,
+      markupPercent,
       validPaidOrdersCount,
-      averageTicket
+      averageTicket,
+      averageShippingPerOrder,
+      averageProfitPerOrder,
+      realCostItemsCount,
+      totalItemsCount,
+      realCostCoveragePct,
+      hasUnregisteredCosts: realCostCoveragePct < 100
     };
   }, [filteredOrders, canceledOrders, productCostMap]);
 
@@ -307,7 +412,10 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
       quantity: number; 
       revenue: number; 
       cost: number; 
-      profit: number 
+      profit: number;
+      isRealCost: boolean;
+      unitPrice: number;
+      unitCost: number;
     }>();
 
     filteredOrders.forEach(order => {
@@ -319,13 +427,25 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
           const rev = price * qty;
 
           let unitCost = 0;
-          if (productCostMap.has(name.toLowerCase().trim())) {
-            unitCost = productCostMap.get(name.toLowerCase().trim())!;
-          } else if (item.productId && productCostMap.has(item.productId)) {
-            unitCost = productCostMap.get(item.productId)!;
+          let isRealCost = false;
+
+          const keyName = name.toLowerCase().trim();
+          const keyId = item.productId || '';
+
+          if (item.costPrice !== undefined && item.costPrice > 0) {
+            unitCost = Number(item.costPrice);
+            isRealCost = true;
+          } else if (productCostMap.has(keyName)) {
+            const info = productCostMap.get(keyName)!;
+            unitCost = info.cost;
+            isRealCost = info.isRealCost;
+          } else if (keyId && productCostMap.has(keyId)) {
+            const info = productCostMap.get(keyId)!;
+            unitCost = info.cost;
+            isRealCost = info.isRealCost;
           }
 
-          if (unitCost <= 0 && price > 0) {
+          if (!isRealCost && price > 0) {
             unitCost = price * 0.35;
           }
 
@@ -344,7 +464,10 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
               quantity: qty,
               revenue: rev,
               cost: totalCost,
-              profit
+              profit,
+              isRealCost,
+              unitPrice: price,
+              unitCost
             });
           }
         });
@@ -369,14 +492,48 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
         categoryABC = 'C';
       }
 
+      const marginPct = item.revenue > 0 ? (item.profit / item.revenue) * 100 : 0;
+      const markupPct = item.cost > 0 ? (item.profit / item.cost) * 100 : 0;
+
       return {
         ...item,
         sharePct,
         cumPct,
-        categoryABC
+        categoryABC,
+        marginPct,
+        markupPct
       };
     });
   }, [filteredOrders, productCostMap]);
+
+  const processedAbcProducts = useMemo(() => {
+    let result = [...abcProducts];
+
+    // Filter
+    if (productCostFilter === 'has_cost') {
+      result = result.filter(p => p.isRealCost);
+    } else if (productCostFilter === 'missing_cost') {
+      result = result.filter(p => !p.isRealCost);
+    } else if (productCostFilter === 'high_margin') {
+      result = result.filter(p => p.marginPct >= 50);
+    } else if (productCostFilter === 'mid_margin') {
+      result = result.filter(p => p.marginPct >= 20 && p.marginPct < 50);
+    } else if (productCostFilter === 'low_margin') {
+      result = result.filter(p => p.marginPct < 20);
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      if (productSortBy === 'profit') return b.profit - a.profit;
+      if (productSortBy === 'margin') return b.marginPct - a.marginPct;
+      if (productSortBy === 'markup') return b.markupPct - a.markupPct;
+      if (productSortBy === 'quantity') return b.quantity - a.quantity;
+      if (productSortBy === 'cost') return b.cost - a.cost;
+      return b.revenue - a.revenue;
+    });
+
+    return result;
+  }, [abcProducts, productCostFilter, productSortBy]);
 
   // Coupons Breakdown Calculation
   const couponsReport = useMemo(() => {
@@ -409,19 +566,23 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
 
     csv += `1. DEMONSTRAÇÃO DO RESULTADO DO EXERCÍCIO (DRE)\n`;
     csv += `Métrica,Valor (R$),Representação (%)\n`;
-    csv += `Faturamento Bruto (GMV),${dreMetrics.grossRevenueGMV.toFixed(2)},100.00%\n`;
+    csv += `Venda Bruta de Produtos,${dreMetrics.totalProductsRevenue.toFixed(2)},${((dreMetrics.totalProductsRevenue / (dreMetrics.grossRevenueGMV || 1)) * 100).toFixed(2)}%\n`;
+    csv += `(+) Receita de Frete / Entregas,${dreMetrics.totalShippingRevenue.toFixed(2)},${((dreMetrics.totalShippingRevenue / (dreMetrics.grossRevenueGMV || 1)) * 100).toFixed(2)}%\n`;
+    csv += `(=) Faturamento Bruto (GMV),${dreMetrics.grossRevenueGMV.toFixed(2)},100.00%\n`;
     csv += `(-) Descontos e Cupons,${dreMetrics.totalDiscounts.toFixed(2)},${((dreMetrics.totalDiscounts / (dreMetrics.grossRevenueGMV || 1)) * 100).toFixed(2)}%\n`;
     csv += `(-) Pedidos Cancelados,${dreMetrics.totalCanceledValue.toFixed(2)},${((dreMetrics.totalCanceledValue / (dreMetrics.grossRevenueGMV || 1)) * 100).toFixed(2)}%\n`;
     csv += `(=) Receita Líquida,${dreMetrics.netRevenue.toFixed(2)},100.00%\n`;
     csv += `(-) Custo das Mercadorias Vendidas (CMV),${dreMetrics.cmvTotal.toFixed(2)},${((dreMetrics.cmvTotal / (dreMetrics.netRevenue || 1)) * 100).toFixed(2)}%\n`;
     csv += `(=) Lucro Bruto Estimado,${dreMetrics.grossProfit.toFixed(2)},${dreMetrics.grossMarginPercent.toFixed(2)}%\n`;
-    csv += `Ticket Médio por Pedido,${dreMetrics.averageTicket.toFixed(2)},-\n\n`;
+    csv += `Ticket Médio por Pedido,${dreMetrics.averageTicket.toFixed(2)},-\n`;
+    csv += `Frete Médio por Pedido,${dreMetrics.averageShippingPerOrder.toFixed(2)},-\n\n`;
 
-    // Curva ABC
-    csv += `2. CURVA ABC DE PRODUTOS\n`;
-    csv += `Produto,Qtd Vendida,Faturamento (R$),CMV (R$),Lucro Bruto (R$),% Faturamento,Classe ABC\n`;
+    // Curva ABC e Lucratividade por Produto
+    csv += `2. LUCRATIVIDADE E CURVA ABC DE PRODUTOS\n`;
+    csv += `Produto,Preço Venda (R$),Custo Unitário (R$),Origem Custo,Qtd Vendida,Faturamento (R$),CMV Total (R$),Lucro Bruto (R$),Margem (%),Markup (%),% Faturamento,Classe ABC\n`;
     abcProducts.forEach(p => {
-      csv += `"${p.name}",${p.quantity},${p.revenue.toFixed(2)},${p.cost.toFixed(2)},${p.profit.toFixed(2)},${p.sharePct.toFixed(2)}%,Classe ${p.categoryABC}\n`;
+      const origemCost = p.isRealCost ? 'Custo Real Cadastrado' : 'Estimativa 35%';
+      csv += `"${p.name}",${p.unitPrice.toFixed(2)},${p.unitCost.toFixed(2)},"${origemCost}",${p.quantity},${p.revenue.toFixed(2)},${p.cost.toFixed(2)},${p.profit.toFixed(2)},${p.marginPct.toFixed(2)}%,${p.markupPct.toFixed(2)}%,${p.sharePct.toFixed(2)}%,Classe ${p.categoryABC}\n`;
     });
     csv += `\n`;
 
@@ -586,7 +747,24 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
         </div>
 
         {/* Executive KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+          {/* Vendas de Produtos */}
+          <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl space-y-1">
+            <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider block">Vendas de Produtos</span>
+            <p className="text-xl font-black text-gray-900 tracking-tight">{formatPrice(dreMetrics.totalProductsRevenue)}</p>
+            <p className="text-[11px] text-gray-400 font-medium">Subtotal dos Itens</p>
+          </div>
+
+          {/* Frete Cobrado */}
+          <div className="bg-indigo-50/60 border border-indigo-200 p-4 rounded-xl space-y-1">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-extrabold text-indigo-800 uppercase tracking-wider">(+) Frete Cobrado</span>
+              <Truck size={14} className="text-indigo-600" />
+            </div>
+            <p className="text-xl font-black text-indigo-950 tracking-tight">{formatPrice(dreMetrics.totalShippingRevenue)}</p>
+            <p className="text-[11px] text-indigo-700 font-medium">{formatPrice(dreMetrics.averageShippingPerOrder)}/pedido méd.</p>
+          </div>
+
           {/* GMV */}
           <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl space-y-1">
             <span className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider block">Faturamento Bruto (GMV)</span>
@@ -604,29 +782,85 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
           {/* Receita Líquida */}
           <div className="bg-blue-50/50 border border-blue-200/80 p-4 rounded-xl space-y-1">
             <span className="text-[10px] font-extrabold text-blue-800 uppercase tracking-wider block">(=) Receita Líquida Real</span>
-            <p className="text-2xl font-black text-blue-950 tracking-tight">{formatPrice(dreMetrics.netRevenue)}</p>
-            <p className="text-[11px] text-blue-700 font-medium">Efetivamente Entrada no Caixa</p>
-          </div>
-
-          {/* CMV */}
-          <div className="bg-rose-50/50 border border-rose-200/70 p-4 rounded-xl space-y-1">
-            <span className="text-[10px] font-extrabold text-rose-800 uppercase tracking-wider block">(-) Custo dos Produtos (CMV)</span>
-            <p className="text-xl font-black text-rose-900 tracking-tight">{formatPrice(dreMetrics.cmvTotal)}</p>
-            <p className="text-[11px] text-rose-700 font-medium">Fabricação / Aquisição</p>
+            <p className="text-xl font-black text-blue-950 tracking-tight">{formatPrice(dreMetrics.netRevenue)}</p>
+            <p className="text-[11px] text-blue-700 font-medium">GMV - Descontos</p>
           </div>
 
           {/* Lucro Bruto */}
           <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl space-y-1">
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider">(=) Lucro Bruto Estimado</span>
-              <span className="bg-emerald-200 text-emerald-900 text-[10px] font-black px-1.5 py-0.5 rounded">
-                {dreMetrics.grossMarginPercent.toFixed(1)}% Margem
-              </span>
+            <div className="flex justify-between items-center gap-1">
+              <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider">(=) Lucro Bruto</span>
+              <div className="flex items-center gap-1">
+                <span className="bg-emerald-200 text-emerald-950 text-[10px] font-black px-1.5 py-0.5 rounded">
+                  {dreMetrics.grossMarginPercent.toFixed(1)}% Margem
+                </span>
+              </div>
             </div>
-            <p className="text-2xl font-black text-emerald-950 tracking-tight">{formatPrice(dreMetrics.grossProfit)}</p>
-            <p className="text-[11px] text-emerald-700 font-medium">Receita Líquida - CMV</p>
+            <p className="text-xl font-black text-emerald-950 tracking-tight">{formatPrice(dreMetrics.grossProfit)}</p>
+            <p className="text-[11px] text-emerald-700 font-medium flex justify-between">
+              <span>Receita - CMV</span>
+              <span className="font-bold text-emerald-800">{formatPrice(dreMetrics.averageProfitPerOrder)}/ped</span>
+            </p>
           </div>
         </div>
+
+        {/* Visual Revenue Breakdown Bar */}
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs font-bold text-gray-700 gap-1">
+            <span className="uppercase tracking-wider text-[11px] text-gray-500 font-extrabold flex items-center gap-1.5">
+              <PieIcon size={14} className="text-[var(--color-primary)]" /> Composição do Faturamento Bruto (GMV)
+            </span>
+            <div className="flex items-center gap-4 text-[11px] flex-wrap">
+              <span className="flex items-center gap-1.5 text-gray-700">
+                <span className="w-2.5 h-2.5 rounded-full bg-gray-600"></span>
+                Produtos: <strong>{formatPrice(dreMetrics.totalProductsRevenue)}</strong> ({((dreMetrics.totalProductsRevenue / (dreMetrics.grossRevenueGMV || 1)) * 100).toFixed(1)}%)
+              </span>
+              <span className="flex items-center gap-1.5 text-indigo-700">
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                Frete: <strong>{formatPrice(dreMetrics.totalShippingRevenue)}</strong> ({((dreMetrics.totalShippingRevenue / (dreMetrics.grossRevenueGMV || 1)) * 100).toFixed(1)}%)
+              </span>
+              <span className="flex items-center gap-1.5 text-rose-700">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                CMV: <strong>{formatPrice(dreMetrics.cmvTotal)}</strong> ({((dreMetrics.cmvTotal / (dreMetrics.grossRevenueGMV || 1)) * 100).toFixed(1)}%)
+              </span>
+              <span className="flex items-center gap-1.5 text-amber-700">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                Descontos: <strong>{formatPrice(dreMetrics.totalDiscounts)}</strong> ({((dreMetrics.totalDiscounts / (dreMetrics.grossRevenueGMV || 1)) * 100).toFixed(1)}%)
+              </span>
+              <span className="flex items-center gap-1.5 text-emerald-800">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+                Lucro Bruto: <strong>{formatPrice(dreMetrics.grossProfit)}</strong> ({((dreMetrics.grossProfit / (dreMetrics.grossRevenueGMV || 1)) * 100).toFixed(1)}%)
+              </span>
+            </div>
+          </div>
+          <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden flex">
+            <div 
+              style={{ width: `${Math.min(100, Math.max(0, (dreMetrics.totalProductsRevenue / (dreMetrics.grossRevenueGMV || 1)) * 100))}%` }} 
+              className="bg-gray-600 h-full transition-all"
+              title="Venda de Produtos"
+            />
+            <div 
+              style={{ width: `${Math.min(100, Math.max(0, (dreMetrics.totalShippingRevenue / (dreMetrics.grossRevenueGMV || 1)) * 100))}%` }} 
+              className="bg-indigo-500 h-full transition-all"
+              title="Frete Cobrado"
+            />
+          </div>
+        </div>
+
+        {/* Cost Registration Notice */}
+        {dreMetrics.hasUnregisteredCosts && (
+          <div className="bg-amber-50/60 border border-amber-200 p-3.5 rounded-xl flex items-start gap-3 text-xs text-amber-900">
+            <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-0.5">
+              <p className="font-bold">Precisão do Relatório e Cadastro de Custos:</p>
+              <p className="text-amber-800 leading-relaxed">
+                <strong>{dreMetrics.realCostCoveragePct.toFixed(0)}%</strong> das mercadorias vendidas possuem Preço de Custo cadastrado. 
+                Os itens sem custo individual utilizam a estimativa técnica de <strong>35%</strong> sobre o preço de venda. 
+                Para garantir 100% de precisão no CMV e Lucro Bruto, acesse o menu <strong>Produtos</strong> e informe o Preço de Custo de cada item.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Detailed DRE Table Statement */}
         <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
@@ -642,10 +876,33 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
             <tbody className="divide-y divide-gray-100 font-medium text-gray-800">
               <tr className="bg-white">
                 <td className="py-3 px-4 font-bold text-gray-900 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-gray-900"></span> Faturamento Bruto (GMV)
+                  <span className="w-2 h-2 rounded-full bg-gray-700"></span> Venda Bruta de Produtos
                 </td>
-                <td className="py-3 px-4 text-right font-bold text-gray-900">{formatPrice(dreMetrics.grossRevenueGMV)}</td>
-                <td className="py-3 px-4 text-right font-semibold text-gray-500">100,0%</td>
+                <td className="py-3 px-4 text-right font-bold text-gray-900">{formatPrice(dreMetrics.totalProductsRevenue)}</td>
+                <td className="py-3 px-4 text-right font-semibold text-gray-600">
+                  {((dreMetrics.totalProductsRevenue / (dreMetrics.grossRevenueGMV || 1)) * 100).toFixed(1)}%
+                </td>
+                <td className="py-3 px-4 text-right text-gray-400">-</td>
+              </tr>
+              <tr className="bg-indigo-50/30 text-indigo-950">
+                <td className="py-3 px-4 font-bold flex items-center gap-2 pl-6">
+                  <Truck size={14} className="text-indigo-600" />
+                  <span>(+) Receita de Frete / Entregas</span>
+                </td>
+                <td className="py-3 px-4 text-right font-bold text-indigo-900">+{formatPrice(dreMetrics.totalShippingRevenue)}</td>
+                <td className="py-3 px-4 text-right text-indigo-800">
+                  {((dreMetrics.totalShippingRevenue / (dreMetrics.grossRevenueGMV || 1)) * 100).toFixed(1)}%
+                </td>
+                <td className="py-3 px-4 text-right text-indigo-700">
+                  {((dreMetrics.totalShippingRevenue / (dreMetrics.netRevenue || 1)) * 100).toFixed(1)}%
+                </td>
+              </tr>
+              <tr className="bg-gray-100/70 font-black text-gray-900 border-t border-b border-gray-300">
+                <td className="py-3 px-4 font-black flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-gray-900"></span> (=) FATURAMENTO BRUTO TOTAL (GMV)
+                </td>
+                <td className="py-3 px-4 text-right font-black text-gray-900">{formatPrice(dreMetrics.grossRevenueGMV)}</td>
+                <td className="py-3 px-4 text-right font-bold text-gray-700">100,0%</td>
                 <td className="py-3 px-4 text-right text-gray-400">-</td>
               </tr>
               <tr className="bg-amber-50/20 text-amber-900">
@@ -862,19 +1119,53 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
           </div>
         )}
 
-        {/* TAB 2: CURVA ABC DE PRODUTOS */}
+        {/* TAB 2: CURVA ABC DE PRODUTOS & ANÁLISE DE MARGEM */}
         {(activeTab === 'abc' || true) && (
           <div className={`space-y-4 ${activeTab !== 'abc' ? 'print:block hidden' : ''}`}>
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50 border border-gray-200 p-4 rounded-xl">
               <div>
-                <h4 className="text-sm font-black text-gray-900 uppercase tracking-wider">Análise de Produtos — Curva ABC & Margens</h4>
-                <p className="text-xs text-gray-500">
-                  <strong>Classe A:</strong> 80% do faturamento da loja (alta representatividade) | <strong>Classe B:</strong> 15% | <strong>Classe C:</strong> 5%
+                <h4 className="text-sm font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                  <Layers size={16} className="text-[var(--color-primary)]" /> Análise de Produtos — Curva ABC, Custos & Margens
+                </h4>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  <strong>Classe A:</strong> 80% do faturamento | <strong>Classe B:</strong> 15% | <strong>Classe C:</strong> 5%
                 </p>
               </div>
-              <span className="text-xs font-bold text-gray-600 bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
-                {abcProducts.length} itens vendidos no período
-              </span>
+
+              {/* Filters & Sorting Controls */}
+              <div className="flex flex-wrap items-center gap-3 text-xs w-full md:w-auto">
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-extrabold uppercase text-gray-400">Filtrar por Custo & Margem</label>
+                  <select
+                    value={productCostFilter}
+                    onChange={(e) => setProductCostFilter(e.target.value as any)}
+                    className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 font-bold text-gray-800 outline-none focus:border-[var(--color-primary)]"
+                  >
+                    <option value="all">Todos os Produtos ({abcProducts.length})</option>
+                    <option value="has_cost">Apenas Custo Real Cadastrado</option>
+                    <option value="missing_cost">Sem Custo Cadastrado (Estimado 35%)</option>
+                    <option value="high_margin">Alta Margem (≥ 50%)</option>
+                    <option value="mid_margin">Margem Média (20% a 49%)</option>
+                    <option value="low_margin">Margem Baixa (&lt; 20%)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[10px] font-extrabold uppercase text-gray-400">Ordenar por</label>
+                  <select
+                    value={productSortBy}
+                    onChange={(e) => setProductSortBy(e.target.value as any)}
+                    className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 font-bold text-gray-800 outline-none focus:border-[var(--color-primary)]"
+                  >
+                    <option value="revenue">Maior Faturamento (R$)</option>
+                    <option value="profit">Maior Lucro Bruto (R$)</option>
+                    <option value="margin">Maior Margem de Lucro (%)</option>
+                    <option value="markup">Maior Markup (%)</option>
+                    <option value="quantity">Maior Volume (Qtd)</option>
+                    <option value="cost">Maior CMV Total (R$)</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
@@ -882,28 +1173,67 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
                 <thead className="bg-gray-50 border-b border-gray-200 font-black text-gray-500 uppercase tracking-wider text-[11px]">
                   <tr>
                     <th className="py-3 px-4">Produto</th>
-                    <th className="py-3 px-4 text-center">Volume (Qtd)</th>
-                    <th className="py-3 px-4 text-right">Faturamento Total</th>
-                    <th className="py-3 px-4 text-right">CMV Total</th>
-                    <th className="py-3 px-4 text-right">Lucro Bruto</th>
-                    <th className="py-3 px-4 text-right">% Representatividade</th>
+                    <th className="py-3 px-3 text-right">Preço Venda</th>
+                    <th className="py-3 px-3 text-right">Custo Unitário</th>
+                    <th className="py-3 px-3 text-center">Volume (Qtd)</th>
+                    <th className="py-3 px-3 text-right">Faturamento Total</th>
+                    <th className="py-3 px-3 text-right">CMV Total (Custo)</th>
+                    <th className="py-3 px-3 text-right">Lucro Bruto</th>
+                    <th className="py-3 px-3 text-right">Margem % / Markup</th>
                     <th className="py-3 px-4 text-center">Classe ABC</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium text-gray-800">
-                  {abcProducts.length === 0 ? (
+                  {processedAbcProducts.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-gray-400">Nenhum produto vendido no período selecionado.</td>
+                      <td colSpan={9} className="py-10 text-center text-gray-400">
+                        Nenhum produto atende aos filtros selecionados.
+                      </td>
                     </tr>
                   ) : (
-                    abcProducts.map((p, idx) => (
+                    processedAbcProducts.map((p, idx) => (
                       <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
-                        <td className="py-3 px-4 font-bold text-gray-900">{p.name}</td>
-                        <td className="py-3 px-4 text-center font-bold text-gray-700 bg-gray-50/50">{p.quantity} un</td>
-                        <td className="py-3 px-4 text-right font-bold text-gray-900">{formatPrice(p.revenue)}</td>
-                        <td className="py-3 px-4 text-right text-rose-700 font-medium">{formatPrice(p.cost)}</td>
-                        <td className="py-3 px-4 text-right font-bold text-emerald-700">{formatPrice(p.profit)}</td>
-                        <td className="py-3 px-4 text-right font-bold text-gray-700">{p.sharePct.toFixed(1)}%</td>
+                        <td className="py-3 px-4 font-bold text-gray-900">
+                          <p>{p.name}</p>
+                          <p className="text-[10px] text-gray-400 font-normal">{p.sharePct.toFixed(1)}% do faturamento da loja</p>
+                        </td>
+                        <td className="py-3 px-3 text-right font-semibold text-gray-800">{formatPrice(p.unitPrice)}</td>
+                        <td className="py-3 px-3 text-right font-medium">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                              p.isRealCost ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-gray-100 text-gray-600 border border-gray-200'
+                            }`}>
+                              {formatPrice(p.unitCost)}
+                              <span className="text-[8px] opacity-75">({p.isRealCost ? 'Real' : 'Est. 35%'})</span>
+                            </span>
+                            <button
+                              onClick={() => {
+                                setEditingCostModal({
+                                  productName: p.name,
+                                  unitPrice: p.unitPrice,
+                                  currentCost: p.isRealCost ? p.unitCost : undefined
+                                });
+                                setCostInputValue(p.isRealCost ? p.unitCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
+                              }}
+                              className="p-1 hover:bg-gray-200 text-gray-400 hover:text-[var(--color-primary)] rounded transition-colors"
+                              title="Cadastrar / Editar preço de custo deste produto"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 text-center font-bold text-gray-700 bg-gray-50/50">{p.quantity} un</td>
+                        <td className="py-3 px-3 text-right font-bold text-gray-900">{formatPrice(p.revenue)}</td>
+                        <td className="py-3 px-3 text-right text-rose-700 font-medium">{formatPrice(p.cost)}</td>
+                        <td className="py-3 px-3 text-right font-black text-emerald-700 bg-emerald-50/30">
+                          {formatPrice(p.profit)}
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <p className={`font-bold ${p.marginPct >= 50 ? 'text-emerald-700' : p.marginPct >= 20 ? 'text-amber-700' : 'text-rose-700'}`}>
+                            {p.marginPct.toFixed(1)}% Margem
+                          </p>
+                          <p className="text-[10px] text-gray-400">+{p.markupPct.toFixed(0)}% Markup</p>
+                        </td>
                         <td className="py-3 px-4 text-center">
                           <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
                             p.categoryABC === 'A' 
@@ -919,6 +1249,29 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
                     ))
                   )}
                 </tbody>
+                {processedAbcProducts.length > 0 && (
+                  <tfoot className="bg-gray-100 border-t-2 border-gray-200 text-xs font-black text-gray-900">
+                    <tr>
+                      <td className="py-3 px-4">TOTAL DOS PRODUTOS LISTADOS ({processedAbcProducts.length})</td>
+                      <td className="py-3 px-3 text-right text-gray-400">-</td>
+                      <td className="py-3 px-3 text-right text-gray-400">-</td>
+                      <td className="py-3 px-3 text-center bg-gray-200/50">
+                        {processedAbcProducts.reduce((acc, item) => acc + item.quantity, 0)} un
+                      </td>
+                      <td className="py-3 px-3 text-right">{formatPrice(processedAbcProducts.reduce((acc, item) => acc + item.revenue, 0))}</td>
+                      <td className="py-3 px-3 text-right text-rose-800">{formatPrice(processedAbcProducts.reduce((acc, item) => acc + item.cost, 0))}</td>
+                      <td className="py-3 px-3 text-right text-emerald-900">{formatPrice(processedAbcProducts.reduce((acc, item) => acc + item.profit, 0))}</td>
+                      <td className="py-3 px-3 text-right text-emerald-900">
+                        {(() => {
+                          const totRev = processedAbcProducts.reduce((acc, item) => acc + item.revenue, 0);
+                          const totProfit = processedAbcProducts.reduce((acc, item) => acc + item.profit, 0);
+                          return totRev > 0 ? `${((totProfit / totRev) * 100).toFixed(1)}% M. Méd` : '-';
+                        })()}
+                      </td>
+                      <td className="py-3 px-4"></td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </div>
@@ -973,6 +1326,66 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Edit Cost Modal */}
+        {editingCostModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-gray-200 relative animate-in zoom-in-95 duration-150">
+              <button 
+                onClick={() => setEditingCostModal(null)} 
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors"
+              >
+                <X size={18} />
+              </button>
+              
+              <h3 className="text-base font-bold text-gray-900 mb-1 flex items-center gap-2">
+                <Edit2 size={16} className="text-[var(--color-primary)]" />
+                Editar Preço de Custo
+              </h3>
+              <p className="text-xs text-gray-500 mb-4 font-semibold">{editingCostModal.productName}</p>
+
+              <div className="space-y-3 bg-gray-50 p-3 rounded-xl border border-gray-200 mb-4">
+                <div className="flex justify-between text-xs font-semibold text-gray-600">
+                  <span>Preço de Venda:</span>
+                  <span className="font-bold text-gray-900">{formatPrice(editingCostModal.unitPrice)}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 mb-5">
+                <label className="text-xs font-bold text-gray-700 uppercase block">Preço de Custo Unitário (R$)</label>
+                <input
+                  type="text"
+                  value={costInputValue}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setCostInputValue(val ? (parseInt(val, 10) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
+                  }}
+                  placeholder="0,00"
+                  autoFocus
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 text-sm font-bold text-gray-900 focus:border-[var(--color-primary)] outline-none"
+                />
+                <p className="text-[10px] text-gray-500">
+                  Ao salvar, este valor será utilizado para o cálculo de CMV, Lucro Bruto e Margem do relatório.
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setEditingCostModal(null)}
+                  className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-bold text-xs hover:bg-gray-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveProductCost}
+                  className="flex-1 bg-[var(--color-primary)] text-white py-2.5 rounded-xl font-bold text-xs hover:brightness-110 transition-colors shadow-sm flex items-center justify-center gap-1.5"
+                >
+                  <Check size={14} /> Salvar Custo
+                </button>
+              </div>
             </div>
           </div>
         )}

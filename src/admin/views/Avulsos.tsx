@@ -10,6 +10,7 @@ interface Avulso {
   id: string;
   name: string;
   price: number;
+  costPrice?: number;
   image: string;
 }
 
@@ -19,9 +20,15 @@ export function Avulsos() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAvulso, setEditingAvulso] = useState<Avulso | null>(null);
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    price: number;
+    costPrice?: number;
+    image: string;
+  }>({
     name: '',
     price: 0,
+    costPrice: undefined,
     image: ''
   });
 
@@ -43,11 +50,12 @@ export function Avulsos() {
       setFormData({
         name: avulso.name,
         price: avulso.price,
+        costPrice: avulso.costPrice !== undefined ? avulso.costPrice : undefined,
         image: avulso.image || ''
       });
     } else {
       setEditingAvulso(null);
-      setFormData({ name: '', price: 0, image: '' });
+      setFormData({ name: '', price: 0, costPrice: undefined, image: '' });
     }
     setIsModalOpen(true);
   };
@@ -127,45 +135,70 @@ export function Avulsos() {
               <tr className="bg-white border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500">
                 <th className="p-4 font-bold w-16">Img</th>
                 <th className="p-4 font-bold">Nome</th>
-                <th className="p-4 font-bold">Preço Base</th>
+                <th className="p-4 font-bold">Preço Venda</th>
+                <th className="p-4 font-bold">Preço Custo</th>
+                <th className="p-4 font-bold">Margem Est.</th>
                 <th className="p-4 font-bold text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredAvulsos.map(avulso => (
-                <tr key={avulso.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="p-4">
-                    {avulso.image ? (
-                      <div className="w-10 h-10 rounded border border-gray-200 overflow-hidden">
-                        <img src={avulso.image} alt={avulso.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              {filteredAvulsos.map(avulso => {
+                const hasCost = avulso.costPrice !== undefined && avulso.costPrice > 0;
+                const profit = hasCost ? avulso.price - (avulso.costPrice || 0) : 0;
+                const margin = hasCost && avulso.price > 0 ? (profit / avulso.price) * 100 : 0;
+
+                return (
+                  <tr key={avulso.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-4">
+                      {avulso.image ? (
+                        <div className="w-10 h-10 rounded border border-gray-200 overflow-hidden">
+                          <img src={avulso.image} alt={avulso.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-gray-100 border border-gray-200 flex items-center justify-center">
+                          <ImageIcon size={16} className="text-gray-400" />
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <span className="font-bold text-sm text-gray-900">{avulso.name}</span>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-sm font-bold text-[var(--color-primary)]">{formatPrice(avulso.price)}</span>
+                    </td>
+                    <td className="p-4">
+                      {hasCost ? (
+                        <span className="text-sm font-semibold text-gray-700">{formatPrice(avulso.costPrice!)}</span>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">Não informado</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      {hasCost ? (
+                        <div>
+                          <span className="text-xs font-bold text-emerald-700 block">+{formatPrice(profit)}</span>
+                          <span className="text-[10px] text-emerald-600 font-semibold">{margin.toFixed(1)}% margem</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400 font-normal">-</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => handleOpenModal(avulso)} className="p-2 text-gray-400 hover:text-[var(--color-primary)] hover:bg-blue-50 rounded-lg transition-colors">
+                          <Edit2 size={16} />
+                        </button>
+                        <button onClick={() => handleDelete(avulso.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                          <Trash2 size={16} />
+                        </button>
                       </div>
-                    ) : (
-                      <div className="w-10 h-10 rounded bg-gray-100 border border-gray-200 flex items-center justify-center">
-                        <ImageIcon size={16} className="text-gray-400" />
-                      </div>
-                    )}
-                  </td>
-                  <td className="p-4">
-                    <span className="font-bold text-sm text-gray-900">{avulso.name}</span>
-                  </td>
-                  <td className="p-4">
-                    <span className="text-sm font-semibold text-gray-700">{formatPrice(avulso.price)}</span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => handleOpenModal(avulso)} className="p-2 text-gray-400 hover:text-[var(--color-primary)] hover:bg-blue-50 rounded-lg transition-colors">
-                        <Edit2 size={16} />
-                      </button>
-                      <button onClick={() => handleDelete(avulso.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
               {filteredAvulsos.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-gray-500">
+                  <td colSpan={6} className="p-8 text-center text-gray-500">
                     Nenhum produto avulso cadastrado.
                   </td>
                 </tr>
@@ -197,18 +230,36 @@ export function Avulsos() {
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-gray-700 uppercase block mb-1">Preço Base (R$)</label>
-                <input
-                  type="text"
-                  value={formData.price ? formData.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
-                  onChange={e => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    setFormData({...formData, price: val ? parseInt(val, 10) / 100 : 0});
-                  }}
-                  placeholder="0,00"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 uppercase block mb-1">Preço Venda (R$)</label>
+                  <input
+                    type="text"
+                    value={formData.price ? formData.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setFormData({...formData, price: val ? parseInt(val, 10) / 100 : 0});
+                    }}
+                    placeholder="0,00"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none font-bold"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-bold text-gray-700 uppercase block">Custo (R$)</label>
+                  </div>
+                  <input
+                    type="text"
+                    value={formData.costPrice !== undefined && formData.costPrice > 0 ? formData.costPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setFormData({...formData, costPrice: val ? parseInt(val, 10) / 100 : undefined});
+                    }}
+                    placeholder="Ex: 15,00"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none"
+                  />
+                </div>
               </div>
 
               <div>

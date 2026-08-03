@@ -367,7 +367,7 @@ export function Products() {
   };
 
   const currentProductEmptyTemplate: Partial<Product> = {
-    name: '', category: '', sku: '', description: '', price: 0, image: '', colors: []
+    name: '', category: '', sku: '', description: '', price: 0, costPrice: undefined, compareAtPrice: undefined, image: '', colors: []
   };
 
   const [formData, setFormData] = useState<Partial<Product>>(currentProductEmptyTemplate);
@@ -868,7 +868,18 @@ export function Products() {
                       <span className="text-gray-400">-</span>
                     )}
                   </td>
-                  <td className="p-4 text-sm font-bold text-[var(--color-primary)]">{formatPrice(product.price)}</td>
+                  <td className="p-4 text-sm font-bold">
+                    <div className="text-[var(--color-primary)] font-bold">{formatPrice(product.price)}</div>
+                    {product.costPrice !== undefined && product.costPrice > 0 ? (
+                      <div className="text-[10px] text-gray-500 font-semibold mt-0.5" title="Preço de custo para relatórios financeiro e DRE">
+                        Custo: {formatPrice(product.costPrice)}
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-gray-400 font-normal mt-0.5" title="Custo não informado">
+                        Custo n/d
+                      </div>
+                    )}
+                  </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       {search === '' && (
@@ -1015,8 +1026,13 @@ export function Products() {
                   {product.sku && <span className="text-[9px] uppercase tracking-wider text-gray-500 font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">{product.sku}</span>}
                 </div>
                 <h4 className="font-bold text-gray-950 text-base truncate">{product.name}</h4>
-                <div className="flex items-center gap-2 mt-1.5">
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                   <span className="text-base font-extrabold text-[var(--color-primary)]">{formatPrice(product.price)}</span>
+                  {product.costPrice !== undefined && product.costPrice > 0 && (
+                    <span className="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded border border-gray-200" title="Custo de produção/aquisição">
+                      Custo: {formatPrice(product.costPrice)}
+                    </span>
+                  )}
                   {product.stock !== undefined && (
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${product.stock > 0 ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
                       {product.stock > 0 ? `${product.stock} un.` : 'Esgotado'}
@@ -1177,7 +1193,7 @@ export function Products() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-gray-500">Preço (R$)</label>
+                    <label className="text-[10px] uppercase font-bold text-gray-500">Preço Venda (R$)</label>
                     <input 
                       required 
                       type="text" 
@@ -1186,7 +1202,29 @@ export function Products() {
                         const numericValue = parseBRLCurrency(e.target.value);
                         setFormData({...formData, price: numericValue});
                       }} 
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-bold" 
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] uppercase font-bold text-gray-500">Preço de Custo (R$)</label>
+                      <span className="text-[9px] text-gray-400 font-semibold lowercase">(Apenas p/ Relatórios)</span>
+                    </div>
+                    <input 
+                      type="text" 
+                      value={formData.costPrice !== undefined && formData.costPrice > 0 ? maskBRLCurrency(Math.round(formData.costPrice * 100).toString()) : ''} 
+                      onChange={e => {
+                        const raw = e.target.value;
+                        if (raw === '') {
+                          setFormData({...formData, costPrice: undefined});
+                        } else {
+                          const numericValue = parseBRLCurrency(raw);
+                          setFormData({...formData, costPrice: numericValue});
+                        }
+                      }} 
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
+                      placeholder="Ex: 15,00 (Opcional)"
                     />
                   </div>
 

@@ -112,7 +112,14 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
 
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [showEditAvulsoModal, setShowEditAvulsoModal] = useState<any>(null);
-  const [customItem, setCustomItem] = useState({ name: '', price: 0, image: '', quantity: 1, saveToAvulsos: false });
+  const [customItem, setCustomItem] = useState<{ name: string; price: number; costPrice?: number; image: string; quantity: number; saveToAvulsos: boolean }>({
+    name: '',
+    price: 0,
+    costPrice: undefined,
+    image: '',
+    quantity: 1,
+    saveToAvulsos: false
+  });
 
   const [showReceiptPreview, setShowReceiptPreview] = useState(false);
   const [savedOrder, setSavedOrder] = useState<any>(null);
@@ -152,7 +159,16 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
     if (existing) {
       setCart(cart.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
     } else {
-      setCart([...cart, { id: product.id, name: product.name, price: product.price, image: product.image, quantity: 1, isCustom: false, isAvulso: product.isAvulso }]);
+      setCart([...cart, { 
+        id: product.id, 
+        name: product.name, 
+        price: product.price, 
+        costPrice: product.costPrice !== undefined ? product.costPrice : undefined,
+        image: product.image, 
+        quantity: 1, 
+        isCustom: false, 
+        isAvulso: product.isAvulso 
+      }]);
     }
   };
 
@@ -162,6 +178,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
       await updateDoc(doc(db, 'avulso_products', showEditAvulsoModal.id), {
         name: showEditAvulsoModal.name,
         price: showEditAvulsoModal.price,
+        costPrice: showEditAvulsoModal.costPrice !== undefined ? showEditAvulsoModal.costPrice : undefined,
         image: showEditAvulsoModal.image || ''
       });
       toast.success('Produto avulso atualizado com sucesso!');
@@ -183,6 +200,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
         await addDoc(collection(db, 'avulso_products'), {
           name: customItem.name,
           price: customItem.price,
+          costPrice: customItem.costPrice !== undefined ? customItem.costPrice : undefined,
           image: customItem.image || '',
           createdAt: serverTimestamp()
         });
@@ -197,12 +215,13 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
       id: Date.now().toString(), 
       name: customItem.name, 
       price: customItem.price, 
+      costPrice: customItem.costPrice !== undefined ? customItem.costPrice : undefined,
       image: customItem.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop', 
       quantity: customItem.quantity, 
       isCustom: true 
     }]);
     setShowCustomModal(false);
-    setCustomItem({ name: '', price: 0, image: '', quantity: 1, saveToAvulsos: false });
+    setCustomItem({ name: '', price: 0, costPrice: undefined, image: '', quantity: 1, saveToAvulsos: false });
   };
 
   const updateCartItem = (id: string, field: string, value: any) => {
@@ -250,6 +269,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
           name: item.name,
           quantity: item.quantity,
           price: item.price,
+          costPrice: item.costPrice !== undefined ? item.costPrice : undefined,
           image: item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop',
         })),
         shippingMode,
@@ -948,7 +968,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
               </div>
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="text-xs font-bold text-gray-700 uppercase mb-1 block">Preço (R$) *</label>
+                  <label className="text-xs font-bold text-gray-700 uppercase mb-1 block">Preço Venda (R$) *</label>
                   <input
                     type="text"
                     value={customItem.price ? customItem.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
@@ -957,17 +977,30 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                       setCustomItem({...customItem, price: val ? parseInt(val, 10) / 100 : 0});
                     }}
                     placeholder="0,00"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none font-bold"
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="text-xs font-bold text-gray-700 uppercase mb-1 block">Quantidade</label>
+                  <label className="text-xs font-bold text-gray-700 uppercase mb-1 block">Custo (R$)</label>
+                  <input
+                    type="text"
+                    value={customItem.costPrice !== undefined && customItem.costPrice > 0 ? customItem.costPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setCustomItem({...customItem, costPrice: val ? parseInt(val, 10) / 100 : undefined});
+                    }}
+                    placeholder="Ex: 15,00"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none"
+                  />
+                </div>
+                <div className="w-24">
+                  <label className="text-xs font-bold text-gray-700 uppercase mb-1 block">Qtd</label>
                   <input
                     type="number"
                     min="1"
                     value={customItem.quantity}
                     onChange={e => setCustomItem({...customItem, quantity: parseInt(e.target.value) || 1})}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none text-center font-bold"
                   />
                 </div>
               </div>
@@ -1033,17 +1066,32 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none"
                 />
               </div>
-              <div>
-                <label className="text-xs font-bold text-gray-700 uppercase mb-1 block">Preço (R$) *</label>
-                <input
-                  type="text"
-                  value={showEditAvulsoModal.price ? showEditAvulsoModal.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
-                  onChange={e => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    setShowEditAvulsoModal({...showEditAvulsoModal, price: val ? parseInt(val, 10) / 100 : 0});
-                  }}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 uppercase mb-1 block">Preço Venda (R$) *</label>
+                  <input
+                    type="text"
+                    value={showEditAvulsoModal.price ? showEditAvulsoModal.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setShowEditAvulsoModal({...showEditAvulsoModal, price: val ? parseInt(val, 10) / 100 : 0});
+                    }}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 uppercase mb-1 block">Custo (R$)</label>
+                  <input
+                    type="text"
+                    value={showEditAvulsoModal.costPrice !== undefined && showEditAvulsoModal.costPrice > 0 ? showEditAvulsoModal.costPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setShowEditAvulsoModal({...showEditAvulsoModal, costPrice: val ? parseInt(val, 10) / 100 : undefined});
+                    }}
+                    placeholder="Ex: 15,00"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none"
+                  />
+                </div>
               </div>
               <div>
                 <label className="text-xs font-bold text-gray-700 uppercase mb-1 block">URL da Imagem (Opcional)</label>
