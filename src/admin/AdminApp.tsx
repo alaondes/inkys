@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, ExternalLink, Users, Ticket, FileText, X, Sparkles, Calculator, Layers, Shield, DollarSign } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, ExternalLink, Users, Ticket, FileText, X, Sparkles, Calculator, Layers, Shield, DollarSign, UserCheck } from 'lucide-react';
 import { collection, onSnapshot, query, where, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -16,6 +16,7 @@ import { Pos } from './views/Pos';
 import { Avulsos } from './views/Avulsos';
 import { UsersView } from './views/Users';
 import { Financial } from './views/Financial';
+import { HRView } from './views/HR';
 import { Login } from './components/Login';
 import { useSettings } from '../context/SettingsContext';
 import { auth } from '../lib/firebase';
@@ -57,6 +58,7 @@ export function AdminApp() {
               customers: true,
               coupons: true,
               financial: true,
+              hr: true,
               documents: true,
               settings: true,
               users: true
@@ -100,6 +102,7 @@ export function AdminApp() {
                   customers: true,
                   coupons: true,
                   financial: true,
+                  hr: true,
                   documents: true,
                   settings: true,
                   users: true
@@ -123,6 +126,7 @@ export function AdminApp() {
                 customers: true,
                 coupons: true,
                 financial: true,
+                hr: true,
                 documents: true,
                 settings: true,
                 users: true
@@ -143,6 +147,7 @@ export function AdminApp() {
             customers: true,
             coupons: true,
             financial: true,
+            hr: true,
             documents: true,
             settings: true,
             users: true
@@ -191,6 +196,7 @@ export function AdminApp() {
     { path: '/admin/customers', icon: Users, label: 'Clientes', permission: 'customers' },
     { path: '/admin/coupons', icon: Ticket, label: 'Cupons', permission: 'coupons' },
     { path: '/admin/financial', icon: DollarSign, label: 'Financeiro', permission: 'financial' },
+    { path: '/admin/hr', icon: UserCheck, label: 'RH / Equipe', permission: 'hr' },
     { path: '/admin/documents', icon: FileText, label: 'Documentos', permission: 'documents' },
     { path: '/admin/users', icon: Shield, label: 'Usuários/Vendedores', permission: 'users' },
     { path: '/admin/settings', icon: Settings, label: 'Configurações', permission: 'settings' },
@@ -325,6 +331,7 @@ export function AdminApp() {
             <Route path="/customers" element={userPermissions?.customers ? <Customers /> : <AccessDenied />} />
             <Route path="/coupons" element={userPermissions?.coupons ? <Coupons /> : <AccessDenied />} />
             <Route path="/financial" element={userPermissions?.financial ? <Financial /> : <AccessDenied />} />
+            <Route path="/hr" element={userPermissions?.hr ? <HRView /> : <AccessDenied />} />
             <Route path="/documents" element={userPermissions?.documents ? <Documents /> : <AccessDenied />} />
             <Route path="/users" element={userPermissions?.users ? <UsersView /> : <AccessDenied />} />
             <Route path="/settings" element={userPermissions?.settings ? <AdminSettings /> : <AccessDenied />} />

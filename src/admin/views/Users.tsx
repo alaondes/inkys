@@ -16,6 +16,7 @@ export interface UserPermissions {
   customers: boolean;
   coupons: boolean;
   financial: boolean;
+  hr: boolean;
   documents: boolean;
   settings: boolean;
   users: boolean;
@@ -40,6 +41,7 @@ const defaultPermissions: UserPermissions = {
   customers: false,
   coupons: false,
   financial: false,
+  hr: false,
   documents: false,
   settings: false,
   users: false
@@ -55,6 +57,7 @@ const adminPermissions: UserPermissions = {
   customers: true,
   coupons: true,
   financial: true,
+  hr: true,
   documents: true,
   settings: true,
   users: true
@@ -505,6 +508,7 @@ export function UsersView() {
                     { key: 'customers', label: 'Clientes', desc: 'Visualizar estatísticas de clientes e excluir cadastros.' },
                     { key: 'coupons', label: 'Cupons de Desconto', desc: 'Criar e deletar cupons promocionais.' },
                     { key: 'financial', label: 'Módulo Financeiro', desc: 'Acessar precificação fixa, custos, métodos de pagamento e frete.' },
+                    { key: 'hr', label: 'Gestão de RH e Equipe', desc: 'Gerenciar colaboradores, folha de pagamento, comissões e holerites.' },
                     { key: 'documents', label: 'Documentos / Recibos', desc: 'Gerar recibos de pagamentos e orçamentos.' },
                     { key: 'settings', label: 'Configurações', desc: 'Alterar visual do site, contatos e preferências gerais.' },
                     { key: 'users', label: 'Controle de Usuários', desc: 'Adicionar ou alterar permissões de outros vendedores.' },

@@ -292,75 +292,145 @@ export function Financial() {
           </div>
 
           <form onSubmit={handleSavePricingRules} className="space-y-8">
-            {/* Bloco 1: Impostos e Taxas */}
+            {/* Bloco 1: Custos Diretos e Insumos por Produto */}
             <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
               <div className="flex items-center gap-2 text-slate-800 pb-2 border-b border-slate-200">
-                <Receipt className="text-purple-600" size={20} />
+                <Package className="text-blue-600" size={20} />
                 <div>
-                  <h4 className="font-extrabold text-sm uppercase tracking-wider">1. Impostos, Maquininhas & Comissões (%)</h4>
-                  <p className="text-[11px] text-gray-500">Impostos sobre Nota Fiscal, taxas de cartão/gateway e comissão de vendedores</p>
+                  <h4 className="font-extrabold text-sm uppercase tracking-wider">1. Custos Diretos e Insumos por Produto</h4>
+                  <p className="text-[11px] text-gray-500">Custos fixos por unidade fabricada ou comprada</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white p-3.5 rounded-xl border border-gray-200/80 space-y-1">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-1">
+                <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
                   <label className="text-[11px] uppercase font-bold text-gray-700 flex items-center justify-between">
-                    <span>Imposto NF / DAS (%)</span>
-                    <Percent size={14} className="text-purple-600" />
+                    <span>Matéria-prima / Fornecedor</span>
+                    <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">Por Produto</span>
                   </label>
-                  <p className="text-[10px] text-gray-400">Ex: Simples Nacional (6%), MEI ou Lucro Presumido</p>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={pricingRules.taxRatePct}
-                    onChange={e => handlePricingRuleChange('taxRatePct', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm font-bold focus:border-purple-600 outline-none mt-1"
-                  />
+                  <p className="text-[10px] text-gray-400">Preço de aquisição no cadastro individual de cada produto (R$)</p>
+                  <div className="mt-2 p-2.5 bg-gray-100 rounded-lg text-xs font-bold text-gray-500 flex items-center gap-1.5">
+                    <CheckCircle2 size={14} className="text-emerald-500" />
+                    Definido no cadastro do item
+                  </div>
                 </div>
 
-                <div className="bg-white p-3.5 rounded-xl border border-gray-200/80 space-y-1">
-                  <label className="text-[11px] uppercase font-bold text-gray-700 flex items-center justify-between">
-                    <span>Taxa Gateway / Cartão (%)</span>
-                    <CreditCard size={14} className="text-blue-600" />
+                <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                  <label className="text-[11px] uppercase font-bold text-gray-700">
+                    Embalagens e Etiquetas (R$)
                   </label>
-                  <p className="text-[10px] text-gray-400">Média cobrada pela maquininha ou gateway (Mercado Pago, PagBank)</p>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={pricingRules.gatewayFeePct}
-                    onChange={e => handlePricingRuleChange('gatewayFeePct', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm font-bold focus:border-purple-600 outline-none mt-1"
-                  />
+                  <p className="text-[10px] text-gray-400">Caixa, saquinho, fitas, etiquetas, brindes por unidade</p>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-sm">R$</span>
+                    <input 
+                      type="number" 
+                      step="0.5" 
+                      min="0" 
+                      value={pricingRules.defaultPackagingCost} 
+                      onChange={e => handlePricingRuleChange('defaultPackagingCost', parseFloat(e.target.value) || 0)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pr-3 pl-10 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                    />
+                  </div>
                 </div>
 
-                <div className="bg-white p-3.5 rounded-xl border border-gray-200/80 space-y-1">
-                  <label className="text-[11px] uppercase font-bold text-gray-700 flex items-center justify-between">
-                    <span>Comissão de Venda (%)</span>
-                    <Users size={14} className="text-emerald-600" />
+                <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                  <label className="text-[11px] uppercase font-bold text-gray-700">
+                    Frete de Entrada (R$)
                   </label>
-                  <p className="text-[10px] text-gray-400">Comissão paga ao vendedor ou equipe comercial</p>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    value={pricingRules.commissionPct}
-                    onChange={e => handlePricingRuleChange('commissionPct', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm font-bold focus:border-purple-600 outline-none mt-1"
-                  />
+                  <p className="text-[10px] text-gray-400">Frete pago ao fornecedor rateado por unidade do produto</p>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-sm">R$</span>
+                    <input 
+                      type="number" 
+                      step="0.5" 
+                      min="0" 
+                      value={pricingRules.defaultShippingInCost} 
+                      onChange={e => handlePricingRuleChange('defaultShippingInCost', parseFloat(e.target.value) || 0)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pr-3 pl-10 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Bloco 2: Despesas Fixas Mensais */}
+            {/* Bloco 2: Custos Variáveis sobre a Venda (%) */}
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+              <div className="flex items-center gap-2 text-slate-800 pb-2 border-b border-slate-200">
+                <Receipt className="text-amber-600" size={20} />
+                <div>
+                  <h4 className="font-extrabold text-sm uppercase tracking-wider">2. Custos Variáveis sobre a Venda (%)</h4>
+                  <p className="text-[11px] text-gray-500">Impostos, comissões e taxas incidentes no faturamento</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-1">
+                <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                  <label className="text-[11px] uppercase font-bold text-gray-700">
+                    Impostos sobre a Nota Fiscal (%)
+                  </label>
+                  <p className="text-[10px] text-gray-400">Ex: Simples Nacional, MEI, ICMS/ISS (ex: 6%)</p>
+                  <div className="relative mt-1">
+                    <input 
+                      type="number" 
+                      step="0.1" 
+                      min="0" 
+                      max="100"
+                      value={pricingRules.taxRatePct} 
+                      onChange={e => handlePricingRuleChange('taxRatePct', parseFloat(e.target.value) || 0)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                    />
+                    <span className="absolute right-3 top-2.5 text-gray-400 font-bold text-sm">%</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                  <label className="text-[11px] uppercase font-bold text-gray-700">
+                    Taxas de Maquininha / Gateway (%)
+                  </label>
+                  <p className="text-[10px] text-gray-400">Taxa média de cartão de crédito/débito/PIX (ex: 4%)</p>
+                  <div className="relative mt-1">
+                    <input 
+                      type="number" 
+                      step="0.1" 
+                      min="0" 
+                      max="100"
+                      value={pricingRules.gatewayFeePct} 
+                      onChange={e => handlePricingRuleChange('gatewayFeePct', parseFloat(e.target.value) || 0)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                    />
+                    <span className="absolute right-3 top-2.5 text-gray-400 font-bold text-sm">%</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                  <label className="text-[11px] uppercase font-bold text-gray-700">
+                    Comissões Vendedores / Marketplaces (%)
+                  </label>
+                  <p className="text-[10px] text-gray-400">Comissão de vendas ou taxas de marketplace (ex: 0% a 15%)</p>
+                  <div className="relative mt-1">
+                    <input 
+                      type="number" 
+                      step="0.1" 
+                      min="0" 
+                      max="100"
+                      value={pricingRules.commissionPct} 
+                      onChange={e => handlePricingRuleChange('commissionPct', parseFloat(e.target.value) || 0)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                    />
+                    <span className="absolute right-3 top-2.5 text-gray-400 font-bold text-sm">%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bloco 3: Despesas Fixas e Estruturais */}
             <div className="bg-purple-50/50 border border-purple-100 rounded-2xl p-5 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-purple-200/60">
                 <div className="flex items-center gap-2 text-purple-900">
                   <Building2 className="text-purple-600" size={20} />
                   <div>
-                    <h4 className="font-extrabold text-sm uppercase tracking-wider">2. Custos e Despesas Fixas Mensais da Loja (R$)</h4>
-                    <p className="text-[11px] text-purple-700">Valores fixos que a loja paga todos os meses, independente das vendas</p>
+                    <h4 className="font-extrabold text-sm uppercase tracking-wider">3. Despesas Fixas e Estruturais da Loja (R$/mês)</h4>
+                    <p className="text-[11px] text-purple-700">Discrimine aluguel, luz, salários e contas mensais para calcular a taxa de rateio proporcional ao faturamento</p>
                   </div>
                 </div>
 
@@ -514,12 +584,12 @@ export function Financial() {
               </div>
             </div>
 
-            {/* Bloco 3: Margem de Lucro */}
+            {/* Bloco 4: Margem de Lucro */}
             <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
               <div className="flex items-center gap-2 text-slate-800 pb-2 border-b border-slate-200">
                 <TrendingUp className="text-emerald-600" size={20} />
                 <div>
-                  <h4 className="font-extrabold text-sm uppercase tracking-wider">3. Margem de Lucro Desejada (%)</h4>
+                  <h4 className="font-extrabold text-sm uppercase tracking-wider">4. Margem de Lucro Desejada (%)</h4>
                   <p className="text-[11px] text-gray-500">Lucro líquido limpo no bolso após pagar todos os custos e impostos</p>
                 </div>
               </div>

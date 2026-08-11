@@ -23,7 +23,10 @@ service cloud.firestore {
       return isSignedIn() && 
         request.auth.token.email != null &&
         existsAdminUserDoc(request.auth.token.email.lower()) &&
-        getAdminUserDoc(request.auth.token.email.lower()).data.permissions[permission] == true;
+        (
+          getAdminUserDoc(request.auth.token.email.lower()).data.role == 'admin' ||
+          getAdminUserDoc(request.auth.token.email.lower()).data.permissions[permission] == true
+        );
     }
 
     // Collection: admin_users
@@ -84,6 +87,27 @@ service cloud.firestore {
     match /customers/{customerId} {
       allow read: if hasPermission('customers');
       allow write: if hasPermission('customers') || true;
+    }
+
+    // Collections: HR Module
+    match /hr_employees/{employeeId} {
+      allow read: if hasPermission('hr');
+      allow write: if hasPermission('hr');
+    }
+
+    match /hr_payrolls/{payrollId} {
+      allow read: if hasPermission('hr');
+      allow write: if hasPermission('hr');
+    }
+
+    match /hr_time_records/{recordId} {
+      allow read: if hasPermission('hr');
+      allow write: if hasPermission('hr');
+    }
+
+    match /hr_vacations/{vacationId} {
+      allow read: if hasPermission('hr');
+      allow write: if hasPermission('hr');
     }
 
     // Collection: counters

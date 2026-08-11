@@ -98,6 +98,89 @@
         "createdAt": { "type": "object" }
       }
     },
+    "HREmployee": {
+      "title": "HREmployee",
+      "description": "Company employee record for HR module.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "cpf": { "type": "string" },
+        "rg": { "type": "string" },
+        "birthDate": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" },
+        "emergencyContact": { "type": "string" },
+        "roleTitle": { "type": "string" },
+        "department": { "type": "string" },
+        "contractType": { "type": "string" },
+        "admissionDate": { "type": "string" },
+        "workSchedule": { "type": "string" },
+        "status": { "type": "string" },
+        "baseSalary": { "type": "number" },
+        "commissionPct": { "type": "number" },
+        "salesGoalMonthly": { "type": "number" },
+        "pixKey": { "type": "string" },
+        "bankName": { "type": "string" },
+        "bankAgency": { "type": "string" },
+        "bankAccount": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" }
+      }
+    },
+    "HRPayroll": {
+      "title": "HRPayroll",
+      "description": "Payroll record for an employee.",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "refMonth": { "type": "string" },
+        "baseSalary": { "type": "number" },
+        "commissionAmount": { "type": "number" },
+        "bonusAmount": { "type": "number" },
+        "overtimeAmount": { "type": "number" },
+        "advancesAmount": { "type": "number" },
+        "deductionsAmount": { "type": "number" },
+        "netSalary": { "type": "number" },
+        "status": { "type": "string" },
+        "paymentDate": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" }
+      }
+    },
+    "HRTimeRecord": {
+      "title": "HRTimeRecord",
+      "description": "Time tracking record for employee.",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "date": { "type": "string" },
+        "clockIn": { "type": "string" },
+        "clockOut": { "type": "string" },
+        "lunchStart": { "type": "string" },
+        "lunchEnd": { "type": "string" },
+        "totalHours": { "type": "number" },
+        "status": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "HRVacation": {
+      "title": "HRVacation",
+      "description": "Vacation schedule for employee.",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "daysCount": { "type": "number" },
+        "status": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
     "Counter": {
       "title": "Counter",
       "description": "Sequential order and quote ID counters.",
@@ -136,6 +219,22 @@
     "/config/{settingId}": {
       "schema": "Settings",
       "description": "Singleton configuration for the store."
+    },
+    "/hr_employees/{employeeId}": {
+      "schema": "HREmployee",
+      "description": "Employees list for HR management."
+    },
+    "/hr_payrolls/{payrollId}": {
+      "schema": "HRPayroll",
+      "description": "Payroll records per employee and month."
+    },
+    "/hr_time_records/{recordId}": {
+      "schema": "HRTimeRecord",
+      "description": "Time clock records per employee."
+    },
+    "/hr_vacations/{vacationId}": {
+      "schema": "HRVacation",
+      "description": "Vacation schedules per employee."
     }
   }
 }
