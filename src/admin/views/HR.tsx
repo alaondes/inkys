@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   collection, onSnapshot, doc, setDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, query, where, getDocs 
 } from 'firebase/firestore';
@@ -203,6 +203,58 @@ const INITIAL_EMPLOYEES: Employee[] = [
   }
 ];
 
+const INITIAL_PAYROLLS: PayrollRecord[] = [
+  {
+    id: 'pay-1',
+    employeeId: 'emp-1',
+    employeeName: 'Carlos Eduardo Silva',
+    employeeRole: 'Vendedor Sênior',
+    referenceMonth: '2026-08',
+    baseSalary: 2800.00,
+    commissionAmount: 0,
+    bonusAmount: 0,
+    overtimeAmount: 0,
+    advancesAmount: 0,
+    deductionsAmount: 0,
+    netSalary: 2800.00,
+    status: 'Pendente',
+    paymentDate: '',
+    paymentMethod: 'PIX',
+    notes: 'Lançamento padrão de folha'
+  },
+  {
+    id: 'pay-2',
+    employeeId: 'emp-2',
+    employeeName: 'Ana Beatriz Souza',
+    employeeRole: 'Designer de Produtos / Arte',
+    referenceMonth: '2026-08',
+    baseSalary: 3500.00,
+    commissionAmount: 0,
+    bonusAmount: 0,
+    overtimeAmount: 0,
+    advancesAmount: 0,
+    deductionsAmount: 0,
+    netSalary: 3500.00,
+    status: 'Pago',
+    paymentDate: '2026-08-05',
+    paymentMethod: 'PIX',
+    notes: 'Pagamento via PIX realizado'
+  }
+];
+
+const INITIAL_VACATIONS: VacationRecord[] = [
+  {
+    id: 'vac-1',
+    employeeId: 'emp-1',
+    employeeName: 'Carlos Eduardo Silva',
+    startDate: '2026-09-01',
+    endDate: '2026-09-15',
+    daysCount: 15,
+    status: 'Programado',
+    notes: 'Férias fracionadas 2025/2026'
+  }
+];
+
 export function HRView() {
   const [activeTab, setActiveTab] = useState<'employees' | 'payroll' | 'time' | 'commissions' | 'vacations'>('employees');
   
@@ -212,6 +264,11 @@ export function HRView() {
   const [timeRecords, setTimeRecords] = useState<TimeRecord[]>([]);
   const [vacations, setVacations] = useState<VacationRecord[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Seed Refs
+  const seededEmployeesRef = useRef(false);
+  const seededPayrollsRef = useRef(false);
+  const seededVacationsRef = useRef(false);
 
   // Filters & Search
   const [searchTerm, setSearchTerm] = useState('');
@@ -279,26 +336,57 @@ export function HRView() {
   const [vacStatus, setVacStatus] = useState<VacationRecord['status']>('Programado');
   const [vacNotes, setVacNotes] = useState('');
 
+  // Delete Modal State
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    id: string;
+    name: string;
+    type: 'employee' | 'payroll' | 'vacation';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    id: '',
+    name: '',
+    type: 'payroll',
+    title: '',
+    message: '',
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Realtime Listeners
   useEffect(() => {
     // 1. Employees
-    const unsubEmployees = onSnapshot(collection(db, 'hr_employees'), (snapshot) => {
-      if (snapshot.empty) {
-        setEmployees(INITIAL_EMPLOYEES);
+    const unsubEmployees = onSnapshot(collection(db, 'hr_employees'), async (snapshot) => {
+      const hasSeeded = localStorage.getItem('hr_employees_seeded_v1');
+      if (snapshot.empty && !hasSeeded) {
+        localStorage.setItem('hr_employees_seeded_v1', 'true');
+        try {
+          await Promise.all(INITIAL_EMPLOYEES.map(emp => setDoc(doc(db, 'hr_employees', emp.id), emp)));
+        } catch (e) {
+          console.warn("Seeding employees notice:", e);
+        }
       } else {
         const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Employee[];
         setEmployees(list);
+        setLoading(false);
       }
-      setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'hr_employees');
-      setEmployees(INITIAL_EMPLOYEES);
       setLoading(false);
     });
 
     // 2. Payrolls
-    const unsubPayrolls = onSnapshot(collection(db, 'hr_payrolls'), (snapshot) => {
-      if (!snapshot.empty) {
+    const unsubPayrolls = onSnapshot(collection(db, 'hr_payrolls'), async (snapshot) => {
+      const hasSeeded = localStorage.getItem('hr_payrolls_seeded_v1');
+      if (snapshot.empty && !hasSeeded) {
+        localStorage.setItem('hr_payrolls_seeded_v1', 'true');
+        try {
+          await Promise.all(INITIAL_PAYROLLS.map(pay => setDoc(doc(db, 'hr_payrolls', pay.id), pay)));
+        } catch (e) {
+          console.warn("Seeding payrolls notice:", e);
+        }
+      } else {
         const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as PayrollRecord[];
         setPayrolls(list);
       }
@@ -308,17 +396,23 @@ export function HRView() {
 
     // 3. Time Records
     const unsubTime = onSnapshot(collection(db, 'hr_time_records'), (snapshot) => {
-      if (!snapshot.empty) {
-        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as TimeRecord[];
-        setTimeRecords(list);
-      }
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as TimeRecord[];
+      setTimeRecords(list);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'hr_time_records');
     });
 
     // 4. Vacations
-    const unsubVacations = onSnapshot(collection(db, 'hr_vacations'), (snapshot) => {
-      if (!snapshot.empty) {
+    const unsubVacations = onSnapshot(collection(db, 'hr_vacations'), async (snapshot) => {
+      const hasSeeded = localStorage.getItem('hr_vacations_seeded_v1');
+      if (snapshot.empty && !hasSeeded) {
+        localStorage.setItem('hr_vacations_seeded_v1', 'true');
+        try {
+          await Promise.all(INITIAL_VACATIONS.map(vac => setDoc(doc(db, 'hr_vacations', vac.id), vac)));
+        } catch (e) {
+          console.warn("Seeding vacations notice:", e);
+        }
+      } else {
         const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as VacationRecord[];
         setVacations(list);
       }
@@ -438,16 +532,94 @@ export function HRView() {
     }
   };
 
-  // Delete Employee
-  const handleDeleteEmployee = async (empId: string, empName: string) => {
-    if (!window.confirm(`Tem certeza que deseja remover o cadastro de "${empName}"?`)) return;
+  // Delete Employee Prompt
+  const handleDeleteEmployee = (empId: string, empName: string) => {
+    setDeleteModal({
+      isOpen: true,
+      id: empId,
+      name: empName,
+      type: 'employee',
+      title: 'Excluir Colaborador',
+      message: `Tem certeza que deseja remover o cadastro do colaborador "${empName}"? Esta ação excluirá os dados do sistema.`
+    });
+  };
+
+  // Delete Payroll Prompt
+  const handleDeletePayroll = (payId: string, empName: string, refMonth: string) => {
+    setDeleteModal({
+      isOpen: true,
+      id: payId,
+      name: `${empName} (${refMonth})`,
+      type: 'payroll',
+      title: 'Excluir Lançamento de Folha',
+      message: `Tem certeza que deseja excluir o lançamento de folha de "${empName}" referente ao mês ${refMonth}? O registro será removido permanentemente.`
+    });
+  };
+
+  // Delete Vacation Prompt
+  const handleDeleteVacation = (vacId: string, empName: string) => {
+    setDeleteModal({
+      isOpen: true,
+      id: vacId,
+      name: empName,
+      type: 'vacation',
+      title: 'Excluir Agendamento de Férias',
+      message: `Tem certeza que deseja excluir o agendamento de férias do colaborador "${empName}"?`
+    });
+  };
+
+  // Confirm Delete Action
+  const confirmDeleteAction = async () => {
+    if (!deleteModal.id) return;
+    const { id, type, name } = deleteModal;
+    setIsDeleting(true);
+
     try {
-      await deleteDoc(doc(db, 'hr_employees', empId));
-      toast.success("Colaborador removido com sucesso.");
-      if (selectedEmployeeDetail?.id === empId) setSelectedEmployeeDetail(null);
+      if (type === 'payroll') {
+        await deleteDoc(doc(db, 'hr_payrolls', id));
+        setPayrolls(prev => prev.filter(p => p.id !== id));
+        if (selectedPayrollReceipt?.id === id) setSelectedPayrollReceipt(null);
+        toast.success(`Lançamento de folha de "${name}" foi excluído com sucesso!`);
+      } else if (type === 'employee') {
+        // 1. Delete employee
+        await deleteDoc(doc(db, 'hr_employees', id));
+        setEmployees(prev => prev.filter(e => e.id !== id));
+        if (selectedEmployeeDetail?.id === id) setSelectedEmployeeDetail(null);
+
+        // 2. Delete related payroll entries
+        const relatedPayrolls = payrolls.filter(p => p.employeeId === id);
+        for (const p of relatedPayrolls) {
+          try {
+            await deleteDoc(doc(db, 'hr_payrolls', p.id));
+          } catch (e) {
+            console.warn("Failed to delete associated payroll doc:", e);
+          }
+        }
+        setPayrolls(prev => prev.filter(p => p.employeeId !== id));
+
+        // 3. Delete related vacation entries
+        const relatedVacations = vacations.filter(v => v.employeeId === id);
+        for (const v of relatedVacations) {
+          try {
+            await deleteDoc(doc(db, 'hr_vacations', v.id));
+          } catch (e) {
+            console.warn("Failed to delete associated vacation doc:", e);
+          }
+        }
+        setVacations(prev => prev.filter(v => v.employeeId !== id));
+
+        toast.success(`Colaborador "${name}" e seus lançamentos foram excluídos com sucesso!`);
+      } else if (type === 'vacation') {
+        await deleteDoc(doc(db, 'hr_vacations', id));
+        setVacations(prev => prev.filter(v => v.id !== id));
+        toast.success(`Agendamento de férias de "${name}" foi excluído com sucesso!`);
+      }
     } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, `hr_employees/${empId}`);
-      toast.error("Erro ao remover registro.");
+      handleFirestoreError(err, OperationType.DELETE, `hr_${type}s/${id}`);
+      toast.error("Erro ao excluir o registro no banco de dados.");
+    } finally {
+      setIsDeleting(false);
+      setDeleteModal({ isOpen: false, id: '', name: '', type: 'payroll', title: '', message: '' });
     }
   };
 
@@ -970,7 +1142,7 @@ export function HRView() {
                             {pay.status}
                           </span>
                         </td>
-                        <td className="p-4 text-right space-x-2">
+                        <td className="p-4 text-right space-x-1.5">
                           <button 
                             onClick={() => setSelectedPayrollReceipt(pay)}
                             className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 hover:bg-purple-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
@@ -980,9 +1152,17 @@ export function HRView() {
                           </button>
                           <button 
                             onClick={() => handleOpenPayrollModal(pay)} 
-                            className="p-1.5 text-gray-500 hover:text-purple-600 rounded-lg"
+                            className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            title="Editar Lançamento de Folha"
                           >
                             <Edit2 size={15} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeletePayroll(pay.id, pay.employeeName, pay.referenceMonth)} 
+                            className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="Excluir Lançamento de Folha"
+                          >
+                            <Trash2 size={15} />
                           </button>
                         </td>
                       </tr>
@@ -1120,9 +1300,18 @@ export function HRView() {
                         {vac.startDate} até {vac.endDate} ({vac.daysCount} dias)
                       </p>
                     </div>
-                    <span className="px-3 py-1 bg-purple-200 text-purple-900 font-black rounded-full text-[10px] uppercase">
-                      {vac.status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 bg-purple-200 text-purple-900 font-black rounded-full text-[10px] uppercase">
+                        {vac.status}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteVacation(vac.id, vac.employeeName)}
+                        className="p-1.5 text-purple-400 hover:text-rose-600 hover:bg-rose-100/50 rounded-lg transition-colors"
+                        title="Excluir Registro de Férias"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
@@ -1397,7 +1586,9 @@ export function HRView() {
                   <DollarSign size={24} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-extrabold text-gray-900 uppercase tracking-wider">Lançamento de Folha de Pagamento</h3>
+                  <h3 className="text-lg font-extrabold text-gray-900 uppercase tracking-wider">
+                    {editingPayroll ? 'Editar Lançamento de Folha' : 'Novo Lançamento na Folha'}
+                  </h3>
                   <p className="text-xs text-gray-500">Apuração de salário, comissão, vales e deduções.</p>
                 </div>
               </div>
@@ -1515,7 +1706,7 @@ export function HRView() {
                   type="submit" 
                   className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider shadow-md transition-all"
                 >
-                  Salvar Lançamento
+                  {editingPayroll ? 'Salvar Alterações' : 'Salvar Lançamento'}
                 </button>
               </div>
 
@@ -1710,6 +1901,58 @@ export function HRView() {
                 className="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold text-xs uppercase"
               >
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertCircle size={26} />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-gray-900">{deleteModal.title}</h3>
+                <p className="text-xs text-rose-600 font-bold uppercase tracking-wider">Aviso de Exclusão</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-rose-50/80 border border-rose-100 rounded-2xl">
+              <p className="text-xs text-gray-800 leading-relaxed font-medium">
+                {deleteModal.message}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeleteModal({ isOpen: false, id: '', name: '', type: 'payroll', title: '', message: '' })}
+                className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-bold uppercase transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmDeleteAction}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black uppercase tracking-wider shadow-md transition-all flex items-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Excluindo...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={15} />
+                    Confirmar Exclusão
+                  </>
+                )}
               </button>
             </div>
           </div>
