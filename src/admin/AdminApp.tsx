@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, ExternalLink, Users, Ticket, FileText, X, Sparkles, Calculator, Layers, Shield } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Menu, ExternalLink, Users, Ticket, FileText, X, Sparkles, Calculator, Layers, Shield, DollarSign } from 'lucide-react';
 import { collection, onSnapshot, query, where, doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -15,6 +15,7 @@ import { Coupons } from './views/Coupons';
 import { Pos } from './views/Pos';
 import { Avulsos } from './views/Avulsos';
 import { UsersView } from './views/Users';
+import { Financial } from './views/Financial';
 import { Login } from './components/Login';
 import { useSettings } from '../context/SettingsContext';
 import { auth } from '../lib/firebase';
@@ -43,20 +44,43 @@ export function AdminApp() {
         const unsubscribeDoc = onSnapshot(docRef, async (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
-            setUserRole(data.role || 'vendedor');
-            setUserPermissions(data.permissions || {
-              overview: false,
-              products: false,
-              customProducts: false,
+            const role = data.role || 'vendedor';
+            setUserRole(role);
+
+            const allAdminPermissions = {
+              overview: true,
+              products: true,
+              customProducts: true,
               orders: true,
               pos: true,
-              avulsos: false,
-              customers: false,
-              coupons: false,
-              documents: false,
-              settings: false,
-              users: false
-            });
+              avulsos: true,
+              customers: true,
+              coupons: true,
+              financial: true,
+              documents: true,
+              settings: true,
+              users: true
+            };
+
+            if (role === 'admin') {
+              setUserPermissions(allAdminPermissions);
+            } else {
+              setUserPermissions({
+                overview: false,
+                products: false,
+                customProducts: false,
+                orders: true,
+                pos: true,
+                avulsos: false,
+                customers: false,
+                coupons: false,
+                financial: false,
+                documents: false,
+                settings: false,
+                users: false,
+                ...(data.permissions || {})
+              });
+            }
             setLoadingPermissions(false);
           } else {
             // Document doesn't exist yet (first admin login or manual creation required)
@@ -75,6 +99,7 @@ export function AdminApp() {
                   avulsos: true,
                   customers: true,
                   coupons: true,
+                  financial: true,
                   documents: true,
                   settings: true,
                   users: true
@@ -97,6 +122,7 @@ export function AdminApp() {
                 avulsos: true,
                 customers: true,
                 coupons: true,
+                financial: true,
                 documents: true,
                 settings: true,
                 users: true
@@ -116,6 +142,7 @@ export function AdminApp() {
             avulsos: true,
             customers: true,
             coupons: true,
+            financial: true,
             documents: true,
             settings: true,
             users: true
@@ -163,6 +190,7 @@ export function AdminApp() {
     { path: '/admin/avulsos', icon: Layers, label: 'Avulsos', permission: 'avulsos' },
     { path: '/admin/customers', icon: Users, label: 'Clientes', permission: 'customers' },
     { path: '/admin/coupons', icon: Ticket, label: 'Cupons', permission: 'coupons' },
+    { path: '/admin/financial', icon: DollarSign, label: 'Financeiro', permission: 'financial' },
     { path: '/admin/documents', icon: FileText, label: 'Documentos', permission: 'documents' },
     { path: '/admin/users', icon: Shield, label: 'Usuários/Vendedores', permission: 'users' },
     { path: '/admin/settings', icon: Settings, label: 'Configurações', permission: 'settings' },
@@ -296,6 +324,7 @@ export function AdminApp() {
             <Route path="/avulsos" element={userPermissions?.avulsos ? <Avulsos /> : <AccessDenied />} />
             <Route path="/customers" element={userPermissions?.customers ? <Customers /> : <AccessDenied />} />
             <Route path="/coupons" element={userPermissions?.coupons ? <Coupons /> : <AccessDenied />} />
+            <Route path="/financial" element={userPermissions?.financial ? <Financial /> : <AccessDenied />} />
             <Route path="/documents" element={userPermissions?.documents ? <Documents /> : <AccessDenied />} />
             <Route path="/users" element={userPermissions?.users ? <UsersView /> : <AccessDenied />} />
             <Route path="/settings" element={userPermissions?.settings ? <AdminSettings /> : <AccessDenied />} />

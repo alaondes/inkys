@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import toast from 'react-hot-toast';
+import { PricingRulesConfig, defaultPricingRules } from '../lib/pricingUtils';
 
 export interface HeroBanner {
   id: string;
@@ -102,6 +103,7 @@ export interface AppSettings {
   footerHeadingColor?: string;
   footerLogoUrl?: string;
   footerDescription?: string;
+  pricingRules?: PricingRulesConfig;
 }
 
 const defaultSettings: AppSettings = {
@@ -182,6 +184,7 @@ const defaultSettings: AppSettings = {
   footerHeadingColor: '#ffffff',
   footerLogoUrl: '',
   footerDescription: 'Especializados em produtos criativos e personalizados. Transforme suas ideias em presentes inesquecíveis.',
+  pricingRules: defaultPricingRules,
 };
 
 interface SettingsContextType {
@@ -197,7 +200,15 @@ const getInitialSettings = (): AppSettings => {
     const cached = localStorage.getItem('inkys-settings');
     if (cached) {
       try {
-        return { ...defaultSettings, ...JSON.parse(cached) };
+        const parsed = JSON.parse(cached);
+        return {
+          ...defaultSettings,
+          ...parsed,
+          pricingRules: {
+            ...defaultPricingRules,
+            ...(parsed.pricingRules || {})
+          }
+        };
       } catch (e) {
         console.error('Failed to parse cached settings', e);
       }
@@ -254,7 +265,18 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           setDoc(settingsRef, cleaned, { merge: true }).catch(console.error);
         }
 
-        const newSettings = { ...defaultSettings, ...data, ...cleaned };
+        const mergedPricingRules: PricingRulesConfig = {
+          ...defaultPricingRules,
+          ...(data.pricingRules || {}),
+          ...(cleaned.pricingRules || {}),
+        };
+
+        const newSettings = { 
+          ...defaultSettings, 
+          ...data, 
+          ...cleaned,
+          pricingRules: mergedPricingRules
+        };
         setSettings(newSettings);
         try {
           localStorage.setItem('inkys-settings', JSON.stringify(newSettings));

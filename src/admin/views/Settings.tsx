@@ -1,19 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { CreditCard, Smartphone, Banknote, Save, MessageCircle, Plus, Trash2, Upload, Layout, Palette, Store, Truck, Shield, ShoppingCart, Image, Settings as SettingsIcon, Link, Sparkles, Type } from 'lucide-react';
+import { CreditCard, Smartphone, Banknote, Save, MessageCircle, Plus, Trash2, Upload, Layout, Palette, Store, Truck, Shield, ShoppingCart, Image, Settings as SettingsIcon, Link, Sparkles, Type, Calculator, Percent, DollarSign, HelpCircle, CheckCircle2, TrendingUp, Package, Receipt, Building2, Zap, Home, Users, PieChart, Megaphone, Laptop } from 'lucide-react';
 import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import { useSettings } from '../../context/SettingsContext';
+import { useProducts } from '../../context/ProductContext';
 import { BannersTab } from '../components/BannersTab';
+import { calculateSuggestedPrice, defaultPricingRules, PricingRulesConfig } from '../../lib/pricingUtils';
 
 import { storage } from '../../lib/firebase';
 
 
 export function AdminSettings() {
   const { settings, updateSettings } = useSettings();
+  const { products, setProducts } = useProducts();
   const [activeTab, setActiveTab] = useState('loja');
   
   const [primaryColor, setPrimaryColor] = useState(settings.primaryColor);
   const [newPassword, setNewPassword] = useState('');
+
+  const [pricingRules, setPricingRules] = useState<PricingRulesConfig>({
+    taxRatePct: settings.pricingRules?.taxRatePct ?? 6,
+    gatewayFeePct: settings.pricingRules?.gatewayFeePct ?? 4,
+    fixedCostPct: settings.pricingRules?.fixedCostPct ?? 10,
+    desiredProfitPct: settings.pricingRules?.desiredProfitPct ?? 20,
+    commissionPct: settings.pricingRules?.commissionPct ?? 0,
+    defaultPackagingCost: settings.pricingRules?.defaultPackagingCost ?? 2.00,
+    defaultShippingInCost: settings.pricingRules?.defaultShippingInCost ?? 0.00,
+    useCalculatedFixedCost: settings.pricingRules?.useCalculatedFixedCost ?? false,
+    rentCostMonthly: settings.pricingRules?.rentCostMonthly ?? 1200,
+    utilitiesCostMonthly: settings.pricingRules?.utilitiesCostMonthly ?? 400,
+    salariesCostMonthly: settings.pricingRules?.salariesCostMonthly ?? 3000,
+    marketingCostMonthly: settings.pricingRules?.marketingCostMonthly ?? 500,
+    softwareAccountingCostMonthly: settings.pricingRules?.softwareAccountingCostMonthly ?? 300,
+    otherFixedCostsMonthly: settings.pricingRules?.otherFixedCostsMonthly ?? 100,
+    estimatedMonthlyRevenue: settings.pricingRules?.estimatedMonthlyRevenue ?? 50000,
+  });
+  const [simCost, setSimCost] = useState<number>(20);
   
   const [logoUrl, setLogoUrl] = useState(settings.logoUrl);
   const [faviconUrl, setFaviconUrl] = useState(settings.faviconUrl || '');
@@ -131,6 +153,25 @@ export function AdminSettings() {
       customPageGuideImage: settings.customPageGuideImage ?? prev.customPageGuideImage,
       customProducts: settings.customProducts ?? prev.customProducts,
     }));
+    if (settings.pricingRules) {
+      setPricingRules({
+        taxRatePct: settings.pricingRules.taxRatePct ?? 6,
+        gatewayFeePct: settings.pricingRules.gatewayFeePct ?? 4,
+        fixedCostPct: settings.pricingRules.fixedCostPct ?? 10,
+        desiredProfitPct: settings.pricingRules.desiredProfitPct ?? 20,
+        commissionPct: settings.pricingRules.commissionPct ?? 0,
+        defaultPackagingCost: settings.pricingRules.defaultPackagingCost ?? 2.00,
+        defaultShippingInCost: settings.pricingRules.defaultShippingInCost ?? 0.00,
+        useCalculatedFixedCost: true,
+        rentCostMonthly: settings.pricingRules.rentCostMonthly ?? 1200,
+        utilitiesCostMonthly: settings.pricingRules.utilitiesCostMonthly ?? 400,
+        salariesCostMonthly: settings.pricingRules.salariesCostMonthly ?? 3000,
+        marketingCostMonthly: settings.pricingRules.marketingCostMonthly ?? 500,
+        softwareAccountingCostMonthly: settings.pricingRules.softwareAccountingCostMonthly ?? 300,
+        otherFixedCostsMonthly: settings.pricingRules.otherFixedCostsMonthly ?? 100,
+        estimatedMonthlyRevenue: settings.pricingRules.estimatedMonthlyRevenue ?? 50000,
+      });
+    }
   }, [settings]);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -233,6 +274,63 @@ export function AdminSettings() {
     showToast('Tema atualizado com sucesso!');
   };
 
+  const applyPricingRulesToAllProductsAutomatically = async (rules: PricingRulesConfig) => {
+    if (!products || products.length === 0) return 0;
+    let updatedCount = 0;
+    const updatedProducts = products.map(p => {
+      if (p.costPrice !== undefined && p.costPrice > 0) {
+        const calc = calculateSuggestedPrice(p.costPrice, rules, p.packagingCost);
+        if (calc.suggestedPrice > 0) {
+          const newPrice = Math.round(calc.suggestedPrice * 100) / 100;
+          if (newPrice !== p.price) {
+            updatedCount++;
+            return {
+              ...p,
+              price: newPrice
+            };
+          }
+        }
+      }
+      return p;
+    });
+
+    if (updatedCount > 0) {
+      await setProducts(updatedProducts);
+    }
+    return updatedCount;
+  };
+
+  const handlePricingRuleChange = async (field: keyof PricingRulesConfig, value: number) => {
+    const updated = {
+      ...pricingRules,
+      [field]: value,
+      useCalculatedFixedCost: true
+    };
+    setPricingRules(updated);
+    updateSettings({ pricingRules: updated });
+    applyPricingRulesToAllProductsAutomatically(updated).catch(console.error);
+  };
+
+  const handleSavePricingRules = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const updated = { ...pricingRules, useCalculatedFixedCost: true };
+    const loadToast = toast.loading('Salvando regras e recalculando preços de todos os produtos...');
+    try {
+      await updateSettings({ pricingRules: updated });
+      const count = await applyPricingRulesToAllProductsAutomatically(updated);
+      toast.success(
+        count > 0 
+          ? `Regras salvas e preços de ${count} produtos atualizados automaticamente!` 
+          : 'Regras de precificação salvas com sucesso!', 
+        { id: loadToast }
+      );
+      showToast('Despesas fixas e regras salvas com sucesso!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao salvar no banco.', { id: loadToast });
+    }
+  };
+
   return (
     <div className="flex flex-col lg:flex-row gap-8 max-w-6xl w-full mx-auto animate-in fade-in duration-500">
       
@@ -246,6 +344,14 @@ export function AdminSettings() {
         >
           <Store size={20} />
           <span className="font-bold text-sm uppercase tracking-wider">Loja & Marca</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('precificacao')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'precificacao' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+        >
+          <Calculator size={20} />
+          <span className="font-bold text-sm uppercase tracking-wider">Precificação Fixa</span>
         </button>
 
         <button 
@@ -1013,6 +1119,460 @@ setFooterSettings({ ...footerSettings, footerLogoUrl: resized });
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Tab Precificação Fixa */}
+        {activeTab === 'precificacao' && (
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200 shadow-sm space-y-8">
+            <div className="border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-3 mb-1">
+                <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600">
+                  <Calculator size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold uppercase tracking-wider text-gray-900">Precificação Fixa & Formação de Preços</h3>
+                  <p className="text-xs text-gray-500">Configure detalhadamente todos os custos do seu negócio (fornecedores, embalagens, impostos, taxas de máquina, aluguel, salários e margem de lucro). O sistema calculará o preço exato para cada produto.</p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleSavePricingRules} className="space-y-8">
+              
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-purple-50 border border-purple-200 rounded-2xl">
+                <div>
+                  <span className="font-extrabold text-sm text-purple-900 block">Precificação Automática em Todos os Produtos</span>
+                  <p className="text-xs text-purple-700">Qualquer alteração nas regras de precificação é calculada e aplicada automaticamente em todos os produtos da loja.</p>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button 
+                    type="submit" 
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md"
+                  >
+                    <Save size={16} />
+                    <span>Salvar Agora</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Bloco 1: Custos Diretos por Produto */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2 text-slate-800 pb-2 border-b border-slate-200">
+                  <Package className="text-blue-600" size={20} />
+                  <div>
+                    <h4 className="font-extrabold text-sm uppercase tracking-wider">1. Custos Diretos e Insumos por Produto</h4>
+                    <p className="text-[11px] text-gray-500">Custos fixos por unidade fabricada ou comprada</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-1">
+                  <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                    <label className="text-[11px] uppercase font-bold text-gray-700 flex items-center justify-between">
+                      <span>Matéria-prima / Fornecedor</span>
+                      <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">Por Produto</span>
+                    </label>
+                    <p className="text-[10px] text-gray-400">Preço de aquisição no cadastro individual de cada produto (R$)</p>
+                    <div className="mt-2 p-2.5 bg-gray-100 rounded-lg text-xs font-bold text-gray-500 flex items-center gap-1.5">
+                      <CheckCircle2 size={14} className="text-emerald-500" />
+                      Definido no cadastro do item
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                    <label className="text-[11px] uppercase font-bold text-gray-700">
+                      Embalagens e Etiquetas (R$)
+                    </label>
+                    <p className="text-[10px] text-gray-400">Caixa, saquinho, fitas, etiquetas, brindes por unidade</p>
+                    <div className="relative mt-1">
+                      <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-sm">R$</span>
+                      <input 
+                        type="number" 
+                        step="0.5" 
+                        min="0" 
+                        value={pricingRules.defaultPackagingCost} 
+                        onChange={e => handlePricingRuleChange('defaultPackagingCost', parseFloat(e.target.value) || 0)}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pr-3 pl-10 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                    <label className="text-[11px] uppercase font-bold text-gray-700">
+                      Frete de Entrada (R$)
+                    </label>
+                    <p className="text-[10px] text-gray-400">Frete pago ao fornecedor rateado por unidade do produto</p>
+                    <div className="relative mt-1">
+                      <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-sm">R$</span>
+                      <input 
+                        type="number" 
+                        step="0.5" 
+                        min="0" 
+                        value={pricingRules.defaultShippingInCost} 
+                        onChange={e => handlePricingRuleChange('defaultShippingInCost', parseFloat(e.target.value) || 0)}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pr-3 pl-10 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bloco 2: Custos Variáveis sobre a Venda */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2 text-slate-800 pb-2 border-b border-slate-200">
+                  <Receipt className="text-amber-600" size={20} />
+                  <div>
+                    <h4 className="font-extrabold text-sm uppercase tracking-wider">2. Custos Variáveis sobre a Venda (%)</h4>
+                    <p className="text-[11px] text-gray-500">Impostos, comissões e taxas incidentes no faturamento</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-1">
+                  <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                    <label className="text-[11px] uppercase font-bold text-gray-700">
+                      Impostos sobre a Nota Fiscal (%)
+                    </label>
+                    <p className="text-[10px] text-gray-400">Ex: Simples Nacional, MEI, ICMS/ISS (ex: 6%)</p>
+                    <div className="relative mt-1">
+                      <input 
+                        type="number" 
+                        step="0.1" 
+                        min="0" 
+                        max="100"
+                        value={pricingRules.taxRatePct} 
+                        onChange={e => handlePricingRuleChange('taxRatePct', parseFloat(e.target.value) || 0)}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                      />
+                      <span className="absolute right-3 top-2.5 text-gray-400 font-bold text-sm">%</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                    <label className="text-[11px] uppercase font-bold text-gray-700">
+                      Taxas de Maquininha / Gateway (%)
+                    </label>
+                    <p className="text-[10px] text-gray-400">Taxa média de cartão de crédito/débito/PIX (ex: 4%)</p>
+                    <div className="relative mt-1">
+                      <input 
+                        type="number" 
+                        step="0.1" 
+                        min="0" 
+                        max="100"
+                        value={pricingRules.gatewayFeePct} 
+                        onChange={e => handlePricingRuleChange('gatewayFeePct', parseFloat(e.target.value) || 0)}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                      />
+                      <span className="absolute right-3 top-2.5 text-gray-400 font-bold text-sm">%</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                    <label className="text-[11px] uppercase font-bold text-gray-700">
+                      Comissões Vendedores / Marketplaces (%)
+                    </label>
+                    <p className="text-[10px] text-gray-400">Comissão de vendas ou taxas de marketplace (ex: 0% a 15%)</p>
+                    <div className="relative mt-1">
+                      <input 
+                        type="number" 
+                        step="0.1" 
+                        min="0" 
+                        max="100"
+                        value={pricingRules.commissionPct} 
+                        onChange={e => handlePricingRuleChange('commissionPct', parseFloat(e.target.value) || 0)}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                      />
+                      <span className="absolute right-3 top-2.5 text-gray-400 font-bold text-sm">%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bloco 3: Despesas Fixas e Estruturais */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                  <div className="flex items-center gap-2 text-slate-800">
+                    <Building2 className="text-purple-600" size={20} />
+                    <div>
+                      <h4 className="font-extrabold text-sm uppercase tracking-wider">3. Despesas Fixas e Estruturais da Loja (R$/mês)</h4>
+                      <p className="text-[11px] text-gray-500">Discrimine aluguel, luz, salários e contas mensais para calcular a taxa de rateio proporcional ao faturamento</p>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="button" 
+                    onClick={handleSavePricingRules}
+                    className="flex items-center justify-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all shadow-xs shrink-0"
+                  >
+                    <Save size={15} />
+                    <span>SALVAR DESPESAS FIXAS</span>
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    
+                    <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                      <label className="text-[11px] uppercase font-bold text-gray-700 flex items-center gap-1.5">
+                        <Home size={14} className="text-purple-600" /> Aluguel do Espaço / Loja (R$/mês)
+                      </label>
+                      <p className="text-[10px] text-gray-400">Aluguel da loja, galpão ou estúdio</p>
+                      <div className="relative mt-1">
+                        <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-sm">R$</span>
+                        <input 
+                          type="number" 
+                          step="50" 
+                          min="0" 
+                          value={pricingRules.rentCostMonthly} 
+                          onChange={e => handlePricingRuleChange('rentCostMonthly', parseFloat(e.target.value) || 0)}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pr-3 pl-10 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                      <label className="text-[11px] uppercase font-bold text-gray-700 flex items-center gap-1.5">
+                        <Zap size={14} className="text-amber-500" /> Luz, Água & Internet (R$/mês)
+                      </label>
+                      <p className="text-[10px] text-gray-400">Energia elétrica, água, internet e telefone</p>
+                      <div className="relative mt-1">
+                        <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-sm">R$</span>
+                        <input 
+                          type="number" 
+                          step="20" 
+                          min="0" 
+                          value={pricingRules.utilitiesCostMonthly} 
+                          onChange={e => handlePricingRuleChange('utilitiesCostMonthly', parseFloat(e.target.value) || 0)}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pr-3 pl-10 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                      <label className="text-[11px] uppercase font-bold text-gray-700 flex items-center gap-1.5">
+                        <Users size={14} className="text-blue-600" /> Salários & Pró-labore (R$/mês)
+                      </label>
+                      <p className="text-[10px] text-gray-400">Salário de funcionários e retirada dos sócios</p>
+                      <div className="relative mt-1">
+                        <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-sm">R$</span>
+                        <input 
+                          type="number" 
+                          step="100" 
+                          min="0" 
+                          value={pricingRules.salariesCostMonthly} 
+                          onChange={e => handlePricingRuleChange('salariesCostMonthly', parseFloat(e.target.value) || 0)}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pr-3 pl-10 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                      <label className="text-[11px] uppercase font-bold text-gray-700 flex items-center gap-1.5">
+                        <Megaphone size={14} className="text-rose-600" /> Marketing & Anúncios (R$/mês)
+                      </label>
+                      <p className="text-[10px] text-gray-400">Tráfego pago Meta/Google Ads, anúncios e influenciadores</p>
+                      <div className="relative mt-1">
+                        <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-sm">R$</span>
+                        <input 
+                          type="number" 
+                          step="50" 
+                          min="0" 
+                          value={pricingRules.marketingCostMonthly} 
+                          onChange={e => handlePricingRuleChange('marketingCostMonthly', parseFloat(e.target.value) || 0)}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pr-3 pl-10 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                      <label className="text-[11px] uppercase font-bold text-gray-700 flex items-center gap-1.5">
+                        <Laptop size={14} className="text-indigo-600" /> Sistemas & Contabilidade (R$/mês)
+                      </label>
+                      <p className="text-[10px] text-gray-400">ERP (Bling/Tiny), plataforma, domínio e honorários do contador</p>
+                      <div className="relative mt-1">
+                        <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-sm">R$</span>
+                        <input 
+                          type="number" 
+                          step="20" 
+                          min="0" 
+                          value={pricingRules.softwareAccountingCostMonthly} 
+                          onChange={e => handlePricingRuleChange('softwareAccountingCostMonthly', parseFloat(e.target.value) || 0)}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pr-3 pl-10 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                      <label className="text-[11px] uppercase font-bold text-gray-700 flex items-center gap-1.5">
+                        <Building2 size={14} className="text-gray-600" /> Outras Despesas Fixas (R$/mês)
+                      </label>
+                      <p className="text-[10px] text-gray-400">Manutenção, taxas administrativas e despesas diversas</p>
+                      <div className="relative mt-1">
+                        <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-sm">R$</span>
+                        <input 
+                          type="number" 
+                          step="50" 
+                          min="0" 
+                          value={pricingRules.otherFixedCostsMonthly} 
+                          onChange={e => handlePricingRuleChange('otherFixedCostsMonthly', parseFloat(e.target.value) || 0)}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pr-3 pl-10 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-purple-900 text-white rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <span className="text-[11px] text-purple-200 uppercase font-extrabold tracking-wider block">Faturamento Mensal Estimado da Loja (R$)</span>
+                      <p className="text-[10px] text-purple-300">Estimativa do total vendido no mês para rateio proporcional dos custos fixos</p>
+                    </div>
+
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <div className="relative w-40">
+                        <span className="absolute left-3 top-2 text-purple-300 font-bold text-xs">R$</span>
+                        <input 
+                          type="number" 
+                          step="1000" 
+                          min="1" 
+                          value={pricingRules.estimatedMonthlyRevenue} 
+                          onChange={e => handlePricingRuleChange('estimatedMonthlyRevenue', parseFloat(e.target.value) || 1)}
+                          className="w-full bg-purple-950 border border-purple-700 text-white font-extrabold text-sm rounded-lg py-1.5 pl-9 pr-2 focus:border-purple-400 outline-none"
+                        />
+                      </div>
+
+                      {(() => {
+                        const totalFixed = (pricingRules.rentCostMonthly || 0) + 
+                          (pricingRules.utilitiesCostMonthly || 0) + 
+                          (pricingRules.salariesCostMonthly || 0) + 
+                          (pricingRules.marketingCostMonthly || 0) + 
+                          (pricingRules.softwareAccountingCostMonthly || 0) + 
+                          (pricingRules.otherFixedCostsMonthly || 0);
+                        const rev = pricingRules.estimatedMonthlyRevenue || 1;
+                        const calculatedPct = (totalFixed / rev) * 100;
+                        return (
+                          <div className="bg-purple-950/80 px-4 py-2 rounded-lg border border-purple-700/60 text-right">
+                            <span className="text-[10px] text-purple-300 block uppercase font-bold">Taxa de Rateio Gerada:</span>
+                            <span className="text-lg font-black text-emerald-400">
+                              {calculatedPct.toFixed(1)}% <span className="text-[10px] text-purple-300 font-normal">(R$ {totalFixed.toLocaleString('pt-BR')} /mês)</span>
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bloco 4: Margem de Lucro */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2 text-slate-800 pb-2 border-b border-slate-200">
+                  <TrendingUp className="text-emerald-600" size={20} />
+                  <div>
+                    <h4 className="font-extrabold text-sm uppercase tracking-wider">4. Margem de Lucro Desejada (%)</h4>
+                    <p className="text-[11px] text-gray-500">Lucro líquido limpo no bolso após pagar todos os custos e impostos</p>
+                  </div>
+                </div>
+
+                <div className="max-w-md bg-white p-4 rounded-xl border border-gray-200/80 space-y-2">
+                  <label className="text-[11px] uppercase font-bold text-gray-700">
+                    Margem de Lucro Líquido Desejada (%)
+                  </label>
+                  <p className="text-[10px] text-gray-400">Recomendado entre 15% e 30% dependendo do segmento</p>
+                  <div className="relative mt-1">
+                    <input 
+                      type="number" 
+                      step="0.5" 
+                      min="0" 
+                      max="100"
+                      value={pricingRules.desiredProfitPct} 
+                      onChange={e => handlePricingRuleChange('desiredProfitPct', parseFloat(e.target.value) || 0)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 pl-3 pr-8 text-sm focus:border-emerald-500 outline-none font-black text-emerald-700"
+                    />
+                    <span className="absolute right-3 top-3 text-emerald-600 font-bold text-sm">%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Simulation Box / DRE Demonstrativo */}
+              {(() => {
+                const simResult = calculateSuggestedPrice(simCost, pricingRules);
+                return (
+                  <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md border border-slate-800 space-y-5">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                      <div>
+                        <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                          <TrendingUp size={16} /> Simulação de Preço e DRE do Produto
+                        </div>
+                        <h4 className="text-base font-extrabold text-white mt-1">Demonstrativo de Formação de Preço de Venda</h4>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-300 font-medium">Matéria-prima / Fornecedor Teste:</span>
+                        <div className="relative w-36">
+                          <span className="absolute left-2.5 top-2 text-slate-400 font-bold text-xs">R$</span>
+                          <input 
+                            type="number" 
+                            value={simCost} 
+                            onChange={e => setSimCost(parseFloat(e.target.value) || 0)}
+                            className="w-full bg-slate-950 border border-slate-700 text-white font-bold text-xs rounded-lg py-1.5 pl-8 pr-2 focus:border-emerald-400 outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                      <div className="bg-slate-950/90 p-4 rounded-xl border border-slate-800 space-y-1.5">
+                        <span className="text-slate-400 font-extrabold uppercase text-[10px] block">Custo Direto do Produto:</span>
+                        <span className="text-xl font-extrabold text-white block">
+                          R$ {simResult.totalDirectCost.toFixed(2).replace('.', ',')}
+                        </span>
+                        <div className="text-[10px] text-slate-400 space-y-0.5 pt-1 border-t border-slate-800">
+                          <div>• Item/Matéria-prima: R$ {simResult.baseCost.toFixed(2)}</div>
+                          <div>• Embalagem/Etiqueta: R$ {simResult.packagingCost.toFixed(2)}</div>
+                          <div>• Frete de Entrada: R$ {simResult.shippingInCost.toFixed(2)}</div>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-950/90 p-4 rounded-xl border border-slate-800 space-y-1.5">
+                        <span className="text-slate-400 font-extrabold uppercase text-[10px] block">Taxas e Rateios Impostos:</span>
+                        <span className="text-xl font-extrabold text-amber-400 block">
+                          {simResult.sumPct.toFixed(1)}% <span className="text-xs text-slate-400 font-normal">das vendas</span>
+                        </span>
+                        <div className="text-[10px] text-slate-400 space-y-0.5 pt-1 border-t border-slate-800">
+                          <div>• Imposto NF: {simResult.taxRatePct}% (R$ {simResult.taxAmount.toFixed(2)})</div>
+                          <div>• Maquininha: {simResult.gatewayFeePct}% (R$ {simResult.gatewayFeeAmount.toFixed(2)})</div>
+                          <div>• Comissão: {simResult.commissionPct}% (R$ {simResult.commissionAmount.toFixed(2)})</div>
+                          <div>• Fixos (Aluguel/Luz/Salários): {simResult.effectiveFixedCostPct.toFixed(1)}% (R$ {simResult.fixedCostAmount.toFixed(2)})</div>
+                        </div>
+                      </div>
+
+                      <div className="bg-emerald-950/50 p-4 rounded-xl border border-emerald-800/80 space-y-1.5">
+                        <span className="text-emerald-400 font-extrabold uppercase text-[10px] block">Preço de Venda Sugerido:</span>
+                        <span className="text-3xl font-black text-emerald-400 block">
+                          R$ {simResult.suggestedPrice.toFixed(2).replace('.', ',')}
+                        </span>
+                        <p className="text-[10px] text-emerald-200 pt-1 border-t border-emerald-900">
+                          Preço final no catálogo cobrindo 100% das despesas e gerando lucro desejado.
+                        </p>
+                      </div>
+
+                      <div className="bg-slate-950/90 p-4 rounded-xl border border-slate-800 space-y-1.5">
+                        <span className="text-slate-400 font-extrabold uppercase text-[10px] block">Lucro Líquido Limpo:</span>
+                        <span className="text-xl font-extrabold text-green-400 block">
+                          R$ {simResult.profitAmount.toFixed(2).replace('.', ',')}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block pt-1 border-t border-slate-800">
+                          Margem Real de {simResult.profitMarginRealPct.toFixed(1)}% limpa sobre o preço de venda.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-end gap-4">
+                <button type="submit" className="flex items-center justify-center gap-2 w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-6 py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all shadow-md">
+                  <Save size={18} /> Salvar Regras de Precificação
+                </button>
+              </div>
+            </form>
           </div>
         )}
 

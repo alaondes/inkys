@@ -92,6 +92,13 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           )}
         </AnimatePresence>
         
+        {product.compareAtPrice && product.compareAtPrice > product.price && (
+          <div className="absolute left-2 top-2 bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md z-20 uppercase tracking-wider flex items-center gap-1">
+            <span>🔥</span>
+            <span>{Math.round((1 - product.price / product.compareAtPrice) * 100)}% OFF</span>
+          </div>
+        )}
+        
         <button 
           onClick={handleShare}
           title="Compartilhar Produto"
@@ -145,8 +152,13 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           
           <div className="mb-3 w-full text-center flex flex-col items-center">
             {product.compareAtPrice && product.compareAtPrice > product.price && (
-              <div className="text-[11px] sm:text-xs font-medium text-gray-400 line-through decoration-gray-300 mb-0.5">
-                {formatPrice(product.compareAtPrice)}
+              <div className="flex items-center justify-center gap-1.5 mb-1">
+                <span className="text-[11px] sm:text-xs font-medium text-gray-400 line-through decoration-gray-300">
+                  De {formatPrice(product.compareAtPrice)}
+                </span>
+                <span className="bg-red-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-wider">
+                  {Math.round((1 - product.price / product.compareAtPrice) * 100)}% OFF
+                </span>
               </div>
             )}
             

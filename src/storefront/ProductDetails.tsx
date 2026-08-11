@@ -312,20 +312,29 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
             </div>
 
             <div className="mb-6">
-              <div className="text-4xl font-bold leading-none mb-1" style={{ color: settings.buyButtonColor }}>
-                {formatPrice(pixPrice)} <span className="text-sm font-normal">no pix</span>
-              </div>
-              <div className="text-sm text-gray-500 mb-2">com {Math.round(pixDiscount * 100)}% de desconto</div>
-              
               {product.compareAtPrice && product.compareAtPrice > product.price && (
-                <div className="text-base font-bold text-gray-800 line-through decoration-gray-400">
-                  {formatPrice(product.compareAtPrice)}
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-sm sm:text-base font-medium text-gray-400 line-through decoration-gray-400">
+                    De {formatPrice(product.compareAtPrice)}
+                  </span>
+                  <span className="bg-red-600 text-white text-xs font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                    {Math.round((1 - product.price / product.compareAtPrice) * 100)}% OFF
+                  </span>
                 </div>
               )}
-              
-              <div className="text-base font-bold text-gray-800">
-                {formatPrice(product.price)}
+
+              <div className="text-3xl sm:text-4xl font-bold leading-none mb-1" style={{ color: settings.buyButtonColor }}>
+                {formatPrice(pixPrice)} <span className="text-sm font-normal">no pix</span>
               </div>
+              
+              <div className="text-sm text-gray-500 mb-2">
+                (com {Math.round(pixDiscount * 100)}% de desconto no PIX)
+              </div>
+              
+              <div className="text-sm font-bold text-gray-700 mb-1">
+                ou {formatPrice(product.price)} no cartão
+              </div>
+              
               {settings.paymentMethods?.credit && (
                 <div className="text-sm text-gray-600">
                   até <span className="font-bold">{installments}x</span> de <span className="font-bold">{formatPrice(installmentPrice)}</span> sem juros

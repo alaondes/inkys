@@ -5,6 +5,7 @@ export interface Product {
   description: string;
   price: number;
   costPrice?: number;
+  packagingCost?: number;
   compareAtPrice?: number;
   sku?: string;
   image: string;

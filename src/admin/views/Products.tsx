@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft, Tags, CheckCircle, Loader2, Barcode } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft, Tags, CheckCircle, Loader2, Barcode, Calculator, Sparkles, TrendingUp, DollarSign, Info, PieChart, Receipt, Package, Building2 } from 'lucide-react';
 import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import { formatPrice, Product } from '../../data/products';
 import { useProducts } from '../../context/ProductContext';
 import { useSettings } from '../../context/SettingsContext';
+import { calculateSuggestedPrice, calculateActualProductProfitability } from '../../lib/pricingUtils';
 import { toast } from 'react-hot-toast';
 
 const maskBRLCurrency = (val: string): string => {
@@ -38,6 +39,7 @@ export function Products() {
   const [skuCategory, setSkuCategory] = useState('');
   const [overwriteSkus, setOverwriteSkus] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [profitModalProduct, setProfitModalProduct] = useState<Product | null>(null);
   const [initialCategory, setInitialCategory] = useState('');
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -367,7 +369,7 @@ export function Products() {
   };
 
   const currentProductEmptyTemplate: Partial<Product> = {
-    name: '', category: '', sku: '', description: '', price: 0, costPrice: undefined, compareAtPrice: undefined, image: '', colors: []
+    name: '', category: '', sku: '', description: '', price: 0, costPrice: undefined, packagingCost: undefined, compareAtPrice: undefined, image: '', colors: []
   };
 
   const [formData, setFormData] = useState<Partial<Product>>(currentProductEmptyTemplate);
@@ -457,7 +459,24 @@ export function Products() {
     
     // Auto-fallback main image to first gallery image if main image is empty/not set
     const mainImage = formData.image || (formData.gallery && formData.gallery[0]) || '';
-    const finalFormData = { ...formData, image: mainImage };
+    
+    // Normalize promotional price & regular selling price
+    let pSelling = formData.price || 0;
+    let pCompare = formData.compareAtPrice;
+
+    if (pCompare !== undefined && pCompare > 0 && pSelling > 0) {
+      if (pCompare < pSelling) {
+        // If user typed lower price in compareAtPrice (or vice-versa), normalize so
+        // price = effective selling price (lower) and compareAtPrice = original list price (higher)
+        const temp = pSelling;
+        pSelling = pCompare;
+        pCompare = temp;
+      } else if (pCompare === pSelling) {
+        pCompare = undefined;
+      }
+    }
+
+    const finalFormData = { ...formData, price: pSelling, compareAtPrice: pCompare, image: mainImage };
 
     const loadToast = toast.loading(editingProduct ? 'Salvando alterações...' : 'Criando produto...');
     try {
@@ -518,6 +537,41 @@ export function Products() {
         if (err.message) errorMsg += ` Detalhes: ${err.message}`;
       }
       toast.error(errorMsg, { id: loadToast });
+    }
+  };
+
+  const handleRecalculateAllPrices = async () => {
+    if (!localProducts || localProducts.length === 0) {
+      toast.error('Nenhum produto cadastrado para recalcular.');
+      return;
+    }
+
+    const confirm = window.confirm(`Deseja recalcular e aplicar o preço de venda sugerido para todos os ${localProducts.length} produtos da loja com base nas regras ativas de precificação?`);
+    if (!confirm) return;
+
+    const loadToast = toast.loading('Recalculando preços com base na precificação fixa...');
+    try {
+      let updatedCount = 0;
+      const updatedProducts = localProducts.map(p => {
+        if (p.costPrice !== undefined && p.costPrice > 0) {
+          const calc = calculateSuggestedPrice(p.costPrice, settings?.pricingRules, p.packagingCost);
+          if (calc.suggestedPrice > 0) {
+            updatedCount++;
+            return {
+              ...p,
+              price: Math.round(calc.suggestedPrice * 100) / 100
+            };
+          }
+        }
+        return p;
+      });
+
+      setLocalProducts(updatedProducts);
+      await setProducts(updatedProducts);
+      toast.success(`Preço recalculado e aplicado em ${updatedCount} produtos!`, { id: loadToast });
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao recalcular preços dos produtos.', { id: loadToast });
     }
   };
 
@@ -744,7 +798,7 @@ export function Products() {
             Total: {localProducts.length}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button 
             onClick={() => setIsSkuModalOpen(true)}
             className="flex items-center gap-2 bg-gray-100 text-gray-700 border border-gray-200 px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider hover:bg-gray-200 transition-all"
@@ -814,7 +868,8 @@ export function Products() {
                 <th className="p-4 font-bold">Produto</th>
                 <th className="p-4 font-bold">Categoria</th>
                 <th className="p-4 font-bold">Estoque</th>
-                <th className="p-4 font-bold">Preço</th>
+                <th className="p-4 font-bold">Preço Venda</th>
+                <th className="p-4 font-bold">Custo Total & Lucro</th>
                 <th className="p-4 font-bold text-right">Ações</th>
               </tr>
             </thead>
@@ -822,7 +877,7 @@ export function Products() {
               {productCategories.map(category => (
                 <React.Fragment key={category}>
                   <tr className="bg-gray-100/60 border-y border-gray-200">
-                    <td colSpan={5} className="px-4 py-2.5">
+                    <td colSpan={6} className="px-4 py-2.5">
                       <div className="flex items-center gap-3">
                         <span className="font-bold text-gray-800 text-xs tracking-wider uppercase">
                           {category}
@@ -835,6 +890,7 @@ export function Products() {
                   </tr>
                   {groupedProducts[category].map((product) => {
                     const index = filteredProducts.indexOf(product);
+                    const prof = calculateActualProductProfitability(product.price, product.costPrice || 0, settings?.pricingRules, product.packagingCost);
                     return (
                 <tr key={product.id} className="hover:bg-gray-50 transition-colors group">
                   <td className="p-4 flex items-center gap-3">
@@ -869,16 +925,45 @@ export function Products() {
                     )}
                   </td>
                   <td className="p-4 text-sm font-bold">
-                    <div className="text-[var(--color-primary)] font-bold">{formatPrice(product.price)}</div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[var(--color-primary)] font-extrabold text-base">{formatPrice(product.price)}</span>
+                      {product.compareAtPrice && product.compareAtPrice > product.price && (
+                        <span className="bg-red-100 text-red-700 text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                          {Math.round((1 - product.price / product.compareAtPrice) * 100)}% OFF
+                        </span>
+                      )}
+                    </div>
+                    {product.compareAtPrice && product.compareAtPrice > product.price && (
+                      <div className="text-[10px] text-gray-400 line-through font-medium">
+                        De: {formatPrice(product.compareAtPrice)}
+                      </div>
+                    )}
                     {product.costPrice !== undefined && product.costPrice > 0 ? (
-                      <div className="text-[10px] text-gray-500 font-semibold mt-0.5" title="Preço de custo para relatórios financeiro e DRE">
-                        Custo: {formatPrice(product.costPrice)}
+                      <div className="text-[10px] text-gray-500 font-semibold mt-0.5" title="Preço de aquisição no fornecedor">
+                        Item: {formatPrice(product.costPrice)}
                       </div>
                     ) : (
                       <div className="text-[10px] text-gray-400 font-normal mt-0.5" title="Custo não informado">
-                        Custo n/d
+                        Item: n/d
                       </div>
                     )}
+                  </td>
+                  <td className="p-4 text-xs">
+                    <div className="flex flex-col gap-0.5">
+                      <div className="text-[11px] font-bold text-gray-800">
+                        Custo Tot: <span className="font-black text-slate-900">R$ {prof.totalCost.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                      <div className={`text-[11px] font-extrabold ${prof.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        Lucro: R$ {prof.netProfit.toFixed(2).replace('.', ',')} <span className="text-[10px] font-bold bg-emerald-50 px-1 py-0.2 rounded border border-emerald-100">({prof.marginPct.toFixed(1)}%)</span>
+                      </div>
+                      <button 
+                        onClick={() => setProfitModalProduct(product)}
+                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-1 hover:underline"
+                        title="Abrir Demonstrativo de Formação de Preço e Lucro DRE"
+                      >
+                        <PieChart size={12} /> Ver DRE do Item
+                      </button>
+                    </div>
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -921,7 +1006,7 @@ export function Products() {
               );
             })}
             <tr className="bg-gray-50/50">
-              <td colSpan={5} className="px-4 py-3 text-center border-t border-gray-100 border-b border-gray-200">
+              <td colSpan={6} className="px-4 py-3 text-center border-t border-gray-100 border-b border-gray-200">
                 <button 
                   onClick={() => handleOpenModal(undefined, category)}
                   className="text-[11px] font-bold text-[var(--color-primary)] hover:text-[var(--color-primary-dark)] flex items-center justify-center gap-1.5 w-full uppercase tracking-wider transition-colors"
@@ -1030,7 +1115,7 @@ export function Products() {
                   <span className="text-base font-extrabold text-[var(--color-primary)]">{formatPrice(product.price)}</span>
                   {product.costPrice !== undefined && product.costPrice > 0 && (
                     <span className="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded border border-gray-200" title="Custo de produção/aquisição">
-                      Custo: {formatPrice(product.costPrice)}
+                      Item: {formatPrice(product.costPrice)}
                     </span>
                   )}
                   {product.stock !== undefined && (
@@ -1041,6 +1126,32 @@ export function Products() {
                 </div>
               </div>
             </div>
+
+            {/* Resumo de Lucro Mobile */}
+            {(() => {
+              const prof = calculateActualProductProfitability(product.price, product.costPrice || 0, settings?.pricingRules, product.packagingCost);
+              return (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-[9px] text-gray-400 font-bold uppercase block">Custo Total Absoluto</span>
+                    <span className="font-extrabold text-slate-800">R$ {prof.totalCost.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-gray-400 font-bold uppercase block">Lucro Líquido Real</span>
+                    <span className={`font-black ${prof.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      R$ {prof.netProfit.toFixed(2).replace('.', ',')} ({prof.marginPct.toFixed(1)}%)
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setProfitModalProduct(product)}
+                    className="p-1.5 bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 rounded-lg shrink-0 flex items-center gap-1 text-[10px] font-bold"
+                    title="Ver DRE Completo"
+                  >
+                    <PieChart size={14} /> DRE
+                  </button>
+                </div>
+              );
+            })()}
 
             {/* Ações em Mobile */}
             <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
@@ -1192,7 +1303,7 @@ export function Products() {
                     </select>
                   </div>
 
-                  <div className="space-y-1">
+                  <div className="space-y-1 col-span-2 sm:col-span-1">
                     <label className="text-[10px] uppercase font-bold text-gray-500">Preço Venda (R$)</label>
                     <input 
                       required 
@@ -1203,13 +1314,38 @@ export function Products() {
                         setFormData({...formData, price: numericValue});
                       }} 
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-bold" 
+                      placeholder="Ex: 36,90"
                     />
                   </div>
 
-                  <div className="space-y-1">
+                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] uppercase font-bold text-red-600 flex items-center gap-1">
+                        <span>Valor Promocional (R$)</span>
+                      </label>
+                      <span className="text-[9px] text-gray-400 font-semibold lowercase">(Preço De / riscado)</span>
+                    </div>
+                    <input 
+                      type="text" 
+                      value={formData.compareAtPrice !== undefined && formData.compareAtPrice > 0 ? maskBRLCurrency(Math.round(formData.compareAtPrice * 100).toString()) : ''} 
+                      onChange={e => {
+                        const raw = e.target.value;
+                        if (raw === '') {
+                          setFormData({...formData, compareAtPrice: undefined});
+                        } else {
+                          const numericValue = parseBRLCurrency(raw);
+                          setFormData({...formData, compareAtPrice: numericValue});
+                        }
+                      }} 
+                      className="w-full bg-red-50/40 border border-red-200/80 rounded-lg p-3 text-sm focus:border-red-500 outline-none font-semibold" 
+                      placeholder="Ex: 49,90 (Opcional)"
+                    />
+                  </div>
+
+                  <div className="space-y-1 col-span-2 sm:col-span-1">
                     <div className="flex justify-between items-center">
                       <label className="text-[10px] uppercase font-bold text-gray-500">Preço de Custo (R$)</label>
-                      <span className="text-[9px] text-gray-400 font-semibold lowercase">(Apenas p/ Relatórios)</span>
+                      <span className="text-[9px] text-gray-400 font-semibold lowercase">(fornecedor)</span>
                     </div>
                     <input 
                       type="text" 
@@ -1224,28 +1360,146 @@ export function Products() {
                         }
                       }} 
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
-                      placeholder="Ex: 15,00 (Opcional)"
+                      placeholder="Ex: 12,00 (Opcional)"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-gray-500">Preço Original / Sem Desconto (R$)</label>
+                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] uppercase font-bold text-gray-500">Custo Embalagem (R$)</label>
+                      <span className="text-[9px] text-gray-400 font-semibold lowercase">
+                        (Padrão: R$ {(settings?.pricingRules?.defaultPackagingCost ?? 2).toFixed(2).replace('.', ',')})
+                      </span>
+                    </div>
                     <input 
                       type="text" 
-                      value={formData.compareAtPrice !== undefined ? maskBRLCurrency(Math.round(formData.compareAtPrice * 100).toString()) : ''} 
+                      value={formData.packagingCost !== undefined && formData.packagingCost > 0 ? maskBRLCurrency(Math.round(formData.packagingCost * 100).toString()) : ''} 
                       onChange={e => {
                         const raw = e.target.value;
                         if (raw === '') {
-                          setFormData({...formData, compareAtPrice: undefined});
+                          setFormData({...formData, packagingCost: undefined});
                         } else {
                           const numericValue = parseBRLCurrency(raw);
-                          setFormData({...formData, compareAtPrice: numericValue});
+                          setFormData({...formData, packagingCost: numericValue});
                         }
                       }} 
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
-                      placeholder="Opcional"
+                      placeholder={`Ex: ${(settings?.pricingRules?.defaultPackagingCost ?? 2.00).toFixed(2).replace('.', ',')} (Opcional)`}
                     />
                   </div>
+
+                  {/* Indicador de Oferta / Valor Promocional Ativo */}
+                  {(() => {
+                    const p1 = formData.price || 0;
+                    const p2 = formData.compareAtPrice || 0;
+                    if (p1 > 0 && p2 > 0 && p1 !== p2) {
+                      const original = Math.max(p1, p2);
+                      const promo = Math.min(p1, p2);
+                      const discountPct = Math.round((1 - promo / original) * 100);
+                      const savings = original - promo;
+                      return (
+                        <div className="col-span-2 bg-gradient-to-r from-red-50 via-amber-50 to-orange-50 border border-red-200 rounded-2xl p-3.5 flex items-center justify-between flex-wrap gap-2 text-xs shadow-xs">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
+                              🔥
+                            </div>
+                            <div>
+                              <div className="font-extrabold text-red-950 flex items-center gap-2">
+                                <span>Valor Promocional Ativo</span>
+                                <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                  {discountPct}% OFF
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-red-800 font-medium mt-0.5">
+                                Preço no site: <strong className="font-black text-red-950">R$ {promo.toFixed(2).replace('.', ',')}</strong> (Preço riscado: <span className="line-through">R$ {original.toFixed(2).replace('.', ',')}</span> - Economia de R$ {savings.toFixed(2).replace('.', ',')})
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {/* Sugestão de Precificação Fixa */}
+                  {formData.costPrice !== undefined && formData.costPrice > 0 && (() => {
+                    const calc = calculateSuggestedPrice(formData.costPrice, settings.pricingRules, formData.packagingCost);
+                    const isCurrentPriceEqual = Math.abs((formData.price || 0) - calc.suggestedPrice) < 0.05;
+                    return (
+                      <div className="col-span-2 bg-gradient-to-r from-blue-50 via-slate-50 to-emerald-50 border border-blue-200/80 rounded-2xl p-4 shadow-sm space-y-3">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 bg-blue-600 text-white rounded-lg shadow-sm">
+                              <Calculator size={16} />
+                            </div>
+                            <div>
+                              <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-900 block">
+                                Formação de Preço Inteligente
+                              </span>
+                              <span className="text-[10px] text-gray-500">
+                                Regras ativas: Taxas, Impostos, Custo Fixo & Margem ({calc.sumPct.toFixed(1)}%)
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const suggestedFormatted = Math.round(calc.suggestedPrice * 100) / 100;
+                              setFormData(prev => ({ ...prev, price: suggestedFormatted }));
+                              toast.success(`Preço R$ ${suggestedFormatted.toFixed(2).replace('.', ',')} aplicado!`);
+                            }}
+                            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                              isCurrentPriceEqual 
+                                ? 'bg-emerald-600 text-white cursor-default' 
+                                : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95'
+                            }`}
+                          >
+                            {isCurrentPriceEqual ? (
+                              <>
+                                <CheckCircle size={14} /> Preço Sugerido Aplicado
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles size={14} /> Aplicar Preço Sugerido (R$ {calc.suggestedPrice.toFixed(2).replace('.', ',')})
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-blue-100/80 text-[11px]">
+                          <div className="bg-white/90 p-2.5 rounded-xl border border-gray-100 shadow-2xs space-y-0.5">
+                            <span className="text-gray-400 block text-[9px] uppercase font-bold">Custo Direto Total:</span>
+                            <span className="font-bold text-gray-900 block">R$ {calc.totalDirectCost.toFixed(2).replace('.', ',')}</span>
+                            <span className="text-[9px] text-gray-400 block">
+                              (Item: R${calc.baseCost.toFixed(2)} + Emb: R${calc.packagingCost.toFixed(2)})
+                            </span>
+                          </div>
+                          <div className="bg-white/90 p-2.5 rounded-xl border border-gray-100 shadow-2xs space-y-0.5">
+                            <span className="text-gray-400 block text-[9px] uppercase font-bold">Impostos & Taxas:</span>
+                            <span className="font-bold text-amber-700 block">R$ {(calc.taxAmount + calc.gatewayFeeAmount + calc.commissionAmount).toFixed(2).replace('.', ',')}</span>
+                            <span className="text-[9px] text-gray-400 block">
+                              (NF: {calc.taxRatePct}% | Maq: {calc.gatewayFeePct}%)
+                            </span>
+                          </div>
+                          <div className="bg-white/90 p-2.5 rounded-xl border border-gray-100 shadow-2xs space-y-0.5">
+                            <span className="text-gray-400 block text-[9px] uppercase font-bold">Rateio Fixos (Aluguel/Luz/Sal):</span>
+                            <span className="font-bold text-purple-700 block">R$ {calc.fixedCostAmount.toFixed(2).replace('.', ',')}</span>
+                            <span className="text-[9px] text-purple-600 block">
+                              ({calc.effectiveFixedCostPct.toFixed(1)}% do preço)
+                            </span>
+                          </div>
+                          <div className="bg-white/90 p-2.5 rounded-xl border border-gray-100 shadow-2xs space-y-0.5">
+                            <span className="text-gray-400 block text-[9px] uppercase font-bold">Lucro Líquido Limpo:</span>
+                            <span className="font-extrabold text-emerald-600 block">R$ {calc.profitAmount.toFixed(2).replace('.', ',')}</span>
+                            <span className="text-[9px] text-emerald-600 font-bold block">
+                              ({calc.profitMarginRealPct.toFixed(1)}% de margem)
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="space-y-1">
                     <label className="text-[10px] uppercase font-bold text-gray-500">Desconto PIX (%)</label>
@@ -1847,6 +2101,124 @@ export function Products() {
                   <p className="text-sm text-gray-500 text-center py-4">Nenhuma categoria cadastrada.</p>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Detalhamento de Lucro e Custo Total do Produto (DRE) */}
+      {profitModalProduct && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 space-y-6 relative overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black">
+                  <PieChart size={22} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-lg text-gray-900">Formação de Preço e Lucro</h3>
+                  <p className="text-xs text-gray-500 font-medium">{profitModalProduct.name} {profitModalProduct.sku ? `(${profitModalProduct.sku})` : ''}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setProfitModalProduct(null)} 
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Analysis Body */}
+            {(() => {
+              const prof = calculateActualProductProfitability(profitModalProduct.price, profitModalProduct.costPrice || 0, settings?.pricingRules, profitModalProduct.packagingCost);
+              return (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 text-center">
+                    <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-sm">
+                      <span className="text-[10px] text-slate-400 uppercase font-extrabold tracking-wider block">Preço de Venda</span>
+                      <span className="text-2xl font-black text-white">{formatPrice(prof.sellingPrice)}</span>
+                    </div>
+                    <div className="bg-emerald-950 text-white p-4 rounded-2xl border border-emerald-800 shadow-sm">
+                      <span className="text-[10px] text-emerald-300 uppercase font-extrabold tracking-wider block">Lucro Líquido Real</span>
+                      <span className="text-2xl font-black text-emerald-400">R$ {prof.netProfit.toFixed(2).replace('.', ',')}</span>
+                      <span className="text-[10px] text-emerald-200 block font-bold mt-0.5">{prof.marginPct.toFixed(1)}% de margem limpa</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 text-xs">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                      <span className="font-extrabold text-slate-800 uppercase tracking-wider text-[11px]">Custo Total Absoluto</span>
+                      <span className="text-sm font-black text-slate-900">R$ {prof.totalCost.toFixed(2).replace('.', ',')}</span>
+                    </div>
+
+                    <div className="space-y-2 pt-1">
+                      <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                        <span className="text-gray-600 flex items-center gap-1.5 font-medium">
+                          <Package size={14} className="text-blue-600" /> Matéria-prima / Fornecedor
+                        </span>
+                        <span className="font-bold text-gray-900">R$ {prof.baseCost.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                        <span className="text-gray-600 flex items-center gap-1.5 font-medium">
+                          <Package size={14} className="text-blue-500" /> Embalagens e Etiquetas (Fixas)
+                        </span>
+                        <span className="font-bold text-gray-900">R$ {prof.packagingCost.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                      {prof.shippingInCost > 0 && (
+                        <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                          <span className="text-gray-600 flex items-center gap-1.5 font-medium">
+                            <Package size={14} className="text-blue-400" /> Frete de Entrada (Fornecedor)
+                          </span>
+                          <span className="font-bold text-gray-900">R$ {prof.shippingInCost.toFixed(2).replace('.', ',')}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                        <span className="text-gray-600 flex items-center gap-1.5 font-medium">
+                          <Receipt size={14} className="text-amber-600" /> Impostos Nota Fiscal ({settings?.pricingRules?.taxRatePct ?? 6}%)
+                        </span>
+                        <span className="font-bold text-amber-700">R$ {prof.taxAmount.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                        <span className="text-gray-600 flex items-center gap-1.5 font-medium">
+                          <Receipt size={14} className="text-amber-500" /> Taxas de Cartão/PIX ({settings?.pricingRules?.gatewayFeePct ?? 4}%)
+                        </span>
+                        <span className="font-bold text-amber-700">R$ {prof.gatewayFeeAmount.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                      {prof.commissionAmount > 0 && (
+                        <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                          <span className="text-gray-600 flex items-center gap-1.5 font-medium">
+                            <Receipt size={14} className="text-purple-500" /> Comissão de Vendas ({settings?.pricingRules?.commissionPct}%)
+                          </span>
+                          <span className="font-bold text-purple-700">R$ {prof.commissionAmount.toFixed(2).replace('.', ',')}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-gray-600 flex items-center gap-1.5 font-medium">
+                          <Building2 size={14} className="text-purple-600" /> Rateio de Custos Fixos (Aluguel, Luz, Salários)
+                        </span>
+                        <span className="font-bold text-purple-700">R$ {prof.fixedCostAmount.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs text-emerald-950 space-y-1">
+                    <span className="font-extrabold block text-emerald-900">Resultado Financeiro por Unidade:</span>
+                    <p className="text-[11px] text-emerald-800 leading-relaxed">
+                      Ao vender por {formatPrice(prof.sellingPrice)}, você paga o fornecedor, embalagem, impostos, taxas de maquininha e a parcela de aluguel/contas da loja. Sobra <strong className="text-emerald-950 font-extrabold">R$ {prof.netProfit.toFixed(2).replace('.', ',')}</strong> de lucro líquido no seu bolso.
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="pt-2 border-t border-gray-100 flex justify-end">
+              <button
+                onClick={() => setProfitModalProduct(null)}
+                className="bg-gray-900 text-white font-bold text-xs uppercase px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-all cursor-pointer"
+              >
+                Fechar
+              </button>
             </div>
           </div>
         </div>
