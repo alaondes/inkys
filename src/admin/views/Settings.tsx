@@ -1,6 +1,7 @@
+import { useSearchParams } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { CreditCard, Smartphone, Banknote, Save, MessageCircle, Plus, Trash2, Upload, Layout, Palette, Store, Truck, Shield, ShoppingCart, Image, Settings as SettingsIcon, Link, Sparkles, Type, Calculator, Percent, DollarSign, HelpCircle, CheckCircle2, TrendingUp, Package, Receipt, Building2, Zap, Home, Users, PieChart, Megaphone, Laptop } from 'lucide-react';
+import { CreditCard, Smartphone, Banknote, Save, MessageCircle, Plus, Trash2, Upload, Layout, Palette, Store, Truck, Shield, ShoppingCart, Image, Settings as SettingsIcon, Link, Sparkles, Type, Calculator, Percent, DollarSign, HelpCircle, CheckCircle2, TrendingUp, Package, Receipt, Building2, Zap, Home, Users, PieChart, Megaphone, Laptop , ArrowUp, ArrowDown } from 'lucide-react';
 import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import { useSettings } from '../../context/SettingsContext';
 import { useProducts } from '../../context/ProductContext';
@@ -13,7 +14,9 @@ import { storage } from '../../lib/firebase';
 export function AdminSettings() {
   const { settings, updateSettings } = useSettings();
   const { products, setProducts } = useProducts();
-  const [activeTab, setActiveTab] = useState('loja');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'loja';
+  const setActiveTab = (tab: string) => setSearchParams({ tab });
   
   const [primaryColor, setPrimaryColor] = useState(settings.primaryColor);
   const [newPassword, setNewPassword] = useState('');
@@ -103,6 +106,9 @@ export function AdminSettings() {
   });
 
   const [storeFeatures, setStoreFeatures] = useState(settings.storeFeatures || []);
+  const [customMenuLabels, setCustomMenuLabels] = useState<Record<string, string>>(settings.customMenuLabels || {});
+  const [menuOrder, setMenuOrder] = useState<Record<string, string[]>>(settings.menuOrder || {});
+  const [posCustomItemLabel, setPosCustomItemLabel] = useState(settings.posCustomItemLabel || "Personalizáveis");
   const [toastMessage, setToastMessage] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
   useEffect(() => {
@@ -112,6 +118,9 @@ export function AdminSettings() {
     setWhatsappNumber(settings.whatsappNumber);
     setPaymentMethods(settings.paymentMethods);
     setStoreFeatures(settings.storeFeatures || []);
+    setCustomMenuLabels(settings.customMenuLabels || {});
+    setMenuOrder(settings.menuOrder || {});
+    setPosCustomItemLabel(settings.posCustomItemLabel || "Personalizáveis");
     setStorefrontSettings(prev => ({
       ...prev,
       topBarColor: settings.topBarColor || prev.topBarColor,
@@ -257,6 +266,54 @@ export function AdminSettings() {
     showToast('Configurações de frete salvas!');
   };
 
+  const handleMenuLabelChange = (key: string, value: string) => {
+    setCustomMenuLabels(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleSaveMenuLabels = () => {
+    updateSettings({ customMenuLabels, posCustomItemLabel, menuOrder });
+    showToast('Nomes dos menus atualizados com sucesso!');
+  };
+
+  
+  const handleMoveMenu = (groupId: string, itemPath: string, direction: 'up' | 'down') => {
+    setMenuOrder(prev => {
+      const order = prev[groupId] || (
+        [
+          { id: 'vendas', items: ['/admin/pos', '/admin/quotes', '/admin/orders', '/admin/coupons'] },
+          { id: 'producao', items: ['/admin/production', '/admin/products', '/admin/avulsos', '/admin/custom-products'] },
+          { id: 'gestao', items: ['/admin/customers', '/admin/hr', '/admin/users'] },
+          { id: 'financeiro', items: ['/admin', '/admin/financial', '/admin/accounting', '/admin/documents', '/admin/settings'] }
+        ].find(g => g.id === groupId)?.items || []
+      );
+      
+      const newOrder = [...order];
+      const index = newOrder.indexOf(itemPath);
+      if (index === -1) return prev;
+      
+      if (direction === 'up' && index > 0) {
+        newOrder[index] = newOrder[index - 1];
+        newOrder[index - 1] = itemPath;
+      } else if (direction === 'down' && index < newOrder.length - 1) {
+        newOrder[index] = newOrder[index + 1];
+        newOrder[index + 1] = itemPath;
+      }
+      
+      return { ...prev, [groupId]: newOrder };
+    });
+  };
+
+  const handleResetMenuLabels = () => {
+    setCustomMenuLabels({});
+    updateSettings({ customMenuLabels: {}, posCustomItemLabel: "Personalizáveis", menuOrder: {} });
+    setMenuOrder({});
+    setPosCustomItemLabel("Personalizáveis");
+    showToast('Nomes dos menus restaurados para o padrão!');
+  };
+
   const handleSavePassword = (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 6) {
@@ -335,7 +392,7 @@ export function AdminSettings() {
     <div className="flex flex-col lg:flex-row gap-8 max-w-6xl w-full mx-auto animate-in fade-in duration-500">
       
       {/* Sidebar Navigation */}
-      <div className="w-full lg:w-64 shrink-0 space-y-2">
+      <div className="hidden">
         <h2 className="text-2xl font-bold uppercase tracking-widest mb-6 px-2 text-gray-800">Configurações</h2>
         
         <button 
@@ -360,6 +417,14 @@ export function AdminSettings() {
         >
           <Image size={20} />
           <span className="font-bold text-sm uppercase tracking-wider">Banners (Carrossel)</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('menu')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'menu' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+        >
+          <Type size={20} />
+          <span className="font-bold text-sm uppercase tracking-wider">Personalizar Menus</span>
         </button>
 
         <button 
@@ -1035,6 +1100,190 @@ setFooterSettings({ ...footerSettings, footerLogoUrl: resized });
                   <Save size={18} /> Salvar Rodapé
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'menu' && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-gray-100">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wider mb-1">Personalizar Nomes dos Menus</h3>
+                <p className="text-gray-500 text-sm">Altere o nome de exibição de qualquer pilar ou menu do sistema sem afetar as rotas ou permissões.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleResetMenuLabels}
+                  className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-gray-50 transition-all cursor-pointer"
+                >
+                  Restaurar Padrão
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveMenuLabels}
+                  className="flex items-center gap-2 bg-[var(--color-primary)] text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider hover:brightness-110 shadow-sm transition-all cursor-pointer"
+                >
+                  <Save size={16} /> Salvar Nomes
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 border border-purple-200 rounded-xl bg-purple-50/50 hover:bg-purple-50 transition-all space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] font-bold text-purple-700">
+                <span>Nome dos Itens "Avulsos" no PDV: <strong className="text-purple-900">Personalizáveis</strong></span>
+                <span className="text-[10px] text-purple-500 font-mono">Usado no PDV e Checkbox</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={posCustomItemLabel}
+                  onChange={(e) => setPosCustomItemLabel(e.target.value)}
+                  placeholder="Personalizáveis"
+                  className="flex-1 bg-white border border-purple-200 rounded-lg px-3 py-2 text-xs font-semibold text-purple-900 focus:border-purple-500 outline-none shadow-2xs"
+                />
+              </div>
+            </div>
+            <div className="space-y-6">
+              {[
+                {
+                  id: 'vendas',
+                  defaultTitle: 'Vendas & Balcão',
+                  badge: 'Pilar 1 - Vendas',
+                  accentBg: 'bg-blue-50/60 border-blue-200 text-blue-900',
+                  badgeColor: 'bg-blue-600 text-white',
+                  items: [
+                    { key: '/admin/pos', defaultLabel: 'Novo Pedido / PDV', path: '/admin/pos' },
+                    { key: '/admin/quotes', defaultLabel: 'Orçamentos & Cotações', path: '/admin/quotes' },
+                    { key: '/admin/orders', defaultLabel: 'Pedidos Ativos', path: '/admin/orders' },
+                    { key: '/admin/coupons', defaultLabel: 'Cupons de Desconto', path: '/admin/coupons' },
+                  ]
+                },
+                {
+                  id: 'producao',
+                  defaultTitle: 'Produção & Mídias',
+                  badge: 'Pilar 2 - Produção',
+                  accentBg: 'bg-amber-50/60 border-amber-200 text-amber-900',
+                  badgeColor: 'bg-amber-600 text-white',
+                  items: [
+                    { key: '/admin/production', defaultLabel: 'Fila de Impressão (Kanban)', path: '/admin/production' },
+                    { key: '/admin/products', defaultLabel: 'Produtos & Catálogo', path: '/admin/products' },
+                                        { key: '/admin/avulsos', defaultLabel: `Atendimento & ${settings?.posCustomItemLabel || 'Personalizáveis'}`, path: '/admin/avulsos' },
+                    { key: '/admin/custom-products', defaultLabel: 'Personalizados & Brindes', path: '/admin/custom-products' },
+                  ]
+                },
+                {
+                  id: 'gestao',
+                  defaultTitle: 'Gestão & Pessoal',
+                  badge: 'Pilar 3 - Gestão',
+                  accentBg: 'bg-purple-50/60 border-purple-200 text-purple-900',
+                  badgeColor: 'bg-purple-600 text-white',
+                  items: [
+                    { key: '/admin/customers', defaultLabel: 'Cadastro de Clientes', path: '/admin/customers' },
+                    { key: '/admin/hr', defaultLabel: 'RH, Equipe & Comissões', path: '/admin/hr' },
+                    { key: '/admin/users', defaultLabel: 'Vendedores & Usuários', path: '/admin/users' },
+                  ]
+                },
+                {
+                  id: 'financeiro',
+                  defaultTitle: 'Cérebro Financeiro',
+                  badge: 'Pilar 4 - Financeiro',
+                  accentBg: 'bg-emerald-50/60 border-emerald-200 text-emerald-900',
+                  badgeColor: 'bg-emerald-600 text-white',
+                  items: [
+                    { key: '/admin', defaultLabel: 'Painel & Resumo', path: '/admin' },
+                    { key: '/admin/financial', defaultLabel: 'Fluxo de Caixa', path: '/admin/financial' },
+                    { key: '/admin/accounting', defaultLabel: 'Contabilidade & DRE', path: '/admin/accounting' },
+                    { key: '/admin/documents', defaultLabel: 'Notas & Documentos (NFe)', path: '/admin/documents' },
+                    { key: '/admin/settings', defaultLabel: 'Configurações', path: '/admin/settings' },
+                  ]
+                }
+              ].map((group) => (
+                <div key={group.id} className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white">
+                  {/* Group Header */}
+                  <div className={`p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${group.accentBg}`}>
+                    <div className="flex items-center gap-2.5">
+                      <span className={`text-[10px] font-black tracking-wider uppercase px-2.5 py-1 rounded-full ${group.badgeColor}`}>
+                        {group.badge}
+                      </span>
+                      <span className="text-xs text-slate-500 font-bold uppercase">Título do Grupo</span>
+                    </div>
+                    <div className="flex-1 max-w-sm">
+                      <input
+                        type="text"
+                        value={customMenuLabels[group.id] ?? ''}
+                        onChange={(e) => handleMenuLabelChange(group.id, e.target.value)}
+                        placeholder={`Padrão: ${group.defaultTitle}`}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-black text-slate-900 focus:border-[var(--color-primary)] outline-none shadow-sm"
+                      />
+                    </div>
+                  </div>
+
+                  
+                  {/* Items Grid */}
+                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(() => {
+                      let orderedItems = [...group.items];
+                      if (menuOrder[group.id]) {
+                        const order = menuOrder[group.id];
+                        orderedItems.sort((a, b) => {
+                          const indexA = order.indexOf(a.path);
+                          const indexB = order.indexOf(b.path);
+                          if (indexA === -1 && indexB === -1) return 0;
+                          if (indexA === -1) return 1;
+                          if (indexB === -1) return -1;
+                          return indexA - indexB;
+                        });
+                      }
+                      return orderedItems.map((item, index) => (
+                        <div key={item.key} className="p-3 border border-slate-100 rounded-xl bg-slate-50/50 hover:bg-slate-50 transition-all space-y-1.5 flex flex-col">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
+                            <span>Nome Original: <strong className="text-slate-700">{item.defaultLabel}</strong></span>
+                            <span className="text-[10px] text-slate-400 font-mono">{item.path}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={customMenuLabels[item.key] ?? ''}
+                              onChange={(e) => handleMenuLabelChange(item.key, e.target.value)}
+                              placeholder={item.defaultLabel}
+                              className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 focus:border-[var(--color-primary)] outline-none shadow-2xs"
+                            />
+                            {customMenuLabels[item.key] && (
+                              <button
+                                type="button"
+                                onClick={() => handleMenuLabelChange(item.key, '')}
+                                className="text-[10px] text-rose-600 hover:text-rose-800 font-bold uppercase px-2 py-1 rounded hover:bg-rose-50 cursor-pointer"
+                                title="Restaurar nome padrão deste item"
+                              >
+                                Limpar
+                              </button>
+                            )}
+                            <div className="flex flex-col gap-1 ml-1">
+                              <button type="button" onClick={() => handleMoveMenu(group.id, item.path, 'up')} disabled={index === 0} className="p-1 text-slate-400 hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed bg-white border border-slate-200 rounded hover:bg-slate-100">
+                                <ArrowUp size={12} />
+                              </button>
+                              <button type="button" onClick={() => handleMoveMenu(group.id, item.path, 'down')} disabled={index === orderedItems.length - 1} className="p-1 text-slate-400 hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed bg-white border border-slate-200 rounded hover:bg-slate-100">
+                                <ArrowDown size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-4 border-t border-gray-100 flex justify-end">
+              <button
+                type="button"
+                onClick={handleSaveMenuLabels}
+                className="flex items-center gap-2 bg-[var(--color-primary)] text-white px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-wider hover:brightness-110 shadow-md transition-all cursor-pointer"
+              >
+                <Save size={18} /> Salvar Nomes dos Menus
+              </button>
             </div>
           </div>
         )}

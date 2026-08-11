@@ -538,7 +538,7 @@ export function Storefront() {
       </AnimatePresence>
 
       {/* Top Header - Purple */}
-      <header className="sticky top-0 z-50 shadow-sm" style={{ backgroundColor: settings.headerColor, color: settings.headerTextColor || '#ffffff' }}>
+      <header className="sticky top-0 z-50 shadow-md backdrop-blur-md bg-opacity-95" style={{ backgroundColor: settings.headerColor, color: settings.headerTextColor || '#ffffff' }}>
         <style dangerouslySetInnerHTML={{ __html: `
           .header-hover-item:hover {
             color: ${settings.headerHoverTextColor || '#ffffff'} !important;
@@ -555,7 +555,7 @@ export function Storefront() {
             </button>
 
             {/* Logo */}
-            <div className="flex-shrink-0 cursor-pointer" onClick={goHome}>
+            <div className="flex-shrink-0 cursor-pointer transition-transform hover:scale-105 duration-300" onClick={goHome}>
               {logoUrl ? (
                 <img src={logoUrl || undefined} alt="Logo" className="h-10 sm:h-12 md:h-16 w-auto object-contain" referrerPolicy="no-referrer" />
               ) : (
@@ -575,15 +575,15 @@ export function Storefront() {
             </div>
             
             {/* Search */}
-            <div className="flex-1 max-w-2xl relative hidden md:block">
+            <div className="flex-1 max-w-2xl relative hidden md:block group">
               <input 
                 type="text" 
                 placeholder="Digite o que você procura"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white text-gray-900 rounded-full py-3 px-6 pr-12 focus:outline-none"
+                className="w-full bg-white/95 backdrop-blur-sm text-gray-900 rounded-full py-3 px-6 pr-12 focus:outline-none focus:ring-2 focus:ring-white/50 shadow-inner transition-all duration-300"
               />
-              <button className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <button className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-gray-600 transition-colors">
                 <Search size={20} />
               </button>
             </div>
@@ -741,7 +741,7 @@ export function Storefront() {
         )}
       </header>
 
-      <main className="pb-20 min-h-[calc(100vh-140px)]">
+      <main className="pb-20 min-h-[calc(100vh-140px)] bg-gray-50/30">
         {currentView === 'custom' ? (
           <CustomProductPage onBack={goHome} onAddToCart={addToCart} />
         ) : currentView === 'checkout' ? (

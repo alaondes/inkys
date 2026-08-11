@@ -74,6 +74,7 @@ export interface AppSettings {
   pixDiscount: number;
   installments: number;
   categories: string[];
+  avulsosCategories?: string[];
   categoryGroups?: Record<string, string[]>;
   freeShippingThreshold?: number;
   fixedShippingRates?: Record<string, number>;
@@ -104,6 +105,9 @@ export interface AppSettings {
   footerLogoUrl?: string;
   footerDescription?: string;
   pricingRules?: PricingRulesConfig;
+  customMenuLabels?: Record<string, string>;
+  menuOrder?: Record<string, string[]>;
+  posCustomItemLabel?: string;
 }
 
 const defaultSettings: AppSettings = {
@@ -185,6 +189,8 @@ const defaultSettings: AppSettings = {
   footerLogoUrl: '',
   footerDescription: 'Especializados em produtos criativos e personalizados. Transforme suas ideias em presentes inesquecíveis.',
   pricingRules: defaultPricingRules,
+  customMenuLabels: {},
+  posCustomItemLabel: "Personalizáveis",
 };
 
 interface SettingsContextType {

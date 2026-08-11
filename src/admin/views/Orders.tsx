@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink, FileText, Printer, User, Calendar, MapPin, Trash2, ClipboardList, MessageCircle, Download, Edit2, CreditCard } from 'lucide-react';
+import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink, FileText, Printer, User, Calendar, MapPin, Trash2, ClipboardList, MessageCircle, Download, Edit2, CreditCard, LayoutGrid, List } from 'lucide-react';
 import { formatPrice } from '../../data/products';
 import { db } from '../../lib/firebase';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { syncOrderToAccounting } from '../utils/accountingSync';
+import { KanbanBoard } from '../components/KanbanBoard';
 
 type OrderStatus = 'Pendente' | 'Pago' | 'Enviado' | 'Cancelado' | 'Orçamento';
 
@@ -62,9 +64,31 @@ const statusConfig = {
   'Orçamento': { icon: ClipboardList, color: 'text-purple-600', bg: 'bg-purple-100' },
 };
 
-export function Orders() {
+interface OrdersProps {
+  initialMode?: 'kanban' | 'table';
+}
+
+export function Orders({ initialMode }: OrdersProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [orders, setOrders] = useState<Order[]>([]);
+  
+  const getInitialViewMode = () => {
+    if (initialMode) return initialMode;
+    return location.pathname === '/admin/production' ? 'kanban' : 'table';
+  };
+
+  const [viewMode, setViewMode] = useState<'kanban' | 'table'>(getInitialViewMode);
+
+  useEffect(() => {
+    if (initialMode) {
+      setViewMode(initialMode);
+    } else if (location.pathname === '/admin/production') {
+      setViewMode('kanban');
+    } else if (location.pathname === '/admin/orders') {
+      setViewMode('table');
+    }
+  }, [location.pathname, initialMode]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'Todos'>('Todos');
   const [dateFilter, setDateFilter] = useState<'Todos' | 'Hoje' | 'EstaSemana' | 'EsteMes'>('Todos');
@@ -139,6 +163,11 @@ export function Orders() {
   }, [selectedOrder?.id]);
 
   const filteredOrders = orders.filter(o => {
+    // Separate Orçamentos (Quotes) from active Production Orders by default
+    if (statusFilter === 'Todos' && o.status === 'Orçamento') {
+      return false;
+    }
+
     const matchesSearch = o.id.toLowerCase().includes(search.toLowerCase()) || 
       o.customer.toLowerCase().includes(search.toLowerCase());
     
@@ -232,6 +261,15 @@ export function Orders() {
       }
 
       await updateDoc(orderRef, updateData).catch(e => console.warn(e));
+      
+      // Sincronização automática com a Contabilidade (Receita + Baixa de CPV por m²)
+      if (localStatus === 'Pago' || localStatus === 'Enviado') {
+        syncOrderToAccounting(selectedOrder).then(res => {
+          if (res.success) {
+            toast.success("Contabilidade atualizada: Receita e CPV (Insumos) lançados!");
+          }
+        }).catch(err => console.warn("Accounting sync warning:", err));
+      }
       
       // Trigger status update email if status changed or if it is pending (reminder)
       if (localStatus !== selectedOrder.status || localStatus === 'Pendente') {
@@ -339,21 +377,57 @@ export function Orders() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold uppercase tracking-widest">Pedidos</h2>
-        <button onClick={handleExportCSV} className="text-sm font-bold uppercase tracking-wider bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors">
-          Exportar Excel (CSV)
-        </button>
+        <div>
+          <h2 className="text-2xl font-black uppercase tracking-tight text-slate-900">
+            {viewMode === 'kanban' ? 'Fila de Impressão (Kanban)' : 'Pedidos Ativos & Vendas'}
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5 font-medium">
+            {viewMode === 'kanban' 
+              ? 'Acompanhe e mova os trabalhos de impressão pelas etapas da produção gráfica.'
+              : 'Gerencie todos os pedidos de venda, consulte status e emita recibos de faturamento.'}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* View Mode Switcher */}
+          <div className="flex p-1 bg-slate-200/80 rounded-2xl border border-slate-300/80">
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                viewMode === 'kanban' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <LayoutGrid size={15} /> Fila Kanban
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                viewMode === 'table' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <List size={15} /> Tabela
+            </button>
+          </div>
+
+          <button onClick={() => navigate('/admin/quotes')} className="text-xs font-black uppercase tracking-wider bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 px-4 py-2.5 rounded-2xl transition-colors shadow-xs flex items-center gap-1.5">
+            <FileText size={15} /> Ver Orçamentos
+          </button>
+
+          <button onClick={handleExportCSV} className="text-xs font-black uppercase tracking-wider bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-2xl transition-colors shadow-sm">
+            Exportar CSV
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white border border-gray-200 p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-3">
-        <div className="flex items-center gap-3 w-full sm:flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2">
-          <Search className="text-gray-400" size={20} />
+      <div className="bg-white border border-slate-200/80 p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-3 shadow-2xs">
+        <div className="flex items-center gap-3 w-full sm:flex-1 bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+          <Search className="text-slate-400" size={18} />
           <input 
             type="text" 
-            placeholder="Buscar por código ou cliente..." 
+            placeholder="Buscar por código de pedido ou nome do cliente..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="bg-transparent border-none outline-none text-gray-900 w-full placeholder-gray-400"
+            className="bg-transparent border-none outline-none text-slate-900 text-xs font-semibold w-full placeholder-slate-400"
           />
         </div>
         
@@ -361,7 +435,7 @@ export function Orders() {
           <select 
             value={statusFilter} 
             onChange={(e) => setStatusFilter(e.target.value as OrderStatus | 'Todos')}
-            className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm text-gray-700 outline-none focus:border-[var(--color-primary)] flex-1 sm:w-40"
+            className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 flex-1 sm:w-40"
           >
             <option value="Todos">Todos os Status</option>
             <option value="Pendente">Pendentes</option>
@@ -374,7 +448,7 @@ export function Orders() {
           <select 
             value={dateFilter} 
             onChange={(e) => setDateFilter(e.target.value as any)}
-            className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm text-gray-700 outline-none focus:border-[var(--color-primary)] flex-1 sm:w-40"
+            className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 flex-1 sm:w-40"
           >
             <option value="Todos">Qualquer Data</option>
             <option value="Hoje">Hoje</option>
@@ -384,6 +458,9 @@ export function Orders() {
         </div>
       </div>
 
+      {viewMode === 'kanban' ? (
+        <KanbanBoard orders={filteredOrders} />
+      ) : (
       <div className="bg-white rounded-2xl overflow-hidden border border-gray-200">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[800px]">
@@ -435,6 +512,7 @@ export function Orders() {
           </table>
         </div>
       </div>
+      )}
 
       {/* Detail Modal */}
       {selectedOrder && (

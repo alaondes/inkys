@@ -106,6 +106,27 @@ service cloud.firestore {
       allow read, write: if hasPermission('hr') || true;
     }
 
+    // Collections: Accounting / Contabilidade Module
+    match /accounting_entries/{entryId} {
+      allow read, write: if hasPermission('accounting') || true;
+    }
+
+    match /accounting_chart_accounts/{accountId} {
+      allow read, write: if hasPermission('accounting') || true;
+    }
+
+    match /accounting_invoices/{invoiceId} {
+      allow read, write: if hasPermission('accounting') || true;
+    }
+
+    match /accounting_settings/{settingId} {
+      allow read, write: if hasPermission('accounting') || true;
+    }
+
+    match /accounting_xml_vault/{xmlId} {
+      allow read, write: if hasPermission('accounting') || true;
+    }
+
     // Collection: counters
     match /counters/{counterId} {
       allow read, write: if true;

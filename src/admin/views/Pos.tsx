@@ -204,7 +204,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
           image: customItem.image || '',
           createdAt: serverTimestamp()
         });
-        toast.success('Produto salvo na lista de Avulsos!');
+        toast.success(`Produto salvo na lista de ${settings.posCustomItemLabel || 'Personalizáveis'}!`);
       } catch (e) {
         console.error(e);
         toast.error('Erro ao salvar produto avulso.');
@@ -463,7 +463,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                 onClick={() => setFilterType('avulsos')}
                 className={`whitespace-nowrap px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${filterType === 'avulsos' ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}
               >
-                Avulsos (Offline)
+                {settings.posCustomItemLabel || 'Personalizáveis'}
               </button>
             </div>
           </div>
@@ -475,7 +475,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                 <div className="h-32 bg-gray-100 relative">
                   <img src={product.image} alt={product.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   {product.isAvulso && (
-                    <span className="absolute top-2 left-2 bg-purple-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shadow-sm">Avulso</span>
+                    <span className="absolute top-2 left-2 bg-purple-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shadow-sm">{settings.posCustomItemLabel || 'Personalizáveis'}</span>
                   )}
                   {product.isAvulso && (
                     <button 
@@ -1031,7 +1031,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                   className="w-4 h-4 text-[var(--color-primary)] rounded border-gray-300 focus:ring-[var(--color-primary)]"
                 />
                 <label htmlFor="saveToAvulsos" className="text-xs font-bold text-purple-900 cursor-pointer">
-                  Salvar produto na lista de Avulsos para usos futuros
+                  Salvar produto na lista de {settings.posCustomItemLabel || 'Personalizáveis'} para usos futuros
                 </label>
               </div>
 

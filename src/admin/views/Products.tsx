@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft, Tags, CheckCircle, Loader2, Barcode, Calculator, Sparkles, TrendingUp, DollarSign, Info, PieChart, Receipt, Package, Building2 } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft, Tags, CheckCircle, Loader2, Barcode, Calculator, Sparkles, TrendingUp, DollarSign, Info, PieChart, Receipt, Package, Building2, LayoutGrid, List, Image as ImageIcon } from 'lucide-react';
 import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import { formatPrice, Product } from '../../data/products';
 import { useProducts } from '../../context/ProductContext';
@@ -31,6 +31,9 @@ export function Products() {
   const { products, setProducts, addProduct, updateProduct, deleteProduct } = useProducts();
   const { settings, updateSettings } = useSettings();
   const [search, setSearch] = useState('');
+  const [showBanners, setShowBanners] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid'>('grid');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('Todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
   const [isSkuModalOpen, setIsSkuModalOpen] = useState(false);
@@ -153,11 +156,27 @@ export function Products() {
     }, 0);
   };
 
-  const filteredProducts = localProducts.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase()) || 
-    (p.category || '').toLowerCase().includes(search.toLowerCase()) ||
-    (p.sku || '').toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredProducts = localProducts.filter(p => {
+    const matchesSearch = 
+      p.name.toLowerCase().includes(search.toLowerCase()) || 
+      (p.category || '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.sku || '').toLowerCase().includes(search.toLowerCase());
+
+    const matchesCategory = selectedCategoryFilter === 'Todos' || (p.category || 'Sem Categoria') === selectedCategoryFilter;
+
+    return matchesSearch && matchesCategory;
+  });
+
+  const categoriesWithCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    localProducts.forEach(p => {
+      const cat = p.category || 'Sem Categoria';
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return counts;
+  }, [localProducts]);
+
+  const allCategoryList = Object.keys(categoriesWithCounts).sort();
 
   const groupedProducts = filteredProducts.reduce((acc, product) => {
     const cat = product.category || 'Sem Categoria';
@@ -578,269 +597,303 @@ export function Products() {
   return (
     <div className="space-y-6">
       
-      {/* Banners dos Produtos (Detalhes do Produto) */}
-      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm animate-in fade-in duration-300">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-gray-50 pb-4">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wider mb-1">Banners dos Produtos (Detalhes)</h3>
-            <p className="text-gray-500 text-sm">Estes banners aparecerão em formato de carrossel na página de detalhes de todos os produtos.</p>
+      {/* Header do Catálogo */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white border border-slate-200/80 p-6 rounded-3xl shadow-2xs">
+        <div>
+          <div className="flex items-center gap-2.5 mb-1">
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">Catálogo de Produtos</h2>
+            <span className="bg-blue-50 text-blue-700 text-xs font-black px-2.5 py-0.5 rounded-full border border-blue-100">
+              {localProducts.length} {localProducts.length === 1 ? 'item' : 'itens'}
+            </span>
           </div>
-          <button
-            type="button"
-            disabled={isSavingBanners || !hasUnsavedBanners}
-            onClick={handleSaveBanners}
-            className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98] ${
-              hasUnsavedBanners 
-                ? 'bg-amber-500 text-white hover:bg-amber-600 animate-pulse' 
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            {isSavingBanners ? (
-              <>
-                <Loader2 size={14} className="animate-spin" />
-                Salvando...
-              </>
-            ) : (
-              <>
-                <CheckCircle size={14} />
-                Salvar Alterações
-              </>
-            )}
-          </button>
+          <p className="text-slate-500 text-xs">
+            Gerencie seu catálogo, precificação DRE, categorias e banners de destaque em um único lugar.
+          </p>
         </div>
 
-        <div>
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 mb-6">
-            <div className="sm:col-span-3">
-              <label className="flex items-center justify-center gap-2 bg-[var(--color-primary)] text-white w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer hover:brightness-110 transition-all shadow-sm active:scale-[0.98] h-full min-h-[44px]">
-                <PlusCircle size={16} />
-                Fazer Upload
-                <input type="file" className="hidden" multiple accept="image/*" onChange={handleProductBannerUpload} />
-              </label>
+        <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+          <button 
+            type="button"
+            onClick={() => setShowBanners(!showBanners)}
+            className={`px-3.5 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all border ${
+              showBanners 
+                ? 'bg-amber-500 text-white border-amber-600 shadow-xs' 
+                : 'bg-slate-100/80 text-slate-700 border-slate-200/80 hover:bg-slate-200/80'
+            }`}
+          >
+            <ImageIcon size={15} />
+            Banners ({localBanners.length})
+          </button>
+          
+          <button 
+            type="button"
+            onClick={() => setIsSkuModalOpen(true)}
+            className="px-3.5 py-2.5 rounded-2xl font-bold text-xs bg-slate-100/80 text-slate-700 border border-slate-200/80 hover:bg-slate-200/80 flex items-center gap-2 transition-all"
+          >
+            <Barcode size={15} /> SKUs
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => setIsCategoriesModalOpen(true)}
+            className="px-3.5 py-2.5 rounded-2xl font-bold text-xs bg-slate-900 text-white hover:bg-slate-800 flex items-center gap-2 transition-all shadow-xs"
+          >
+            <Tags size={15} /> Categorias
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => handleOpenModal()}
+            className="px-4 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider bg-blue-600 text-white hover:bg-blue-500 flex items-center gap-2 transition-all shadow-sm active:scale-[0.98]"
+          >
+            <Plus size={16} /> Novo Produto
+          </button>
+        </div>
+      </div>
+
+      {/* Accordion / Painel Colapsável de Banners */}
+      {showBanners && (
+        <div className="bg-white border border-amber-200/80 rounded-3xl p-6 shadow-xs animate-in fade-in duration-300 space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-amber-100">
+            <div>
+              <h3 className="text-base font-black text-slate-900 uppercase tracking-wider mb-1 flex items-center gap-2">
+                <ImageIcon className="text-amber-500" size={18} />
+                Banners de Destaque dos Produtos
+              </h3>
+              <p className="text-slate-500 text-xs">Estes banners aparecerão em carrossel na página de detalhes de todos os produtos do catálogo.</p>
             </div>
-            <div className="sm:col-span-9 flex flex-col sm:flex-row gap-2">
-              <input 
-                type="text" 
-                id="banner-url-input"
-                placeholder="Ou adicionar por URL da imagem..." 
-                className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs focus:border-[var(--color-primary)] focus:bg-white focus:ring-2 focus:ring-[var(--color-primary)]/10 outline-none transition-all min-h-[44px]" 
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const val = e.currentTarget.value.trim();
-                    if (val) {
-                      setLocalBanners(prev => [...prev, { image: convertGoogleDriveUrl(val), link: "" }]);
-                      e.currentTarget.value = '';
-                      toast.success('Banner adicionado! Não se esqueça de salvar.');
-                    }
-                  }
-                }}
-              />
-              <button 
-                type="button"
-                onClick={() => {
-                  const input = document.getElementById('banner-url-input') as HTMLInputElement;
-                  const val = input?.value.trim();
-                  if (val) {
-                    setLocalBanners(prev => [...prev, { image: convertGoogleDriveUrl(val), link: "" }]);
-                    input.value = '';
-                    toast.success('Banner adicionado! Não se esqueça de salvar.');
-                  }
-                }}
-                className="w-full sm:w-auto px-5 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 text-xs font-bold uppercase tracking-wider transition-all active:scale-[0.98] shadow-sm whitespace-nowrap min-h-[44px]"
-              >
-                Adicionar URL
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={isSavingBanners || !hasUnsavedBanners}
+              onClick={handleSaveBanners}
+              className={`w-full sm:w-auto px-5 py-2.5 rounded-2xl text-xs font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-xs ${
+                hasUnsavedBanners 
+                  ? 'bg-amber-500 text-white hover:bg-amber-600 animate-pulse' 
+                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              {isSavingBanners ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={14} />
+                  Salvar Banners
+                </>
+              )}
+            </button>
           </div>
 
-          {(localBanners && localBanners.length > 0) ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-              {localBanners.map((item: any, index: number) => {
-                const img = typeof item === 'string' ? item : item.image;
-                const link = typeof item === 'string' ? '' : (item.link || '');
-                return (
-                  <div key={index} className="flex flex-col gap-3 p-4 border border-gray-100 rounded-2xl bg-gray-50/30 shadow-sm relative group">
-                    <div className="relative w-full h-32 rounded-xl border border-gray-150 overflow-hidden shadow-inner bg-gray-100">
-                      <img 
-                        src={img} 
-                        alt={`Banner Produto ${index + 1}`} 
-                        className="w-full h-full object-cover" 
-                        referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => {
-                          const newBanners = [...localBanners];
-                          newBanners.splice(index, 1);
-                          setLocalBanners(newBanners);
-                          toast.success('Banner removido localmente!');
-                        }}
-                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-lg transition-colors shadow-md"
-                        title="Remover banner"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                      <span className="absolute top-2 left-2 bg-gray-900/80 backdrop-blur-sm text-white px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-sm">
-                        #{index + 1}
-                      </span>
-                      
-                      {/* Order Controls */}
-                      <div className="absolute bottom-2 left-2 flex gap-1 bg-black/60 backdrop-blur-sm p-1 rounded-lg shadow-md">
-                        <button
-                          type="button"
-                          disabled={index === 0}
+          <div>
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 mb-6">
+              <div className="sm:col-span-3">
+                <label className="flex items-center justify-center gap-2 bg-slate-900 text-white w-full py-2.5 rounded-2xl text-xs font-bold cursor-pointer hover:bg-slate-800 transition-all shadow-xs min-h-[44px]">
+                  <PlusCircle size={16} />
+                  Fazer Upload
+                  <input type="file" className="hidden" multiple accept="image/*" onChange={handleProductBannerUpload} />
+                </label>
+              </div>
+              <div className="sm:col-span-9 flex flex-col sm:flex-row gap-2">
+                <input 
+                  type="text" 
+                  id="banner-url-input"
+                  placeholder="Ou colar URL da imagem..." 
+                  className="flex-1 bg-slate-50 border border-slate-200/80 rounded-2xl px-4 py-2.5 text-xs focus:border-amber-500 focus:bg-white outline-none transition-all min-h-[44px]" 
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const val = e.currentTarget.value.trim();
+                      if (val) {
+                        setLocalBanners(prev => [...prev, { image: convertGoogleDriveUrl(val), link: "" }]);
+                        e.currentTarget.value = '';
+                        toast.success('Banner adicionado! Clique em Salvar Banners.');
+                      }
+                    }
+                  }}
+                />
+                <button 
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('banner-url-input') as HTMLInputElement;
+                    const val = input?.value.trim();
+                    if (val) {
+                      setLocalBanners(prev => [...prev, { image: convertGoogleDriveUrl(val), link: "" }]);
+                      input.value = '';
+                      toast.success('Banner adicionado! Clique em Salvar Banners.');
+                    }
+                  }}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 text-white font-black text-xs uppercase tracking-wider rounded-2xl hover:bg-amber-600 transition-all shadow-xs min-h-[44px]"
+                >
+                  Adicionar
+                </button>
+              </div>
+            </div>
+
+            {(localBanners && localBanners.length > 0) ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {localBanners.map((item: any, index: number) => {
+                  const img = typeof item === 'string' ? item : item.image;
+                  const link = typeof item === 'string' ? '' : (item.link || '');
+                  return (
+                    <div key={index} className="flex flex-col gap-3 p-3.5 border border-slate-200/60 rounded-2xl bg-slate-50/50 relative group">
+                      <div className="relative w-full h-28 rounded-xl overflow-hidden bg-slate-100 border border-slate-200/60">
+                        <img 
+                          src={img} 
+                          alt={`Banner Produto ${index + 1}`} 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
+                        />
+                        <button 
+                          type="button" 
                           onClick={() => {
-                            if (index > 0) {
-                              const newBanners = [...localBanners];
-                              const temp = newBanners[index];
-                              newBanners[index] = newBanners[index - 1];
-                              newBanners[index - 1] = temp;
-                              setLocalBanners(newBanners);
-                            }
+                            const newBanners = [...localBanners];
+                            newBanners.splice(index, 1);
+                            setLocalBanners(newBanners);
+                            toast.success('Banner removido localmente!');
                           }}
-                          className="text-white p-1 rounded hover:bg-white/20 disabled:opacity-30 transition-colors cursor-pointer"
-                          title="Mover para cima"
+                          className="absolute top-2 right-2 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-lg transition-colors shadow-md"
+                          title="Remover banner"
                         >
-                          <ChevronUp size={14} />
+                          <Trash2 size={14} />
                         </button>
-                        <button
-                          type="button"
-                          disabled={index === localBanners.length - 1}
-                          onClick={() => {
-                            if (index < localBanners.length - 1) {
-                              const newBanners = [...localBanners];
-                              const temp = newBanners[index];
-                              newBanners[index] = newBanners[index + 1];
-                              newBanners[index + 1] = temp;
-                              setLocalBanners(newBanners);
-                            }
-                          }}
-                          className="text-white p-1 rounded hover:bg-white/20 disabled:opacity-30 transition-colors cursor-pointer"
-                          title="Mover para baixo"
-                        >
-                          <ChevronDown size={14} />
-                        </button>
+                        <span className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-sm text-white px-2 py-0.5 rounded-md text-[10px] font-black uppercase">
+                          #{index + 1}
+                        </span>
+                        
+                        {/* Controles de Ordem */}
+                        <div className="absolute bottom-2 left-2 flex gap-1 bg-black/60 backdrop-blur-sm p-1 rounded-lg">
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => {
+                              if (index > 0) {
+                                const newBanners = [...localBanners];
+                                const temp = newBanners[index];
+                                newBanners[index] = newBanners[index - 1];
+                                newBanners[index - 1] = temp;
+                                setLocalBanners(newBanners);
+                              }
+                            }}
+                            className="text-white p-1 rounded hover:bg-white/20 disabled:opacity-30 transition-colors"
+                          >
+                            <ChevronUp size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === localBanners.length - 1}
+                            onClick={() => {
+                              if (index < localBanners.length - 1) {
+                                const newBanners = [...localBanners];
+                                const temp = newBanners[index];
+                                newBanners[index] = newBanners[index + 1];
+                                newBanners[index + 1] = temp;
+                                setLocalBanners(newBanners);
+                              }
+                            }}
+                            className="text-white p-1 rounded hover:bg-white/20 disabled:opacity-30 transition-colors"
+                          >
+                            <ChevronDown size={14} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">Link do Banner</span>
                       <input 
                         type="text" 
-                        placeholder="Link do banner (ex: /produto/id ou URL)..." 
+                        placeholder="Link do banner (opcional)..." 
                         value={link}
                         onChange={(e) => {
                           const newBanners = [...localBanners];
                           newBanners[index] = { image: img, link: e.target.value };
                           setLocalBanners(newBanners);
                         }}
-                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs focus:border-[var(--color-primary)] outline-none shadow-sm transition-all" 
+                        className="w-full bg-white border border-slate-200/80 rounded-xl px-3 py-1.5 text-xs focus:border-amber-500 outline-none" 
                       />
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-12 bg-gray-50 border border-dashed border-gray-200 rounded-2xl text-gray-500 text-xs mb-6">
-              Nenhum banner adicionado. Adicione URLs ou faça upload de imagens.
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-slate-400 text-xs">
+                Nenhum banner cadastrado. Adicione URLs de imagem ou faça upload.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
-          {hasUnsavedBanners && (
-            <div className="bg-amber-50 border border-amber-200 text-amber-900 px-5 py-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="flex items-center gap-2.5 text-xs font-medium">
-                <span className="flex h-2 w-2 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                </span>
-                <span>Você fez alterações nos banners. Clique no botão "Salvar Alterações" para aplicar as mudanças!</span>
-              </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLocalBanners(settings?.productBanners || []);
-                    toast.success('Alterações descartadas!');
-                  }}
-                  className="flex-1 sm:flex-none text-center bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-gray-50 transition-all"
-                >
-                  Descartar
-                </button>
-                <button
-                  type="button"
-                  disabled={isSavingBanners}
-                  onClick={handleSaveBanners}
-                  className="flex-1 sm:flex-none text-center bg-amber-500 text-white px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-amber-600 disabled:opacity-50 transition-all flex items-center justify-center gap-1.5 shadow-sm"
-                >
-                  {isSavingBanners ? (
-                    <>
-                      <Loader2 size={12} className="animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle size={12} />
-                      Salvar Alterações
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+      {/* Filtro por Categorias em Pills Horizontal */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <button
+          type="button"
+          onClick={() => setSelectedCategoryFilter('Todos')}
+          className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all whitespace-nowrap shrink-0 border ${
+            selectedCategoryFilter === 'Todos'
+              ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+              : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-100'
+          }`}
+        >
+          Todos ({localProducts.length})
+        </button>
+        {allCategoryList.map(cat => (
+          <button
+            key={cat}
+            type="button"
+            onClick={() => setSelectedCategoryFilter(cat)}
+            className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all whitespace-nowrap shrink-0 border ${
+              selectedCategoryFilter === cat
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-100'
+            }`}
+          >
+            {cat} ({categoriesWithCounts[cat]})
+          </button>
+        ))}
+      </div>
+
+      {/* Bar de Busca */}
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="bg-white border border-slate-200/80 px-4 py-2.5 rounded-2xl flex items-center gap-3 w-full sm:max-w-md shadow-2xs focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10 transition-all">
+          <Search className="text-slate-400" size={18} />
+          <input 
+            type="text" 
+            placeholder="Buscar por nome, SKU ou categoria..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="bg-transparent border-none outline-none text-slate-900 text-xs w-full placeholder-slate-400"
+          />
+          {search && (
+            <button type="button" onClick={() => setSearch('')} className="text-slate-400 hover:text-slate-600">
+              <X size={14} />
+            </button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold uppercase tracking-widest">Produtos</h2>
-          <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full text-xs font-bold border border-gray-200 shadow-sm">
-            Total: {localProducts.length}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <button 
-            onClick={() => setIsSkuModalOpen(true)}
-            className="flex items-center gap-2 bg-gray-100 text-gray-700 border border-gray-200 px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider hover:bg-gray-200 transition-all"
-          >
-            <Barcode size={18} /> SKUs
-          </button>
-          <button 
-            onClick={() => setIsCategoriesModalOpen(true)}
-            className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider hover:bg-gray-800 transition-all"
-          >
-            <Tags size={18} /> Categorias
-          </button>
-          <button 
-            onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 bg-[var(--color-primary)] text-white px-4 py-2 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all"
-          >
-            <Plus size={18} /> Novo Produto
-          </button>
-        </div>
-      </div>
-
+      {/* Alerta de Ordem Alterada */}
       {hasUnsavedOrder && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <span className="flex h-2 w-2 relative">
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 px-5 py-3.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5 text-xs font-bold">
+            <span className="flex h-2 w-2 relative shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
             </span>
-            <span>Você alterou a ordem dos produtos. Deseja salvar ou atualizar a ordenação?</span>
+            <span>A ordenação dos produtos foi alterada. Clique em salvar para atualizar no site.</span>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
             <button
+              type="button"
               onClick={handleDiscardOrder}
               disabled={isSavingOrder}
-              className="flex-1 sm:flex-none text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-gray-800 px-4 py-2 rounded-lg bg-white border border-gray-200 hover:border-gray-300 transition-all cursor-pointer disabled:opacity-50"
+              className="flex-1 sm:flex-none text-xs font-bold text-slate-600 hover:text-slate-900 px-4 py-2 rounded-xl bg-white border border-slate-200 transition-all cursor-pointer"
             >
               Descartar
             </button>
             <button
+              type="button"
               onClick={handleSaveOrder}
               disabled={isSavingOrder}
-              className="flex-1 sm:flex-none text-xs font-bold uppercase tracking-wider text-white bg-green-600 hover:bg-green-700 px-5 py-2.5 rounded-lg shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="flex-1 sm:flex-none text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 px-5 py-2 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
               {isSavingOrder ? 'Salvando...' : 'Salvar Ordem'}
             </button>
@@ -848,414 +901,78 @@ export function Products() {
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 p-4 rounded-2xl flex items-center gap-3">
-        <Search className="text-gray-400" size={20} />
-        <input 
-          type="text" 
-          placeholder="Buscar por nome ou categoria..." 
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="bg-transparent border-none outline-none text-gray-900 w-full placeholder-gray-400"
-        />
-      </div>
-
-      {/* Visualização em Tabela para Desktop */}
-      <div className="hidden md:block bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-widest text-gray-500">
-                <th className="p-4 font-bold">Produto</th>
-                <th className="p-4 font-bold">Categoria</th>
-                <th className="p-4 font-bold">Estoque</th>
-                <th className="p-4 font-bold">Preço Venda</th>
-                <th className="p-4 font-bold">Custo Total & Lucro</th>
-                <th className="p-4 font-bold text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {productCategories.map(category => (
-                <React.Fragment key={category}>
-                  <tr className="bg-gray-100/60 border-y border-gray-200">
-                    <td colSpan={6} className="px-4 py-2.5">
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-gray-800 text-xs tracking-wider uppercase">
-                          {category}
-                        </span>
-                        <span className="bg-white px-2 py-0.5 rounded text-[10px] font-bold text-gray-500 border border-gray-200 shadow-sm">
-                          {groupedProducts[category].length} {groupedProducts[category].length === 1 ? 'produto' : 'produtos'}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                  {groupedProducts[category].map((product) => {
-                    const index = filteredProducts.indexOf(product);
-                    const prof = calculateActualProductProfitability(product.price, product.costPrice || 0, settings?.pricingRules, product.packagingCost);
-                    return (
-                <tr key={product.id} className="hover:bg-gray-50 transition-colors group">
-                  <td className="p-4 flex items-center gap-3">
-                    {product.image || (product.gallery && product.gallery.length > 0) ? (
-                      <img 
-                        src={product.image || (product.gallery && product.gallery[0]) || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop'} 
-                        alt={product.name} 
-                        className="w-12 h-12 rounded-lg object-contain border border-gray-200 bg-white shrink-0 shadow-sm" 
-                        referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 shrink-0"></div>
-                    )}
-                    <div className="flex flex-col">
-                      <span className="font-bold text-sm text-gray-900 group-hover:text-[var(--color-primary)] transition-colors">{product.name}</span>
-                      {product.sku && <span className="text-[10px] text-gray-500 font-mono mt-0.5">{product.sku}</span>}
-                      {product.hidden && <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Oculto</span>}
-                    </div>
-                  </td>
-                  <td className="p-4 text-sm text-gray-500">
-                    <span className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-full text-xs font-semibold">
+      {/* VISUALIZAÇÃO EM GRID (Cards Clean) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {filteredProducts.map((product) => {
+            const prof = calculateActualProductProfitability(product.price, product.costPrice || 0, settings?.pricingRules, product.packagingCost);
+            return (
+              <div key={product.id} className="bg-white border border-slate-200/80 rounded-3xl p-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between relative group">
+                <div>
+                  <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/60 mb-3">
+                    <img 
+                      src={product.image || (product.gallery && product.gallery[0]) || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop'} 
+                      alt={product.name} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
+                    />
+                    <span className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-sm text-white px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase">
                       {product.category}
                     </span>
-                  </td>
-                  <td className="p-4 text-sm text-gray-500">
-                    {product.stock !== undefined ? (
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${product.stock > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                    {product.stock !== undefined && (
+                      <span className={`absolute top-2 right-2 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                        product.stock > 0 ? 'bg-emerald-500 text-white shadow-xs' : 'bg-rose-500 text-white shadow-xs'
+                      }`}>
                         {product.stock > 0 ? `${product.stock} un.` : 'Esgotado'}
                       </span>
-                    ) : (
-                      <span className="text-gray-400">-</span>
                     )}
-                  </td>
-                  <td className="p-4 text-sm font-bold">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[var(--color-primary)] font-extrabold text-base">{formatPrice(product.price)}</span>
-                      {product.compareAtPrice && product.compareAtPrice > product.price && (
-                        <span className="bg-red-100 text-red-700 text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                          {Math.round((1 - product.price / product.compareAtPrice) * 100)}% OFF
-                        </span>
-                      )}
-                    </div>
-                    {product.compareAtPrice && product.compareAtPrice > product.price && (
-                      <div className="text-[10px] text-gray-400 line-through font-medium">
-                        De: {formatPrice(product.compareAtPrice)}
-                      </div>
-                    )}
-                    {product.costPrice !== undefined && product.costPrice > 0 ? (
-                      <div className="text-[10px] text-gray-500 font-semibold mt-0.5" title="Preço de aquisição no fornecedor">
-                        Item: {formatPrice(product.costPrice)}
-                      </div>
-                    ) : (
-                      <div className="text-[10px] text-gray-400 font-normal mt-0.5" title="Custo não informado">
-                        Item: n/d
-                      </div>
-                    )}
-                  </td>
-                  <td className="p-4 text-xs">
-                    <div className="flex flex-col gap-0.5">
-                      <div className="text-[11px] font-bold text-gray-800">
-                        Custo Tot: <span className="font-black text-slate-900">R$ {prof.totalCost.toFixed(2).replace('.', ',')}</span>
-                      </div>
-                      <div className={`text-[11px] font-extrabold ${prof.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        Lucro: R$ {prof.netProfit.toFixed(2).replace('.', ',')} <span className="text-[10px] font-bold bg-emerald-50 px-1 py-0.2 rounded border border-emerald-100">({prof.marginPct.toFixed(1)}%)</span>
-                      </div>
-                      <button 
-                        onClick={() => setProfitModalProduct(product)}
-                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-1 hover:underline"
-                        title="Abrir Demonstrativo de Formação de Preço e Lucro DRE"
-                      >
-                        <PieChart size={12} /> Ver DRE do Item
-                      </button>
-                    </div>
-                  </td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {search === '' && (
-                        <div className="flex items-center bg-gray-100 rounded-lg p-0.5 border border-gray-200 mr-1">
-                          <button onClick={() => moveProduct(index, 'up')} disabled={index === 0} className="text-gray-500 hover:text-gray-900 p-1.5 hover:bg-white rounded transition-all disabled:opacity-30 disabled:hover:bg-transparent" title="Mover para cima">
-                            <ChevronUp size={14} />
-                          </button>
-                          <button onClick={() => moveProduct(index, 'down')} disabled={index === filteredProducts.length - 1} className="text-gray-500 hover:text-gray-900 p-1.5 hover:bg-white rounded transition-all disabled:opacity-30 disabled:hover:bg-transparent" title="Mover para baixo">
-                            <ChevronDown size={14} />
-                          </button>
-                        </div>
-                      )}
-                      
-                      <button 
-                        onClick={() => handleOpenModal(product)} 
-                        className="flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
-                        title="Editar Produto"
-                      >
-                        <Edit2 size={13} /> Editar
-                      </button>
-
-                      {confirmDeleteId === product.id ? (
-                        <div className="inline-flex items-center gap-1.5 bg-red-50 border border-red-200 px-2 py-1 rounded-lg animate-in fade-in zoom-in duration-200">
-                          <button onClick={() => handleDeleteConfirmed(product.id)} className="text-red-700 font-extrabold text-xs uppercase hover:underline px-1 py-0.5">Confirmar</button>
-                          <button onClick={() => setConfirmDeleteId(null)} className="text-gray-400 hover:text-gray-600 p-0.5 bg-white border border-gray-200 rounded" title="Cancelar"><X size={12} /></button>
-                        </div>
-                      ) : (
-                        <button 
-                          onClick={() => setConfirmDeleteId(product.id)} 
-                          className="flex items-center gap-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
-                          title="Excluir Produto"
-                        >
-                          <Trash2 size={13} /> Excluir
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-            <tr className="bg-gray-50/50">
-              <td colSpan={6} className="px-4 py-3 text-center border-t border-gray-100 border-b border-gray-200">
-                <button 
-                  onClick={() => handleOpenModal(undefined, category)}
-                  className="text-[11px] font-bold text-[var(--color-primary)] hover:text-[var(--color-primary-dark)] flex items-center justify-center gap-1.5 w-full uppercase tracking-wider transition-colors"
-                >
-                  <Plus size={14} /> Novo produto em {category}
-                </button>
-              </td>
-            </tr>
-          </React.Fragment>
-        ))}
-              {filteredProducts.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-400 text-sm">Nenhum produto encontrado.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        
-        <div className="border-t border-gray-200 bg-gray-50/50 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-inner">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            {hasUnsavedOrder ? (
-              <div className="flex items-center gap-2 text-amber-900">
-                <span className="flex h-2 w-2 relative shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                </span>
-                <span>Você alterou a ordem dos produtos. Deseja salvar a nova ordenação?</span>
-              </div>
-            ) : saveStatus === 'success' ? (
-              <div className="flex items-center gap-2 text-green-700">
-                <CheckCircle size={16} className="text-green-600 animate-bounce" />
-                <span>Alterações salvas e publicadas no site com sucesso!</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-gray-500">
-                <CheckCircle size={16} className="text-gray-400" />
-                <span>Todas as alterações e ordenações estão sincronizadas com o site.</span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-            {hasUnsavedOrder && (
-              <button
-                onClick={handleDiscardOrder}
-                disabled={isSavingOrder || saveStatus === 'saving'}
-                className="flex-1 sm:flex-none text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-gray-800 px-4 py-2.5 rounded-lg bg-white border border-gray-200 hover:border-gray-300 transition-all cursor-pointer disabled:opacity-50"
-              >
-                Descartar
-              </button>
-            )}
-            <button
-              onClick={handleSaveOrder}
-              disabled={isSavingOrder || saveStatus === 'saving'}
-              className="flex-1 sm:flex-none text-xs font-bold uppercase tracking-wider text-white bg-green-600 hover:bg-green-700 disabled:opacity-75 px-5 py-2.5 rounded-lg shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              {isSavingOrder || saveStatus === 'saving' ? (
-                <>
-                  <Loader2 className="animate-spin" size={14} /> Salvando...
-                </>
-              ) : (
-                'Salvar / Atualizar Site'
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Visualização em Cards para Mobile */}
-      <div className="block md:hidden space-y-4">
-        {productCategories.map(category => (
-          <React.Fragment key={category}>
-            <div className="bg-gray-100/60 px-4 py-2 -mx-2 rounded border border-gray-200 shadow-sm mt-6 mb-2 flex items-center justify-between">
-              <span className="font-bold text-gray-800 text-xs tracking-wider uppercase">{category}</span>
-              <span className="bg-white px-2 py-0.5 rounded text-[10px] font-bold text-gray-500 border border-gray-200 shadow-sm">
-                {groupedProducts[category].length} {groupedProducts[category].length === 1 ? 'produto' : 'produtos'}
-              </span>
-            </div>
-            {groupedProducts[category].map((product) => {
-              const index = filteredProducts.indexOf(product);
-              return (
-          <div key={product.id} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-4 relative overflow-hidden">
-            {product.hidden && (
-              <span className="absolute top-3 right-3 bg-gray-100 text-gray-600 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border border-gray-250">
-                Oculto
-              </span>
-            )}
-            <div className="flex gap-3">
-              {product.image || (product.gallery && product.gallery.length > 0) ? (
-                <img 
-                  src={product.image || (product.gallery && product.gallery[0]) || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop'} 
-                  alt={product.name} 
-                  className="w-16 h-16 rounded-xl object-contain border border-gray-100 bg-white shrink-0 shadow-sm" 
-                  referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-xl bg-gray-100 border border-gray-200 shrink-0"></div>
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs uppercase tracking-wider text-gray-400 font-bold block">{product.category}</span>
-                  {product.sku && <span className="text-[9px] uppercase tracking-wider text-gray-500 font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">{product.sku}</span>}
-                </div>
-                <h4 className="font-bold text-gray-950 text-base truncate">{product.name}</h4>
-                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  <span className="text-base font-extrabold text-[var(--color-primary)]">{formatPrice(product.price)}</span>
-                  {product.costPrice !== undefined && product.costPrice > 0 && (
-                    <span className="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded border border-gray-200" title="Custo de produção/aquisição">
-                      Item: {formatPrice(product.costPrice)}
-                    </span>
-                  )}
-                  {product.stock !== undefined && (
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${product.stock > 0 ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
-                      {product.stock > 0 ? `${product.stock} un.` : 'Esgotado'}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Resumo de Lucro Mobile */}
-            {(() => {
-              const prof = calculateActualProductProfitability(product.price, product.costPrice || 0, settings?.pricingRules, product.packagingCost);
-              return (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="text-[9px] text-gray-400 font-bold uppercase block">Custo Total Absoluto</span>
-                    <span className="font-extrabold text-slate-800">R$ {prof.totalCost.toFixed(2).replace('.', ',')}</span>
                   </div>
-                  <div>
-                    <span className="text-[9px] text-gray-400 font-bold uppercase block">Lucro Líquido Real</span>
-                    <span className={`font-black ${prof.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      R$ {prof.netProfit.toFixed(2).replace('.', ',')} ({prof.marginPct.toFixed(1)}%)
-                    </span>
+
+                  <div className="space-y-1">
+                    {product.sku && <span className="text-[10px] text-slate-400 font-mono bg-slate-100 px-1.5 py-0.2 rounded">{product.sku}</span>}
+                    <h4 className="font-extrabold text-slate-900 text-sm line-clamp-2 leading-snug">{product.name}</h4>
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="text-base font-black text-slate-900">{formatPrice(product.price)}</span>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${prof.netProfit >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                        +R$ {prof.netProfit.toFixed(0)} ({prof.marginPct.toFixed(0)}%)
+                      </span>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => setProfitModalProduct(product)}
-                    className="p-1.5 bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 rounded-lg shrink-0 flex items-center gap-1 text-[10px] font-bold"
-                    title="Ver DRE Completo"
+                </div>
+
+                <div className="flex items-center gap-2 pt-4 mt-2 border-t border-slate-100">
+                  <button 
+                    type="button"
+                    onClick={() => handleOpenModal(product)} 
+                    className="flex-1 py-2 bg-slate-100 hover:bg-slate-200/80 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
                   >
-                    <PieChart size={14} /> DRE
+                    <Edit2 size={13} /> Editar
                   </button>
-                </div>
-              );
-            })()}
-
-            {/* Ações em Mobile */}
-            <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-              {search === '' && (
-                <div className="flex items-center bg-gray-100 rounded-lg p-0.5 border border-gray-200">
-                  <button onClick={() => moveProduct(index, 'up')} disabled={index === 0} className="text-gray-500 hover:text-gray-900 p-2 hover:bg-white rounded transition-all disabled:opacity-30" title="Mover para cima">
-                    <ChevronUp size={14} />
+                  <button 
+                    type="button"
+                    onClick={() => setProfitModalProduct(product)}
+                    className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition-all"
+                    title="Ver DRE"
+                  >
+                    <PieChart size={15} />
                   </button>
-                  <button onClick={() => moveProduct(index, 'down')} disabled={index === filteredProducts.length - 1} className="text-gray-500 hover:text-gray-900 p-2 hover:bg-white rounded transition-all disabled:opacity-30" title="Mover para baixo">
-                    <ChevronDown size={14} />
-                  </button>
+                  {confirmDeleteId === product.id ? (
+                    <button type="button" onClick={() => handleDeleteConfirmed(product.id)} className="px-3 py-2 bg-rose-600 text-white rounded-xl text-xs font-black uppercase">Sim</button>
+                  ) : (
+                    <button type="button" onClick={() => setConfirmDeleteId(product.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all" title="Excluir">
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
+            );
+          })}
 
-              <button 
-                onClick={() => handleOpenModal(product)} 
-                className="flex-1 flex items-center justify-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm"
-              >
-                <Edit2 size={14} /> Editar
-              </button>
-
-              {confirmDeleteId === product.id ? (
-                <div className="flex-1 flex items-center justify-between bg-red-50 border border-red-200 px-3 py-1.5 rounded-xl animate-in fade-in zoom-in duration-200">
-                  <span className="text-red-700 text-[10px] font-bold uppercase">Confirmar?</span>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleDeleteConfirmed(product.id)} className="bg-red-600 text-white font-bold text-[10px] uppercase rounded px-2.5 py-1.5 shadow-sm hover:bg-red-700">Sim</button>
-                    <button onClick={() => setConfirmDeleteId(null)} className="bg-white text-gray-500 border border-gray-300 p-1 rounded" title="Cancelar"><X size={12} /></button>
-                  </div>
-                </div>
-              ) : (
-                <button 
-                  onClick={() => setConfirmDeleteId(product.id)} 
-                  className="flex-1 flex items-center justify-center gap-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm"
-                >
-                  <Trash2 size={14} /> Excluir
-                </button>
-              )}
+          {filteredProducts.length === 0 && (
+            <div className="col-span-full py-12 text-center text-slate-400 text-sm bg-white border border-slate-200/80 rounded-3xl">
+              Nenhum produto encontrado.
             </div>
-          </div>
-        );
-      })}
-      <button
-        onClick={() => handleOpenModal(undefined, category)}
-        className="w-full flex items-center justify-center gap-1.5 py-3 px-4 mt-2 mb-4 bg-gray-50 border border-dashed border-gray-300 rounded-xl text-[11px] font-bold uppercase tracking-wider text-[var(--color-primary)] hover:bg-gray-100 hover:border-[var(--color-primary)] transition-all shadow-sm"
-      >
-        <Plus size={14} /> Novo produto em {category}
-      </button>
-    </React.Fragment>
-  ))}
-
-        {filteredProducts.length === 0 && (
-          <div className="bg-white border border-gray-200 p-8 text-center text-gray-400 text-sm rounded-2xl shadow-sm">
-            Nenhum produto encontrado.
-          </div>
-        )}
-
-        <div className="bg-white border border-gray-200 p-4 rounded-2xl flex flex-col items-center justify-between gap-3 shadow-sm">
-          <div className="flex items-center gap-2 text-sm font-medium text-center">
-            {hasUnsavedOrder ? (
-              <div className="flex items-center justify-center gap-2 text-amber-900">
-                <span className="flex h-2 w-2 relative shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                </span>
-                <span>Você alterou a ordem dos produtos. Deseja salvar a nova ordenação?</span>
-              </div>
-            ) : saveStatus === 'success' ? (
-              <div className="flex items-center justify-center gap-2 text-green-700">
-                <CheckCircle size={16} className="text-green-600 animate-bounce shrink-0" />
-                <span>Alterações salvas e publicadas com sucesso!</span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center gap-2 text-gray-500">
-                <CheckCircle size={16} className="text-gray-400 shrink-0" />
-                <span>Sincronizado com o site</span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2 w-full shrink-0">
-            {hasUnsavedOrder && (
-              <button
-                onClick={handleDiscardOrder}
-                disabled={isSavingOrder || saveStatus === 'saving'}
-                className="flex-1 text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-gray-800 px-4 py-2.5 rounded-xl bg-white border border-gray-200 hover:border-gray-300 transition-all cursor-pointer disabled:opacity-50"
-              >
-                Descartar
-              </button>
-            )}
-            <button
-              onClick={handleSaveOrder}
-              disabled={isSavingOrder || saveStatus === 'saving'}
-              className="flex-1 text-xs font-bold uppercase tracking-wider text-white bg-green-600 hover:bg-green-700 disabled:opacity-75 px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              {isSavingOrder || saveStatus === 'saving' ? (
-                <>
-                  <Loader2 className="animate-spin" size={14} /> Salvando...
-                </>
-              ) : (
-                'Salvar / Atualizar Site'
-              )}
-            </button>
-          </div>
+          )}
         </div>
-      </div>
 
       {/* Modal */}
       {isModalOpen && (

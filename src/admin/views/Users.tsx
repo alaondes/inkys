@@ -17,6 +17,7 @@ export interface UserPermissions {
   coupons: boolean;
   financial: boolean;
   hr: boolean;
+  accounting: boolean;
   documents: boolean;
   settings: boolean;
   users: boolean;
@@ -42,6 +43,7 @@ const defaultPermissions: UserPermissions = {
   coupons: false,
   financial: false,
   hr: false,
+  accounting: false,
   documents: false,
   settings: false,
   users: false
@@ -58,6 +60,7 @@ const adminPermissions: UserPermissions = {
   coupons: true,
   financial: true,
   hr: true,
+  accounting: true,
   documents: true,
   settings: true,
   users: true
@@ -321,6 +324,9 @@ export function UsersView() {
                               avulsos: 'Avulsos',
                               customers: 'Clientes',
                               coupons: 'Cupons',
+                              financial: 'Financeiro',
+                              hr: 'RH/Equipe',
+                              accounting: 'Contabilidade',
                               documents: 'Documentos',
                               settings: 'Ajustes',
                               users: 'Usuários'
@@ -509,6 +515,7 @@ export function UsersView() {
                     { key: 'coupons', label: 'Cupons de Desconto', desc: 'Criar e deletar cupons promocionais.' },
                     { key: 'financial', label: 'Módulo Financeiro', desc: 'Acessar precificação fixa, custos, métodos de pagamento e frete.' },
                     { key: 'hr', label: 'Gestão de RH e Equipe', desc: 'Gerenciar colaboradores, folha de pagamento, comissões e holerites.' },
+                    { key: 'accounting', label: 'Contabilidade Integrada', desc: 'DRE, Plano de contas, livro caixa, NFe e relatórios contábeis.' },
                     { key: 'documents', label: 'Documentos / Recibos', desc: 'Gerar recibos de pagamentos e orçamentos.' },
                     { key: 'settings', label: 'Configurações', desc: 'Alterar visual do site, contatos e preferências gerais.' },
                     { key: 'users', label: 'Controle de Usuários', desc: 'Adicionar ou alterar permissões de outros vendedores.' },

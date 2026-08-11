@@ -72,9 +72,9 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   };
 
   return (
-    <div className="flex flex-col items-center group bg-white border border-gray-100 rounded-xl p-2.5 sm:p-4 hover:shadow-xl transition-all duration-300 h-full w-full overflow-hidden">
+    <div className="flex flex-col items-center group bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 h-full w-full overflow-hidden">
       <div 
-        className="aspect-square bg-white mb-2 sm:mb-4 relative w-full overflow-hidden cursor-pointer group/image rounded-lg shrink-0"
+        className="aspect-square bg-gray-50 mb-3 sm:mb-4 relative w-full overflow-hidden cursor-pointer group/image rounded-xl shrink-0"
         onClick={() => onAddToCart(product, selectedColor)}
       >
         <AnimatePresence mode="wait">

@@ -57,33 +57,33 @@ function AppContent() {
 
   if (settingsLoading || productsLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50/50 backdrop-blur-xs transition-all duration-500">
-        <div className="flex flex-col items-center space-y-5">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50/80 backdrop-blur-md transition-all duration-700">
+        <div className="flex flex-col items-center space-y-6">
           {/* Pulsating logo/icon placeholder */}
           <div 
-            className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg shadow-yellow-100/50 animate-pulse transition-transform duration-500 hover:scale-105"
+            className="w-20 h-20 rounded-[2rem] flex items-center justify-center shadow-[0_8px_30px_rgb(0,0,0,0.08)] animate-pulse transition-transform duration-500 hover:scale-105"
             style={{ 
               background: `linear-gradient(135deg, ${settings?.headerColor || '#facc15'} 0%, ${settings?.topBarColor || '#eab308'} 100%)` 
             }}
           >
-            <span className="text-white font-black text-2xl tracking-tighter">i</span>
+            <span className="text-white font-black text-3xl tracking-tighter">i</span>
           </div>
           
-          <div className="text-center space-y-1">
-            <h2 className="text-xl font-black tracking-tight text-gray-800 uppercase">
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-black tracking-tight text-gray-800 uppercase">
               {settings?.storeName || 'inkys'}
             </h2>
-            <p className="text-[10px] text-gray-400 font-extrabold tracking-widest uppercase animate-pulse">
+            <p className="text-[11px] text-gray-400 font-bold tracking-[0.2em] uppercase animate-pulse">
               Carregando o seu jeito...
             </p>
           </div>
         </div>
 
         {/* Elegant modern step indicator dots */}
-        <div className="mt-8 flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full animate-bounce bg-yellow-400" style={{ animationDelay: '0ms' }}></div>
-          <div className="w-2 h-2 rounded-full animate-bounce bg-yellow-500" style={{ animationDelay: '150ms' }}></div>
-          <div className="w-2 h-2 rounded-full animate-bounce bg-yellow-500" style={{ animationDelay: '300ms' }}></div>
+        <div className="mt-10 flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: settings?.headerColor || '#facc15', animationDelay: '0ms' }}></div>
+          <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: settings?.headerColor || '#facc15', animationDelay: '150ms' }}></div>
+          <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: settings?.headerColor || '#facc15', animationDelay: '300ms' }}></div>
         </div>
       </div>
     );
