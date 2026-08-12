@@ -76,15 +76,17 @@ export function Avulsos() {
       return;
     }
     
+    const finalData = { ...formData, image: formData.image ? convertGoogleDriveUrl(formData.image) : '' };
+
     try {
       if (editingAvulso) {
         await updateDoc(doc(db, 'avulso_products', editingAvulso.id), {
-          ...formData
+          ...finalData
         });
         toast.success('Produto avulso atualizado!');
       } else {
         await addDoc(collection(db, 'avulso_products'), {
-          ...formData,
+          ...finalData,
           createdAt: serverTimestamp()
         });
         toast.success('Produto avulso criado!');
@@ -203,7 +205,7 @@ export function Avulsos() {
                   <div>
                     <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/60 mb-3">
                       <img 
-                        src={avulso.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop'} 
+                        src={avulso.image ? convertGoogleDriveUrl(avulso.image) : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop'} 
                         alt={avulso.name} 
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}

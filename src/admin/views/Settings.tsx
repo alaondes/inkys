@@ -397,7 +397,7 @@ export function AdminSettings() {
         
         <button 
           onClick={() => setActiveTab('loja')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'loja' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'loja' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
         >
           <Store size={20} />
           <span className="font-bold text-sm uppercase tracking-wider">Loja & Marca</span>
@@ -405,7 +405,7 @@ export function AdminSettings() {
 
         <button 
           onClick={() => setActiveTab('vitrine')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'vitrine' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'vitrine' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
         >
           <Layout size={20} />
           <span className="font-bold text-sm uppercase tracking-wider">Aparência</span>
@@ -413,7 +413,7 @@ export function AdminSettings() {
 
         <button 
           onClick={() => setActiveTab('banners')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'banners' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'banners' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
         >
           <Image size={20} />
           <span className="font-bold text-sm uppercase tracking-wider">Banners (Carrossel)</span>
@@ -421,7 +421,7 @@ export function AdminSettings() {
 
         <button 
           onClick={() => setActiveTab('menu')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'menu' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'menu' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
         >
           <Type size={20} />
           <span className="font-bold text-sm uppercase tracking-wider">Personalizar Menus</span>
@@ -429,7 +429,7 @@ export function AdminSettings() {
 
         <button 
           onClick={() => setActiveTab('seguranca')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'seguranca' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'seguranca' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
         >
           <Shield size={20} />
           <span className="font-bold text-sm uppercase tracking-wider">Segurança</span>
@@ -437,7 +437,7 @@ export function AdminSettings() {
 
         <button 
           onClick={() => setActiveTab('footer')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'footer' ? 'bg-[var(--color-primary)] text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'footer' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
         >
           <Layout size={20} />
           <span className="font-bold text-sm uppercase tracking-wider">Rodapé</span>
@@ -573,7 +573,7 @@ export function AdminSettings() {
                   />
                 </div>
               </div>
-              <button type="submit" className="flex items-center justify-center gap-2 w-full sm:w-auto bg-[var(--color-primary)] text-white px-6 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all">
+              <button type="submit" className="flex items-center justify-center gap-2 w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all">
                 <Save size={18} /> Salvar Dados da Loja
               </button>
             </form>
@@ -927,7 +927,7 @@ export function AdminSettings() {
               </div>
             </div>
 
-            <button onClick={handleSaveStorefront} className="flex items-center justify-center gap-2 w-full sm:w-auto bg-[var(--color-primary)] text-white px-6 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all">
+            <button onClick={handleSaveStorefront} className="flex items-center justify-center gap-2 w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all">
               <Save size={18} /> Salvar Aparência
             </button>
           </div>
@@ -954,7 +954,7 @@ export function AdminSettings() {
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
                 />
               </div>
-              <button type="submit" className="flex items-center justify-center gap-2 w-full bg-[var(--color-primary)] text-white px-4 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all">
+              <button type="submit" className="flex items-center justify-center gap-2 w-full bg-blue-600 text-white px-4 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all">
                 <Shield size={18} /> Atualizar Senha
               </button>
             </form>
@@ -1096,7 +1096,7 @@ setFooterSettings({ ...footerSettings, footerLogoUrl: resized });
               </div>
 
               <div className="pt-4 border-t border-gray-100">
-                <button onClick={handleSaveFooter} className="flex items-center justify-center gap-2 w-full sm:w-auto bg-[var(--color-primary)] text-white px-6 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all">
+                <button onClick={handleSaveFooter} className="flex items-center justify-center gap-2 w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all">
                   <Save size={18} /> Salvar Rodapé
                 </button>
               </div>
@@ -1122,7 +1122,7 @@ setFooterSettings({ ...footerSettings, footerLogoUrl: resized });
                 <button
                   type="button"
                   onClick={handleSaveMenuLabels}
-                  className="flex items-center gap-2 bg-[var(--color-primary)] text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider hover:brightness-110 shadow-sm transition-all cursor-pointer"
+                  className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider hover:brightness-110 shadow-sm transition-all cursor-pointer"
                 >
                   <Save size={16} /> Salvar Nomes
                 </button>
@@ -1280,7 +1280,7 @@ setFooterSettings({ ...footerSettings, footerLogoUrl: resized });
               <button
                 type="button"
                 onClick={handleSaveMenuLabels}
-                className="flex items-center gap-2 bg-[var(--color-primary)] text-white px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-wider hover:brightness-110 shadow-md transition-all cursor-pointer"
+                className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-wider hover:brightness-110 shadow-md transition-all cursor-pointer"
               >
                 <Save size={18} /> Salvar Nomes dos Menus
               </button>

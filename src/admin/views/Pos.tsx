@@ -523,7 +523,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                   <div key={item.id} className="flex gap-3 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
                     {item.isCustom && item.image ? (
                       <div className="w-12 h-12 shrink-0 bg-white border border-gray-200 rounded overflow-hidden">
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <img src={item.image ? convertGoogleDriveUrl(item.image) : ''} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </div>
                     ) : null}
                     <div className="flex-1 space-y-2">
@@ -1290,7 +1290,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                               <div className="flex items-center gap-3">
                                 {item.image ? (
                                   <img 
-                                    src={item.image} 
+                                    src={item.image ? convertGoogleDriveUrl(item.image) : ''} 
                                     alt={item.name} 
                                     className="w-10 h-10 object-cover rounded-lg border border-gray-200 shadow-2xs shrink-0" 
                                     referrerPolicy="no-referrer" 
