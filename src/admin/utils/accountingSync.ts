@@ -149,7 +149,7 @@ export async function syncOrderToAccounting(order: OrderForSync): Promise<{ succ
             type: 'saida',
             fileName: `${invNum}_${accessKey}.xml`,
             accessKey: accessKey,
-            issuer: fiscalSettings.companyName || 'Sua Gráfica',
+            issuer: fiscalSettings.companyName || 'Sua Moss',
             recipient: order.customer,
             value: total,
             date: todayStr,

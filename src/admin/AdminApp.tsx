@@ -316,34 +316,69 @@ export function AdminApp() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50/70 text-slate-900 font-sans overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#F4F5F9] text-slate-900 font-sans overflow-hidden">
       
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* Desktop Intelligent Sidebar */}
-      <aside className={`w-72 border-r border-slate-200 bg-white flex flex-col fixed lg:static top-0 bottom-0 left-0 z-50 transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        
-        {/* Brand Header */}
-        <div className="h-20 flex items-center justify-between px-6 border-b border-slate-200/80 shrink-0">
-          <div className="flex items-center gap-3">
+      {/* Top Navbar */}
+      <header className="h-16 bg-[#3b3373] text-white flex items-center justify-between px-4 sm:px-6 shrink-0 z-40 shadow-sm">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 w-56 lg:w-[260px] h-16 shrink-0">
             {logoUrl ? (
-              <img src={convertGoogleDriveUrl(logoUrl)} alt="Logo" className="h-10 w-auto max-w-[120px] object-contain" referrerPolicy="no-referrer" />
+              <img src={convertGoogleDriveUrl(logoUrl)} alt="Logo" className="h-8 w-auto max-w-[100px] object-contain brightness-0 invert" referrerPolicy="no-referrer" />
             ) : (
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-blue-700 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-md">
-                G
+              <div className="w-8 h-8 rounded border border-white/20 bg-white/10 flex items-center justify-center text-white font-black text-sm">
+                M
               </div>
             )}
+            <span className="font-bold text-lg hidden lg:block">Moss</span>
           </div>
-          <button className="lg:hidden text-slate-400 hover:text-slate-700 p-1" onClick={() => setIsMobileMenuOpen(false)}>
-            <X size={22} />
+          
+          <button 
+            className="text-white/80 hover:text-white p-1 rounded-lg" 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            <Menu size={22} />
+          </button>
+
+          <button className="hidden sm:flex items-center gap-2 text-sm font-medium text-white/90 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors">
+            <Plus size={16} /> New
+          </button>
+          <button className="hidden md:flex items-center gap-2 text-sm font-medium text-white/90 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors">
+            Quick Link
           </button>
         </div>
+
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsCommandPaletteOpen(true)}
+            className="text-white/80 hover:text-white transition-colors"
+          >
+            <Search size={20} />
+          </button>
+          <button
+            onClick={() => setIsCalculatorOpen(true)}
+            className="hidden sm:flex text-white/80 hover:text-white transition-colors"
+          >
+            <Calculator size={20} />
+          </button>
+          <Link to="/" target="_blank" className="text-white/80 hover:text-white transition-colors">
+            <ExternalLink size={20} />
+          </Link>
+        </div>
+      </header>
+
+      {/* Main Container */}
+      <div className="flex flex-1 overflow-hidden relative">
+      
+        {/* Mobile Menu Overlay */}
+        {isMobileMenuOpen && (
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+
+      {/* Desktop Intelligent Sidebar */}
+      <aside className={`w-64 border-r border-slate-200 bg-white flex flex-col fixed lg:static top-0 bottom-0 left-0 z-50 transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
 
         {/* 4 Pillar Accordion Navigation */}
         <nav className="flex-1 p-4 space-y-3 overflow-y-auto custom-scrollbar">
@@ -369,29 +404,22 @@ export function AdminApp() {
             return (
               <div 
                 key={pillar.id}
-                className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
-                  isPillarActive 
-                    ? 'border-slate-300 bg-slate-50/50 shadow-xs' 
-                    : 'border-slate-200/60 bg-white'
-                }`}
+                className="mb-2"
               >
                 {/* Pillar Header Switcher */}
                 <button
                   onClick={() => setActivePillar(activePillar === pillar.id ? '' : pillar.id)}
-                  className="w-full p-3 flex items-center justify-between text-left hover:bg-slate-50 transition-colors"
+                  className="w-full px-4 py-2 flex items-center justify-between text-left hover:bg-slate-50 transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${pillar.color}`}>
-                      <PillarIcon size={16} />
-                    </div>
-                    <span className="font-extrabold text-xs uppercase tracking-tight text-slate-900">
+                    <span className="font-medium text-[11px] uppercase tracking-wider text-slate-400">
                       {pillar.title}
                     </span>
                   </div>
                   <ChevronDown 
-                    size={16} 
+                    size={14} 
                     className={`text-slate-400 transition-transform duration-200 ${
-                      activePillar === pillar.id || isPillarActive ? 'rotate-180 text-blue-600' : ''
+                      activePillar === pillar.id || isPillarActive ? 'rotate-180 text-indigo-600' : ''
                     }`} 
                   />
                 </button>
@@ -411,10 +439,10 @@ export function AdminApp() {
                           key={item.path}
                           to={item.path}
                           onClick={() => setIsMobileMenuOpen(false)}
-                          className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                          className={`flex items-center justify-between px-4 py-2.5 rounded-r-full text-sm font-medium transition-all mr-2 ${
                             isActive
-                              ? 'bg-blue-600 text-white shadow-xs'
-                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                              ? 'bg-[#EFEFF9] text-[#3b3373]'
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                           }`}
                         >
                           <div className="flex items-center gap-2.5">
@@ -471,54 +499,7 @@ export function AdminApp() {
       </aside>
 
       {/* Main App Content Viewport */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50/60 relative">
-        
-        {/* Top App Header with Universal Search Trigger */}
-        <header className="h-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-md flex items-center justify-between px-4 sm:px-8 shrink-0 z-30">
-          
-          <div className="flex items-center gap-3">
-            <button 
-              className="lg:hidden text-slate-700 p-2 rounded-xl hover:bg-slate-100" 
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <Menu size={22} />
-            </button>
-
-            {/* Universal Search Ctrl+K Button */}
-            <button
-              onClick={() => setIsCommandPaletteOpen(true)}
-              className="flex items-center gap-3 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-500 rounded-2xl px-3.5 py-2 text-xs font-semibold transition-all max-w-xs sm:max-w-md w-full shadow-2xs group"
-            >
-              <Search size={16} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
-              <span className="truncate hidden sm:inline">Buscar ações, pedidos, produtos ou clientes...</span>
-              <span className="truncate sm:hidden">Buscar...</span>
-              <kbd className="hidden sm:inline bg-white border border-slate-300 text-slate-600 font-mono text-[10px] px-1.5 py-0.5 rounded font-black shadow-2xs ml-auto">
-                Ctrl + K
-              </kbd>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Quick Calculator Trigger */}
-            <button
-              onClick={() => setIsCalculatorOpen(true)}
-              className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-2 rounded-2xl text-xs font-extrabold transition-all shadow-2xs"
-            >
-              <Calculator size={16} />
-              <span className="hidden md:inline uppercase tracking-wider">Calculadora m²</span>
-            </button>
-
-            {/* External Store Link */}
-            <Link 
-              to="/" 
-              target="_blank"
-              className="hidden sm:flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 font-bold border border-slate-200 px-3 py-2 rounded-2xl hover:border-slate-300 transition-all bg-white"
-            >
-              <ExternalLink size={14} /> Loja
-            </Link>
-          </div>
-
-        </header>
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#F4F5F9] relative">
 
         {/* Scrollable Main Viewport Area */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 pb-24 md:pb-12 max-w-7xl w-full mx-auto">
@@ -624,7 +605,8 @@ export function AdminApp() {
           onClose={() => setIsExpenseModalOpen(false)}
         />
 
-      </main>
+            </main>
+      </div>
     </div>
   );
 }

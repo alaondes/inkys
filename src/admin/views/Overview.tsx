@@ -393,36 +393,34 @@ export function Overview() {
   return (
     <div className="space-y-8">
       {/* Top Main Navigation Tabs */}
-      <div className="flex items-center justify-between border-b border-gray-200 pb-4 print:hidden">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 border-b border-slate-200/60 pb-6 print:hidden">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-gray-900 flex items-center gap-2">
-            <LayoutDashboard className="text-[var(--color-primary)]" size={26} /> Visão Geral do Negócio
-          </h1>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mt-0.5">
-            Métricas estratégicas, faturamento, DRE e curva de produtos
-          </p>
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-[24px] font-bold tracking-tight text-slate-800">CRM Dashboard</h1>
+            <p className="text-[14px] text-slate-500 font-medium">Let's get started</p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-2xl border border-gray-200">
+        <div className="flex items-center gap-2 bg-[#F3F4F9] p-1 rounded-xl">
           <button
             onClick={() => setMainTab('dashboard')}
-            className={`flex items-center gap-2 px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 text-[13px] font-medium rounded-lg transition-all ${
               mainTab === 'dashboard'
-                ? 'bg-white text-[var(--color-primary)] shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-white text-[#3b3373] shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <LayoutDashboard size={16} /> Painel Principal
+            Dashboard
           </button>
           <button
             onClick={() => setMainTab('reports')}
-            className={`flex items-center gap-2 px-5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 text-[13px] font-medium rounded-lg transition-all ${
               mainTab === 'reports'
-                ? 'bg-white text-[var(--color-primary)] shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-white text-[#3b3373] shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <BarChart3 size={16} /> Relatórios DRE & Vendas
+            Reports
           </button>
         </div>
       </div>
@@ -432,23 +430,23 @@ export function Overview() {
       ) : (
         <>
           {/* Quick DRE Banner */}
-          <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 text-white p-5 rounded-2xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-gray-800">
+          <div className="bg-white p-6 rounded-xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-slate-100">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/40 flex items-center justify-center shrink-0">
-                <BarChart3 className="text-white" size={24} />
+              <div className="w-12 h-12 rounded-full bg-[#EAE8F1] flex items-center justify-center shrink-0">
+                <BarChart3 className="text-[#3b3373]" size={20} />
               </div>
               <div>
-                <h3 className="font-black text-sm uppercase tracking-wider text-white">DRE Simplificada & Relatórios Profissionais Ativos</h3>
-                <p className="text-gray-300 text-xs mt-0.5">
-                  Consulte a separação do Faturamento Bruto (GMV), Receita Líquida, CMV, Curva ABC de produtos e exporte em Excel/PDF.
+                <h3 className="font-bold text-[15px] text-slate-800">DRE Simplificada & Relatórios</h3>
+                <p className="text-slate-500 text-[13px] font-medium mt-0.5">
+                  Consulte a separação do Faturamento Bruto (GMV), Receita Líquida, CMV e exporte.
                 </p>
               </div>
             </div>
             <button
               onClick={() => setMainTab('reports')}
-              className="bg-[var(--color-primary)] hover:brightness-110 text-white text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all shadow-sm shrink-0 flex items-center gap-2"
+              className="bg-[#3b3373] hover:bg-[#2e2759] text-white text-[13px] font-medium px-5 py-2.5 rounded-lg transition-all shadow-sm shrink-0 flex items-center gap-2"
             >
-              Acessar DRE & Relatórios <ArrowUpRight size={16} />
+              Acessar Relatórios <ArrowUpRight size={16} />
             </button>
           </div>
 
@@ -460,44 +458,14 @@ export function Overview() {
                 <div 
                   key={i} 
                   onClick={() => stat.path && navigate(stat.path)}
-                  className={`bg-white border border-gray-200 p-6 rounded-2xl flex flex-col justify-between relative overflow-hidden group shadow-sm ${stat.path ? 'cursor-pointer hover:border-[var(--color-primary)] transition-all' : ''}`}
+                  className={`bg-white p-6 rounded-xl flex items-center gap-4 relative overflow-hidden group shadow-sm ${stat.path ? 'cursor-pointer hover:shadow-md transition-all' : ''}`}
                 >
-                  <div className="absolute -right-4 -top-4 w-24 h-24 bg-[var(--color-primary)] opacity-5 rounded-full blur-2xl group-hover:opacity-10 transition-opacity" />
-                  
-                  <div>
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center border border-gray-100 shadow-xs">
-                        <Icon className="text-[var(--color-primary)]" size={20} />
-                      </div>
-
-                      {stat.change !== undefined ? (
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 border ${
-                          stat.changeType === 'positive' 
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                            : 'bg-rose-50 text-rose-700 border-rose-200'
-                        }`}>
-                          {stat.changeType === 'positive' ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
-                          {stat.change}
-                        </span>
-                      ) : (
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
-                          stat.badgeType === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                          stat.badgeType === 'danger' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                          stat.badgeType === 'warning' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                          stat.badgeType === 'info' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                          'bg-gray-100 text-gray-600 border-gray-200'
-                        }`}>
-                          {stat.badgeText}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <h3 className="text-2xl lg:text-3xl font-extrabold text-gray-900 tracking-tight">{stat.value}</h3>
+                  <div className="w-14 h-14 shrink-0 rounded-full bg-[#EAE8F1] flex items-center justify-center">
+                    <Icon className="text-[#3b3373]" size={24} />
                   </div>
-
-                  <div className="mt-2 pt-2 border-t border-gray-50 flex items-center justify-between">
-                    <p className="text-gray-500 text-xs uppercase tracking-wider font-bold">{stat.label}</p>
-                    <span className="text-[11px] text-gray-400 font-medium">{stat.subtext}</span>
+                  <div className="flex flex-col">
+                    <h3 className="text-[26px] font-bold text-slate-800 tracking-tight leading-none mb-2">{stat.value}</h3>
+                    <p className="text-[14px] font-medium text-slate-500">{stat.label}</p>
                   </div>
                 </div>
               );
@@ -505,64 +473,38 @@ export function Overview() {
           </div>
 
           {/* Charts Section */}
-          <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm space-y-6">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+          <div className="bg-white rounded-xl shadow-sm p-6 lg:p-8 space-y-6 border border-slate-100">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wider">Histórico de Vendas</h3>
+                  <h3 className="text-[20px] font-bold text-slate-800 tracking-tight">Histórico de Vendas</h3>
                   {peakDay && (
-                    <span className="bg-amber-50 text-amber-800 text-xs font-bold px-3 py-1 rounded-full border border-amber-200 flex items-center gap-1.5">
-                      <Sparkles size={14} className="text-amber-600" />
-                      Pico de Vendas: <strong className="text-amber-950">{peakDay.name}</strong> ({formatPrice(peakDay.total)})
+                    <span className="bg-amber-50 text-amber-800 text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 mt-1">
+                      <Sparkles size={12} className="text-amber-600" />
+                      Pico: {peakDay.name} ({formatPrice(peakDay.total)})
                     </span>
                   )}
                 </div>
-                <p className="text-gray-500 text-sm mt-0.5">
-                  Resumo do desempenho de faturamento e comparativo
-                </p>
+                <p className="text-[13px] font-medium text-slate-500 mt-1">Evolução do faturamento</p>
               </div>
               
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Compare Toggle */}
-                <label className="flex items-center gap-2 cursor-pointer bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors">
-                  <input 
-                    type="checkbox" 
-                    checked={comparePrevious} 
-                    onChange={(e) => setComparePrevious(e.target.checked)}
-                    className="w-4 h-4 text-[var(--color-primary)] rounded border-gray-300 focus:ring-[var(--color-primary)]" 
-                  />
-                  Comparar Período Anterior
-                </label>
-
-                {/* Time Range Selector */}
-                <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200">
-                  {[
-                    { id: '7d', label: '7 dias' },
-                    { id: '30d', label: '30 dias' },
-                    { id: 'month', label: 'Este Mês' },
-                    { id: 'year', label: 'Este Ano' },
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setTimeRange(tab.id as TimeRange)}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                        timeRange === tab.id 
-                          ? 'bg-white text-[var(--color-primary)] shadow-xs' 
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Export CSV Button */}
+              <div className="flex items-center gap-3">
+                <select 
+                  className="text-[13px] font-medium bg-[#F8F9FB] border border-slate-200 text-slate-700 py-1.5 px-3 rounded-lg focus:outline-hidden focus:border-[#3b3373] focus:ring-1 focus:ring-[#3b3373] transition-all cursor-pointer"
+                  value={timeRange}
+                  onChange={(e) => setTimeRange(e.target.value as TimeRange)}
+                >
+                  <option value="7d">Últimos 7 dias</option>
+                  <option value="30d">Últimos 30 dias</option>
+                  <option value="month">Este Mês</option>
+                  <option value="year">Este Ano</option>
+                </select>
                 <button
                   onClick={exportSalesReport}
-                  className="flex items-center gap-1.5 bg-gray-900 text-white hover:bg-gray-800 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs"
+                  className="flex items-center gap-1.5 bg-[#F8F9FB] border border-slate-200 text-slate-700 hover:bg-slate-100 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all"
                   title="Exportar dados do gráfico em CSV"
                 >
-                  <FileSpreadsheet size={15} />
+                  <FileSpreadsheet size={14} />
                   Exportar
                 </button>
               </div>
@@ -573,8 +515,8 @@ export function Overview() {
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.35}/>
-                      <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#3b3373" stopOpacity={0.35}/>
+                      <stop offset="95%" stopColor="#3b3373" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
@@ -612,7 +554,7 @@ export function Overview() {
                     type="monotone" 
                     dataKey="total" 
                     name="Faturamento" 
-                    stroke="var(--color-primary)" 
+                    stroke="#3b3373" 
                     strokeWidth={2.5} 
                     fillOpacity={1} 
                     fill="url(#colorSales)"

@@ -176,7 +176,7 @@ export function Quotes() {
     }).join('\n');
 
     const text = 
-      `*ORÇAMENTO #${quote.id.slice(0, 8)} - ${settings.storeName || 'Gráfica Express'}*\n\n` +
+      `*ORÇAMENTO #${quote.id.slice(0, 8)} - ${settings.storeName || 'Moss'}*\n\n` +
       `👤 *Cliente:* ${quote.customer}\n` +
       `📋 *Itens Solicitados:*\n${itemsText}\n\n` +
       `💰 *VALOR TOTAL:* ${formatPrice(quote.total)}\n` +
