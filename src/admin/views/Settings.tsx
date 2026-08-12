@@ -470,7 +470,7 @@ export function AdminSettings() {
                   <div className="flex items-center gap-4">
                     {logoUrl ? (
                       <div className="w-24 h-24 rounded-xl border border-gray-200 overflow-hidden bg-white flex items-center justify-center p-2">
-                        <img src={logoUrl || undefined} alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                        <img src={convertGoogleDriveUrl(logoUrl || undefined)} alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                       </div>
                     ) : (
                       <div className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400">
@@ -512,7 +512,7 @@ export function AdminSettings() {
                   <div className="flex items-center gap-4">
                     {faviconUrl ? (
                       <div className="w-12 h-12 rounded-xl border border-gray-200 overflow-hidden bg-white flex items-center justify-center p-2">
-                        <img src={faviconUrl || undefined} alt="Favicon" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                        <img src={convertGoogleDriveUrl(faviconUrl || undefined)} alt="Favicon" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                       </div>
                     ) : (
                       <div className="w-12 h-12 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400">
@@ -975,7 +975,7 @@ export function AdminSettings() {
                 <div className="flex items-center gap-4">
                   {footerSettings.footerLogoUrl ? (
                     <div className="w-24 h-24 rounded-xl border border-gray-200 overflow-hidden bg-white flex items-center justify-center p-2 relative group">
-                      <img src={footerSettings.footerLogoUrl} alt="Logo Rodapé" className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
+                      <img src={convertGoogleDriveUrl(footerSettings.footerLogoUrl)} alt="Logo Rodapé" className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
                       <button 
                         onClick={() => setFooterSettings({ ...footerSettings, footerLogoUrl: '' })}
                         className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"

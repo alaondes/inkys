@@ -1,3 +1,4 @@
+import { convertGoogleDriveUrl } from '../lib/urlUtils';
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Menu, MessageCircle, CreditCard, Truck, ShieldCheck, User, Star, Heart, Gift, X, Plus, Minus, ChevronDown, ChevronRight, Mail, Clock, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -428,7 +429,7 @@ export function Storefront() {
                 ) : (
                   cart.map(item => (
                     <div key={item.cartItemId} className="flex gap-4 border-b border-gray-50 pb-4">
-                      <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-md" referrerPolicy="no-referrer" />
+                      <img src={convertGoogleDriveUrl(item.image)} alt={item.name} className="w-20 h-20 object-cover rounded-md" referrerPolicy="no-referrer" />
                       <div className="flex-1">
                         <h4 className="font-bold text-sm text-gray-800 line-clamp-2">{item.name}</h4>
                         {item.selectedColor && <p className="text-xs text-gray-500 mt-1">Cor: {item.selectedColor}</p>}
@@ -436,7 +437,7 @@ export function Storefront() {
                         {item.customMusic && <p className="text-xs text-blue-500 mt-1 line-clamp-1 truncate hover:underline"><a href={item.customMusic} target="_blank" rel="noreferrer">Música (Link)</a></p>}
                         {item.customImage && (
                           <div className="mt-2 flex items-center gap-2 border border-gray-100 p-1 rounded-md w-fit bg-gray-50">
-                             <img src={item.customImage} alt="Custom upload" className="w-8 h-8 object-cover rounded shadow-sm" referrerPolicy="no-referrer" />
+                             <img src={convertGoogleDriveUrl(item.customImage)} alt="Custom upload" className="w-8 h-8 object-cover rounded shadow-sm" referrerPolicy="no-referrer" />
                              <span className="text-[10px] text-gray-500 font-bold uppercase pr-2">Foto enviada</span>
                           </div>
                         )}
@@ -557,7 +558,7 @@ export function Storefront() {
             {/* Logo */}
             <div className="flex-shrink-0 cursor-pointer transition-transform hover:scale-105 duration-300" onClick={goHome}>
               {logoUrl ? (
-                <img src={logoUrl || undefined} alt="Logo" className="h-10 sm:h-12 md:h-16 w-auto object-contain" referrerPolicy="no-referrer" />
+                <img src={convertGoogleDriveUrl(logoUrl || undefined)} alt="Logo" className="h-10 sm:h-12 md:h-16 w-auto object-contain" referrerPolicy="no-referrer" />
               ) : (
                 <div className="text-xl sm:text-2xl md:text-3xl font-extrabold italic tracking-tighter" style={{ color: settings.topBarColor || '#f9a8d4' }}>
                   {settings.storeName ? (
@@ -1123,9 +1124,9 @@ export function Storefront() {
         <div className="max-w-[1400px] mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-1">
             {settings.footerLogoUrl ? (
-              <img src={settings.footerLogoUrl} alt={settings.storeName || 'Logo'} className="h-12 w-auto mb-4 object-contain" referrerPolicy="no-referrer" />
+              <img src={convertGoogleDriveUrl(settings.footerLogoUrl)} alt={settings.storeName || 'Logo'} className="h-12 w-auto mb-4 object-contain" referrerPolicy="no-referrer" />
             ) : settings.logoUrl ? (
-              <img src={settings.logoUrl} alt={settings.storeName || 'Logo'} className="h-12 w-auto mb-4 object-contain brightness-0 invert" referrerPolicy="no-referrer" />
+              <img src={convertGoogleDriveUrl(settings.logoUrl)} alt={settings.storeName || 'Logo'} className="h-12 w-auto mb-4 object-contain brightness-0 invert" referrerPolicy="no-referrer" />
             ) : (
               <h2 className="text-2xl font-bold mb-4 tracking-tight" style={{ color: settings.footerHeadingColor || '#ffffff' }}>{settings.storeName || 'Nossa Loja'}</h2>
             )}

@@ -1,3 +1,4 @@
+import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import React, { useState } from 'react';
 import { X, Calculator, ArrowRight, ArrowLeft, Check, Sparkles, Copy, ShoppingBag, Ruler, Image as ImageIcon, Layers } from 'lucide-react';
 import { formatPrice } from '../../data/products';
@@ -311,7 +312,7 @@ export function CalculationWizardModal({ isOpen, onClose, onAddToCart }: Calcula
                       <div className="space-y-3">
                         <div className="h-28 rounded-xl overflow-hidden bg-slate-100 relative">
                           <img 
-                            src={media.image} 
+                            src={convertGoogleDriveUrl(media.image)} 
                             alt={media.name} 
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             referrerPolicy="no-referrer"

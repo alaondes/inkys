@@ -1,3 +1,4 @@
+import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, deleteDoc, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -414,7 +415,7 @@ export function Customers() {
                 <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6 mb-6">
                   <div>
                     {settings.logoUrl ? (
-                      <img src={settings.logoUrl || undefined} alt="Logo" className="h-14 object-contain mb-2" referrerPolicy="no-referrer" />
+                      <img src={convertGoogleDriveUrl(settings.logoUrl || undefined)} alt="Logo" className="h-14 object-contain mb-2" referrerPolicy="no-referrer" />
                     ) : (
                       <h2 className="text-xl font-black text-pink-600 tracking-tighter uppercase mb-2">
                         {settings.storeName || 'Minha Loja'}
@@ -500,7 +501,7 @@ export function Customers() {
                   <p>Recebemos o valor acima especificado, referente à prestação de serviços / venda de produtos.</p>
                   <div className="mt-8 flex justify-center">
                     {settings.logoUrl ? (
-                      <img src={settings.logoUrl} alt="Assinatura" className="h-16 object-contain opacity-80" referrerPolicy="no-referrer" />
+                      <img src={convertGoogleDriveUrl(settings.logoUrl)} alt="Assinatura" className="h-16 object-contain opacity-80" referrerPolicy="no-referrer" />
                     ) : (
                       <div className="h-16"></div>
                     )}

@@ -1,3 +1,4 @@
+import { convertGoogleDriveUrl } from '../lib/urlUtils';
 import React, { useState, useRef } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { Send, Image as ImageIcon, Paintbrush, ArrowLeft, Upload, X, Loader2, Download, FileText, ChevronRight, ChevronLeft, ShoppingCart, Share2 } from 'lucide-react';
@@ -273,7 +274,7 @@ export function CustomProductPage({ onBack, onAddToCart }: { onBack: () => void,
                       )}
                       {p.image ? (
                         <div className="w-20 h-20 rounded-xl overflow-hidden mb-3 shadow-inner border border-gray-100 bg-white">
-                          <img src={p.image} alt={p.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <img src={convertGoogleDriveUrl(p.image)} alt={p.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         </div>
                       ) : (
                         getProductPlaceholderIcon(p.name)
@@ -356,7 +357,7 @@ export function CustomProductPage({ onBack, onAddToCart }: { onBack: () => void,
                           )}
                           {guideImage && (
                             <img 
-                              src={guideImage} 
+                              src={convertGoogleDriveUrl(guideImage)} 
                               alt="Guia de Medidas" 
                               className="w-full max-h-48 object-contain rounded-xl mt-3 border border-blue-100/50 bg-white"
                             referrerPolicy="no-referrer" />
@@ -427,7 +428,7 @@ export function CustomProductPage({ onBack, onAddToCart }: { onBack: () => void,
                     if (!imgUrl) return <ImageIcon className="text-gray-300" size={48} />;
                     return (
                       <img 
-                        src={imgUrl} 
+                        src={convertGoogleDriveUrl(imgUrl)} 
                         alt={`Exemplo de ${productType}`} 
                         className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
                         referrerPolicy="no-referrer"

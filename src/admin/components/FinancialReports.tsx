@@ -1,3 +1,4 @@
+import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import React, { useState, useMemo, useRef } from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -721,7 +722,7 @@ export function FinancialReports({ orders }: FinancialReportsProps) {
         <div className="flex justify-between items-start">
           <div>
             {settings.logoUrl ? (
-              <img src={settings.logoUrl} alt="Logo" className="h-14 w-auto object-contain mb-2" />
+              <img src={convertGoogleDriveUrl(settings.logoUrl)} alt="Logo" className="h-14 w-auto object-contain mb-2" />
             ) : null}
             <h1 className="text-2xl font-black uppercase tracking-tight">{settings.storeName || 'RELATÓRIO FINANCEIRO & DRE'}</h1>
             <p className="text-xs text-gray-600 font-semibold uppercase">Demonstração de Resultados e Desempenho Executivo de Vendas</p>

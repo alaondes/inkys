@@ -1,3 +1,4 @@
+import { convertGoogleDriveUrl } from '../lib/urlUtils';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Product, formatPrice } from '../data/products';
@@ -46,7 +47,7 @@ const ProductBannerCarousel = ({ banners }: { banners: any[] }) => {
           const link = typeof item === 'string' ? '' : item?.link;
           
           const imgEl = (
-            <img               src={imgSrc}
+            <img               src={convertGoogleDriveUrl(imgSrc)}
               alt={`Banner ${idx + 1}`}
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
                 idx === currentIndex ? 'opacity-100' : 'opacity-0'
@@ -243,7 +244,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
                     }`}
                   >
                     <img 
-                      src={img} 
+                      src={convertGoogleDriveUrl(img)} 
                       alt={`Thumbnail ${idx + 1}`} 
                       className="w-full h-full object-cover mix-blend-multiply" 
                       referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
@@ -272,7 +273,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
                    </>
                  )}
 
-                 <img src={images[currentImageIndex] || undefined} alt={product.name} className="w-full h-full object-contain mix-blend-multiply" referrerPolicy="no-referrer" />
+                 <img src={convertGoogleDriveUrl(images[currentImageIndex] || undefined)} alt={product.name} className="w-full h-full object-contain mix-blend-multiply" referrerPolicy="no-referrer" />
             </div>
           </div>
           
@@ -423,7 +424,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
                        />
                        {customImage && (
                          <div className="mt-2 relative w-16 h-16 rounded-md overflow-hidden border border-gray-200">
-                           <img src={customImage} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                           <img src={convertGoogleDriveUrl(customImage)} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                          </div>
                        )}
                      </div>

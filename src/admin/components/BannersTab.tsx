@@ -126,7 +126,7 @@ export function BannersTab({
                   
                   <div className="relative aspect-[1920/633] bg-slate-200 rounded-xl overflow-hidden border-2 border-dashed border-slate-300 hover:border-violet-400 group/img transition-colors cursor-pointer">
                     {banner.image ? (
-                      <img src={banner.image} alt="Banner Preview" className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105" referrerPolicy="no-referrer" />
+                      <img src={convertGoogleDriveUrl(banner.image)} alt="Banner Preview" className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105" referrerPolicy="no-referrer" />
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-100">
                         <ImageIcon size={32} className="opacity-40 mb-1" />

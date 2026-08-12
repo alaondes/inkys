@@ -1,3 +1,4 @@
+import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   FileText, 
@@ -1288,7 +1289,7 @@ Agradecemos pela confiança e preferência!`);
                 <div className={`flex flex-col sm:flex-row justify-between items-start gap-4 border-b-2 pb-6 ${selectedTheme.border}`}>
                   <div>
                     {documentLogoUrl || settings.logoUrl ? (
-                      <img src={documentLogoUrl || settings.logoUrl || undefined} alt="Logo" className="h-16 object-contain mb-3" referrerPolicy="no-referrer" />
+                      <img src={convertGoogleDriveUrl(documentLogoUrl || settings.logoUrl || undefined)} alt="Logo" className="h-16 object-contain mb-3" referrerPolicy="no-referrer" />
                     ) : (
                       <h2 className="text-2xl font-black tracking-tight uppercase mb-2 text-gray-900">
                         {settings.storeName || 'Minha Loja'}
@@ -1357,7 +1358,7 @@ Agradecemos pela confiança e preferência!`);
                               <div className="flex items-center gap-3">
                                 {imgUrl && (
                                   <img 
-                                    src={imgUrl} 
+                                    src={convertGoogleDriveUrl(imgUrl)} 
                                     alt={item.description} 
                                     className="w-12 h-12 object-cover rounded-lg border border-gray-100 shrink-0" 
                                     referrerPolicy="no-referrer"
@@ -1462,7 +1463,7 @@ Agradecemos pela confiança e preferência!`);
                 {/* Centered signature logo */}
                 <div className="flex justify-center pt-2">
                   {documentLogoUrl || settings.logoUrl ? (
-                    <img src={documentLogoUrl || settings.logoUrl || undefined} alt="Logo Rodapé" className="h-12 object-contain opacity-40 grayscale" referrerPolicy="no-referrer" />
+                    <img src={convertGoogleDriveUrl(documentLogoUrl || settings.logoUrl || undefined)} alt="Logo Rodapé" className="h-12 object-contain opacity-40 grayscale" referrerPolicy="no-referrer" />
                   ) : (
                     <p className="text-[12px] font-black uppercase tracking-widest text-gray-300">{emitterName || settings.storeName || 'Inkys'}</p>
                   )}

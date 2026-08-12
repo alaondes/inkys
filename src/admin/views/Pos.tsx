@@ -473,7 +473,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
             {filteredProducts.map(product => (
               <div key={product.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md cursor-pointer transition-shadow" onClick={() => addToCart(product)}>
                 <div className="h-32 bg-gray-100 relative">
-                  <img src={product.image} alt={product.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img src={convertGoogleDriveUrl(product.image)} alt={product.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   {product.isAvulso && (
                     <span className="absolute top-2 left-2 bg-purple-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shadow-sm">{settings.posCustomItemLabel || 'Personalizáveis'}</span>
                   )}
@@ -1017,7 +1017,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                 </div>
                 {customItem.image && (
                   <div className="mt-3 w-20 h-20 rounded border border-gray-200 overflow-hidden bg-white">
-                    <img src={customItem.image} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }} />
+                    <img src={convertGoogleDriveUrl(customItem.image)} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }} />
                   </div>
                 )}
               </div>
@@ -1218,7 +1218,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                   <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6">
                     <div>
                       {settings.logoUrl ? (
-                        <img src={settings.logoUrl} alt="Logo" className="h-16 object-contain mb-2" referrerPolicy="no-referrer" />
+                        <img src={convertGoogleDriveUrl(settings.logoUrl)} alt="Logo" className="h-16 object-contain mb-2" referrerPolicy="no-referrer" />
                       ) : (
                         <h2 className="text-2xl font-black text-gray-900 tracking-tighter uppercase mb-2">
                           {settings.storeName || 'Inkys'}
@@ -1422,7 +1422,7 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                   {/* Centered signature logo */}
                   <div className="flex justify-center pt-2">
                     {settings.logoUrl ? (
-                      <img src={settings.logoUrl} alt="Assinatura" className="h-12 object-contain opacity-40 grayscale" referrerPolicy="no-referrer" />
+                      <img src={convertGoogleDriveUrl(settings.logoUrl)} alt="Assinatura" className="h-12 object-contain opacity-40 grayscale" referrerPolicy="no-referrer" />
                     ) : (
                       <p className="text-[12px] font-black uppercase tracking-widest text-gray-300">{settings.storeName || 'Inkys'}</p>
                     )}

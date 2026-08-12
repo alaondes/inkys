@@ -1,3 +1,4 @@
+import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import React, { MutableRefObject } from 'react';
 import { formatPrice } from '../../data/products';
 import { CartItem } from '../../storefront/Storefront';
@@ -35,7 +36,7 @@ export function ResumoCarrinho({
         <div key={item.cartItemId} className="flex flex-col md:flex-row p-4 border-b border-gray-100 text-sm md:items-center gap-4">
           <div className="flex-1 flex items-start gap-4">
             <img 
-              src={item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop'} 
+              src={convertGoogleDriveUrl(item.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop')} 
               alt={item.name} 
               className="w-20 h-20 object-cover rounded-md border border-gray-200 flex-shrink-0"
             referrerPolicy="no-referrer" />
@@ -48,7 +49,7 @@ export function ResumoCarrinho({
                   <div className="flex flex-wrap items-center gap-2 bg-gray-50 p-2 rounded w-fit border border-gray-100">
                     {item.file.type?.startsWith('image/') && (
                       <img 
-                        src={URL.createObjectURL(item.file)} 
+                        src={convertGoogleDriveUrl(URL.createObjectURL(item.file))} 
                         alt="Preview" 
                         className="w-10 h-10 object-cover rounded border border-gray-200" 
                       referrerPolicy="no-referrer" />

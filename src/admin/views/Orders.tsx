@@ -1,3 +1,4 @@
+import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import React, { useState, useEffect } from 'react';
 import { Eye, Truck, CheckCircle, Clock, XCircle, Search, ExternalLink, FileText, Printer, User, Calendar, MapPin, Trash2, ClipboardList, MessageCircle, Download, Edit2, CreditCard, LayoutGrid, List } from 'lucide-react';
 import { formatPrice } from '../../data/products';
@@ -597,7 +598,7 @@ export function Orders({ initialMode }: OrdersProps) {
                       <div className="flex gap-3 items-start">
                         {item.image && (
                           <div className="w-12 h-12 rounded-md overflow-hidden bg-white border border-gray-200 shrink-0">
-                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            <img src={convertGoogleDriveUrl(item.image)} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           </div>
                         )}
                         <div className="flex flex-col">
@@ -643,7 +644,7 @@ export function Orders({ initialMode }: OrdersProps) {
                               <span className="text-gray-500 font-medium">Foto Personalizada:</span>
                               <div className="mt-1">
                                 <a href={item.customImage} target="_blank" rel="noopener noreferrer">
-                                  <img src={item.customImage} alt="Foto Personalizada" className="h-16 rounded border border-gray-200 hover:opacity-80 transition-opacity" referrerPolicy="no-referrer" />
+                                  <img src={convertGoogleDriveUrl(item.customImage)} alt="Foto Personalizada" className="h-16 rounded border border-gray-200 hover:opacity-80 transition-opacity" referrerPolicy="no-referrer" />
                                 </a>
                               </div>
                             </div>
@@ -940,7 +941,7 @@ export function Orders({ initialMode }: OrdersProps) {
                   <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6">
                     <div>
                       {settings.logoUrl ? (
-                        <img src={settings.logoUrl} alt="Logo" className="h-16 object-contain mb-2" referrerPolicy="no-referrer" />
+                        <img src={convertGoogleDriveUrl(settings.logoUrl)} alt="Logo" className="h-16 object-contain mb-2" referrerPolicy="no-referrer" />
                       ) : (
                         <h2 className="text-2xl font-black text-gray-900 tracking-tighter uppercase mb-2">
                           {settings.storeName || 'Inkys'}
@@ -999,7 +1000,7 @@ export function Orders({ initialMode }: OrdersProps) {
                               <div className="flex items-center gap-3">
                                 {item.image ? (
                                   <img 
-                                    src={item.image} 
+                                    src={convertGoogleDriveUrl(item.image)} 
                                     alt={item.description} 
                                     className="w-10 h-10 object-cover rounded-lg border border-gray-200 shadow-2xs shrink-0" 
                                     referrerPolicy="no-referrer" 
@@ -1136,7 +1137,7 @@ export function Orders({ initialMode }: OrdersProps) {
                   {/* Centered signature logo */}
                   <div className="flex justify-center pt-2">
                     {settings.logoUrl ? (
-                      <img src={settings.logoUrl} alt="Assinatura" className="h-12 object-contain opacity-40 grayscale" referrerPolicy="no-referrer" />
+                      <img src={convertGoogleDriveUrl(settings.logoUrl)} alt="Assinatura" className="h-12 object-contain opacity-40 grayscale" referrerPolicy="no-referrer" />
                     ) : (
                       <p className="text-[12px] font-black uppercase tracking-widest text-gray-300">{settings.storeName || 'Inkys'}</p>
                     )}

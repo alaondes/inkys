@@ -1,3 +1,4 @@
+import { convertGoogleDriveUrl } from '../lib/urlUtils';
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
@@ -396,7 +397,7 @@ Agradecemos pela confiança e preferência!`,
             <div className={`flex flex-col sm:flex-row justify-between items-start gap-6 border-b-2 pb-6 ${selectedTheme.border}`}>
               <div className="space-y-3">
                 {emitter.logoUrl ? (
-                  <img src={emitter.logoUrl} alt="Logo" className="h-16 object-contain mb-1 max-w-[200px]" referrerPolicy="no-referrer" />
+                  <img src={convertGoogleDriveUrl(emitter.logoUrl)} alt="Logo" className="h-16 object-contain mb-1 max-w-[200px]" referrerPolicy="no-referrer" />
                 ) : (
                   <h2 className="text-2xl font-black tracking-tight uppercase text-gray-900">
                     {emitter.name || 'Inkys'}
@@ -483,7 +484,7 @@ Agradecemos pela confiança e preferência!`,
                             <div className="flex items-center gap-3">
                               {itemImg && (
                                 <img 
-                                  src={itemImg} 
+                                  src={convertGoogleDriveUrl(itemImg)} 
                                   alt={item.description} 
                                   className="w-12 h-12 object-cover rounded-lg border border-gray-200 shadow-2xs shrink-0" 
                                   referrerPolicy="no-referrer"
@@ -621,7 +622,7 @@ Agradecemos pela confiança e preferência!`,
             {/* Centered signature logo */}
             <div className="flex justify-center pt-2">
               {emitter.logoUrl ? (
-                <img src={emitter.logoUrl} alt="Logo Rodapé" className="h-12 object-contain opacity-40 grayscale" referrerPolicy="no-referrer" />
+                <img src={convertGoogleDriveUrl(emitter.logoUrl)} alt="Logo Rodapé" className="h-12 object-contain opacity-40 grayscale" referrerPolicy="no-referrer" />
               ) : (
                 <p className="text-[12px] font-black uppercase tracking-widest text-gray-300">{emitter.name || 'Inkys'}</p>
               )}

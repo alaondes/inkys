@@ -423,7 +423,7 @@ export function CustomProductsAdmin() {
                       <div className="flex flex-col gap-3">
                         <div className="w-full aspect-square bg-white border border-slate-200/80 rounded-2xl overflow-hidden flex items-center justify-center shrink-0 shadow-xs group">
                           {cp.image ? (
-                            <img src={cp.image} alt="Preview" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            <img src={convertGoogleDriveUrl(cp.image)} alt="Preview" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           ) : (
                             <ImageIcon size={32} className="text-slate-300" />
                           )}
@@ -469,7 +469,7 @@ export function CustomProductsAdmin() {
                       <div className="flex flex-col gap-3">
                         <div className="w-full aspect-square bg-white border border-slate-200/80 rounded-2xl overflow-hidden flex items-center justify-center shrink-0 shadow-xs group">
                           {cp.guideImage ? (
-                            <img src={cp.guideImage} alt="Preview Guia" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            <img src={convertGoogleDriveUrl(cp.guideImage)} alt="Preview Guia" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           ) : (
                             <ImageIcon size={32} className="text-slate-300" />
                           )}

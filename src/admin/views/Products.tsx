@@ -740,7 +740,7 @@ export function Products() {
                     <div key={index} className="flex flex-col gap-3 p-3.5 border border-slate-200/60 rounded-2xl bg-slate-50/50 relative group">
                       <div className="relative w-full h-28 rounded-xl overflow-hidden bg-slate-100 border border-slate-200/60">
                         <img 
-                          src={img} 
+                          src={convertGoogleDriveUrl(img)} 
                           alt={`Banner Produto ${index + 1}`} 
                           className="w-full h-full object-cover" 
                           referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
@@ -910,7 +910,7 @@ export function Products() {
                 <div>
                   <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/60 mb-3">
                     <img 
-                      src={product.image || (product.gallery && product.gallery[0]) || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop'} 
+                      src={convertGoogleDriveUrl(product.image || (product.gallery && product.gallery[0]) || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop')} 
                       alt={product.name} 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
@@ -1332,7 +1332,7 @@ export function Products() {
                     {formData.image && (
                       <div className="relative group w-20 h-20 rounded border border-gray-200 overflow-hidden bg-white flex items-center justify-center">
                         <img 
-                          src={formData.image} 
+                          src={convertGoogleDriveUrl(formData.image)} 
                           alt="Principal" 
                           className="w-full h-full object-contain" 
                           referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
@@ -1408,7 +1408,7 @@ export function Products() {
                             onDragEnd={() => setDraggedGalleryIndex(null)}
                           >
                             <img 
-                              src={img || undefined} 
+                              src={convertGoogleDriveUrl(img || undefined)} 
                               alt={`Galeria ${index}`} 
                               className="w-full h-full object-contain pointer-events-none" 
                               referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
