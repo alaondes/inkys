@@ -141,7 +141,7 @@ export function PublicDocumentViewer() {
             shippingInfo: orderData.shippingInfo || null,
             shippingMode: orderData.shippingMode || null,
             items: (orderData.items || []).map((item: any) => ({
-              description: item.name || item.description || '',
+              description: `${item.name || item.description || ''}${item.selectedColor ? ' (Cor: ' + item.selectedColor + ')' : ''}${item.selectedSize ? ' (Tam: ' + item.selectedSize + ')' : ''}`, 
               quantity: item.quantity || 1,
               unitPrice: item.price || item.unitPrice || 0,
               image: item.image || item.customImage || ''

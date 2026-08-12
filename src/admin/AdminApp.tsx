@@ -339,14 +339,6 @@ export function AdminApp() {
                 G
               </div>
             )}
-            <div>
-              <h1 className="font-black text-base uppercase tracking-tight text-slate-900">
-                Gráfica Express
-              </h1>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
-                Painel App-Native
-              </span>
-            </div>
           </div>
           <button className="lg:hidden text-slate-400 hover:text-slate-700 p-1" onClick={() => setIsMobileMenuOpen(false)}>
             <X size={22} />

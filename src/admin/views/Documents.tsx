@@ -45,6 +45,8 @@ interface OrderItem {
   name: string;
   quantity: number;
   price: number;
+  selectedColor?: string;
+  selectedSize?: string;
 }
 
 interface Order {
@@ -382,7 +384,7 @@ Agradecemos pela confiança e preferência!`);
     
     if (order.items && order.items.length > 0) {
       setItems(order.items.map(item => ({
-        description: item.name,
+        description: `${item.name}${item.selectedColor ? ' (Cor: ' + item.selectedColor + ')' : ''}${item.selectedSize ? ' (Tam: ' + item.selectedSize + ')' : ''}`, 
         quantity: item.quantity || 1,
         unitPrice: item.price || 0
       })));

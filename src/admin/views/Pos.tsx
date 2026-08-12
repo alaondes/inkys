@@ -167,7 +167,11 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
         image: product.image, 
         quantity: 1, 
         isCustom: false, 
-        isAvulso: product.isAvulso 
+        isAvulso: product.isAvulso,
+        colors: product.colors,
+        sizes: product.sizes,
+        selectedColor: product.colors?.[0]?.name,
+        selectedSize: product.sizes?.[0],
       }]);
     }
   };
@@ -266,6 +270,8 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
         total,
         status,
         items: cart.map(item => ({
+          selectedColor: item.selectedColor,
+          selectedSize: item.selectedSize,
           name: item.name,
           quantity: item.quantity,
           price: item.price,
@@ -537,6 +543,37 @@ Agradecemos pela compreensão, confiança e preferência. Estamos à disposiçã
                       ) : (
                         <h4 className="text-xs font-semibold text-gray-800 leading-tight">{item.name}</h4>
                       )}
+                      
+                      {/* Variações */}
+                      {(item.colors || item.sizes) && (
+                        <div className="flex gap-2">
+                          {item.colors && item.colors.length > 0 && (
+                            <select
+                              value={item.selectedColor || ''}
+                              onChange={(e) => updateCartItem(item.id, 'selectedColor', e.target.value)}
+                              className="text-[10px] border border-gray-200 rounded px-1 py-0.5 bg-white outline-none focus:border-[var(--color-primary)] flex-1"
+                            >
+                              <option value="">Cor...</option>
+                              {item.colors.map((c: any) => (
+                                <option key={c.name} value={c.name}>{c.name}</option>
+                              ))}
+                            </select>
+                          )}
+                          {item.sizes && item.sizes.length > 0 && (
+                            <select
+                              value={item.selectedSize || ''}
+                              onChange={(e) => updateCartItem(item.id, 'selectedSize', e.target.value)}
+                              className="text-[10px] border border-gray-200 rounded px-1 py-0.5 bg-white outline-none focus:border-[var(--color-primary)] w-16"
+                            >
+                              <option value="">Tam...</option>
+                              {item.sizes.map((s: any) => (
+                                <option key={s} value={s}>{s}</option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-gray-500 uppercase">Qtd:</span>

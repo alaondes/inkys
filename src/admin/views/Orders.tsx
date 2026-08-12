@@ -19,6 +19,7 @@ interface OrderItem {
   fileUrl?: string;
   image?: string;
   selectedColor?: string;
+  selectedSize?: string;
   customText?: string;
   customMusic?: string;
   customImage?: string;
@@ -609,6 +610,9 @@ export function Orders({ initialMode }: OrdersProps) {
                           {item.selectedColor && (
                             <span className="text-xs text-gray-500 mt-1">Cor: <span className="font-semibold text-gray-700">{item.selectedColor}</span></span>
                           )}
+                          {item.selectedSize && (
+                            <span className="text-xs text-gray-500 mt-1">Tamanho: <span className="font-semibold text-gray-700">{item.selectedSize}</span></span>
+                          )}
                         </div>
                       </div>
                       <span className="font-bold text-sm text-[var(--color-primary)]">{formatPrice(item.price * item.quantity)}</span>
@@ -698,7 +702,7 @@ export function Orders({ initialMode }: OrdersProps) {
                           message += `Aqui está o resumo do seu *${localStatus === 'Orçamento' ? 'ORÇAMENTO' : 'PEDIDO'}* #${selectedOrder.id.substring(0, 8)}:\n\n`;
                           
                           selectedOrder.items.forEach((item) => {
-                            message += `• ${item.quantity}x ${item.name} - ${formatPrice(item.price * item.quantity)}\n`;
+                            message += `• ${item.quantity}x ${item.name}${item.selectedColor ? ' (Cor: ' + item.selectedColor + ')' : ''}${item.selectedSize ? ' (Tam: ' + item.selectedSize + ')' : ''} - ${formatPrice(item.price * item.quantity)}\n`;
                           });
                           
                           message += `\n*SUBTOTAL:* ${formatPrice(selectedOrder.subtotal || selectedOrder.total)}\n`;
@@ -876,7 +880,7 @@ export function Orders({ initialMode }: OrdersProps) {
                     message += `Aqui está o resumo do seu *${localStatus === 'Orçamento' ? 'ORÇAMENTO' : 'PEDIDO'}* #${selectedOrder.id.substring(0, 8)}:\n\n`;
                     
                     selectedOrder.items.forEach((item) => {
-                      message += `• ${item.quantity}x ${item.name} - ${formatPrice(item.price * item.quantity)}\n`;
+                      message += `• ${item.quantity}x ${item.name}${item.selectedColor ? ' (Cor: ' + item.selectedColor + ')' : ''}${item.selectedSize ? ' (Tam: ' + item.selectedSize + ')' : ''} - ${formatPrice(item.price * item.quantity)}\n`;
                     });
                     
                     message += `\n*SUBTOTAL:* ${formatPrice(selectedOrder.subtotal || selectedOrder.total)}\n`;
