@@ -16,6 +16,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 export interface CartItem extends Product {
   quantity: number;
   selectedColor?: string;
+  selectedSize?: string;
   cartItemId: string;
   file?: File;
   fileUrl?: string;
@@ -134,10 +135,10 @@ export function Storefront() {
     return () => clearInterval(interval);
   }, [settings.heroBanners]);
 
-  const addToCart = (product: any, selectedColor?: string, customData?: { text?: string, music?: string, image?: string }, initialQuantity: number = 1) => {
+  const addToCart = (product: any, selectedColor?: string, selectedSize?: string, customData?: { text?: string, music?: string, image?: string }, initialQuantity: number = 1) => {
     // Generate unique ID based on customization to separate items
     const customHash = customData ? btoa(JSON.stringify(customData)).slice(0, 10) : 'default';
-    const cartItemId = `${product.id}-${selectedColor || 'default'}-${customHash}`;
+    const cartItemId = `${product.id}-${selectedColor || 'default'}-${selectedSize || 'default'}-${customHash}`;
     
     setCart(prev => {
       const existing = prev.find(item => item.cartItemId === cartItemId);
@@ -149,7 +150,8 @@ export function Storefront() {
       return [...prev, { 
         ...product, 
         quantity: initialQuantity, 
-        selectedColor, 
+        selectedColor,
+        selectedSize, 
         cartItemId,
         customText: customData?.text,
         customMusic: customData?.music,
@@ -744,7 +746,7 @@ export function Storefront() {
 
       <main className="pb-20 min-h-[calc(100vh-140px)] bg-gray-50/30">
         {currentView === 'custom' ? (
-          <CustomProductPage onBack={goHome} onAddToCart={addToCart} />
+          <CustomProductPage onBack={goHome} onAddToCart={(p, color, custom, qty) => addToCart(p, color, undefined, custom, qty)} />
         ) : currentView === 'checkout' ? (
           <CheckoutPage 
             cart={cart}

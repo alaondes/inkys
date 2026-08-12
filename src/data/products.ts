@@ -11,6 +11,7 @@ export interface Product {
   image: string;
   gallery?: string[];
   colors?: { name: string; hex: string }[];
+  sizes?: string[];
   rating?: number;
   reviews?: number;
   pixDiscount?: number;

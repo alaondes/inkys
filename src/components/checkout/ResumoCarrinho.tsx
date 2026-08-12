@@ -41,7 +41,7 @@ export function ResumoCarrinho({
               className="w-20 h-20 object-cover rounded-md border border-gray-200 flex-shrink-0"
             referrerPolicy="no-referrer" />
             <div className="flex flex-col flex-1">
-              <span className="text-gray-700 font-bold md:font-normal">{item.name} {item.selectedColor ? `- ${item.selectedColor}` : ''}</span>
+              <span className="text-gray-700 font-bold md:font-normal">{item.name} {item.selectedColor ? `- Cor: ${item.selectedColor}` : ''} {item.selectedSize ? `- Tam: ${item.selectedSize}` : ''}</span>
               <span className="text-xs text-gray-500 mt-0.5">Cód: {(item.id || '').substring(0, 4).toUpperCase()}</span>
               
               <div className="mt-2">

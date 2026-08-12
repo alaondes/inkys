@@ -10,7 +10,7 @@ import { ProductCarousel } from '../components/ProductCarousel';
 interface ProductDetailsProps {
   product: Product;
   onBack: () => void;
-  onAddToCart: (product: Product, selectedColor?: string, customData?: { text?: string, music?: string, image?: string }) => void;
+  onAddToCart: (product: Product, selectedColor?: string, selectedSize?: string, customData?: { text?: string, music?: string, image?: string }) => void;
 }
 
 
@@ -129,6 +129,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
   const installmentPrice = product.price / installments;
 
   const [selectedColor, setSelectedColor] = useState<string | undefined>(product.colors?.[0]?.name);
+  const [selectedSize, setSelectedSize] = useState<string | undefined>(product.sizes?.[0]);
   
   const isPersonalized = product.name.toLowerCase().includes('personalizad') || product.name.toLowerCase().includes('foto') || product.name.toLowerCase().includes('música');
   const [customText, setCustomText] = useState('');
@@ -344,6 +345,23 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
             </div>
             
             {/* Variations (Colors) */}
+            {product.sizes && product.sizes.length > 0 && (
+              <div className="mb-6 border-b border-gray-100 pb-6">
+                <h3 className="text-sm font-bold text-gray-700 mb-3">Tamanho: <span className="font-normal">{selectedSize}</span></h3>
+                <div className="flex flex-wrap gap-2">
+                  {product.sizes.map(size => (
+                    <button
+                      key={size}
+                      onClick={() => setSelectedSize(size)}
+                      className={`min-w-[3rem] h-10 px-3 rounded-md border-2 text-sm font-bold transition-all ${selectedSize === size ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-purple-50' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {product.colors && product.colors.length > 0 && (
               <div className="mb-6 border-b border-gray-100 pb-6">
                 <h3 className="text-sm font-bold text-gray-700 mb-3">Cor: <span className="font-normal">{selectedColor}</span></h3>
@@ -352,8 +370,8 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
                     <button
                       key={color.name}
                       onClick={() => setSelectedColor(color.name)}
-                      className={`w-10 h-10 rounded-full border-2 transition-all ${selectedColor === color.name ? 'border-purple-600 shadow-md scale-110' : 'border-gray-200 hover:scale-105'}`}
-                      style={{ backgroundColor: color.hex }}
+                      className={`w-10 h-10 rounded-full border-2 transition-all ${selectedColor === color.name ? 'border-[var(--color-primary)] shadow-md scale-110' : 'border-gray-200 hover:scale-105'}`}
+                      style={{ backgroundColor: color.hex.startsWith('linear') ? '#ffffff' : color.hex }}
                       title={color.name}
                     />
                   ))}
@@ -476,7 +494,7 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
                       return;
                     }
                   }
-                  onAddToCart(product, selectedColor, isPersonalized ? { text: customText, music: customMusic, image: customImage || undefined } : undefined);
+                  onAddToCart(product, selectedColor, selectedSize, isPersonalized ? { text: customText, music: customMusic, image: customImage || undefined } : undefined);
                 }}
                 disabled={product.stock !== undefined && product.stock <= 0}
                 className={`w-full text-white py-4 rounded font-bold text-xl transition-all ${product.stock !== undefined && product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : 'hover:brightness-110'}`}

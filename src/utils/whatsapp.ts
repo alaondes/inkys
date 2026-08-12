@@ -41,13 +41,14 @@ export const generateWhatsAppLink = (cart: CartItem[], checkoutData: CheckoutDat
   message += `*PEDIDO:*\n`;
   cart.forEach(item => {
     const colorText = item.selectedColor ? ` (Cor: ${item.selectedColor})` : '';
+    const sizeText = item.selectedSize ? ` (Tamanho: ${item.selectedSize})` : '';
     const fileText = item.fileUrl ? `\n   📎 [Ver Arte: ${item.fileUrl}]` : (item.file ? `\n   📎 [A arte "${item.file.name}" será enviada a seguir no chat]` : '');
     const customText = item.customText ? `\n   💬 Texto: "${item.customText}"` : '';
     const customMusic = item.customMusic ? `\n   🎵 Música: ${item.customMusic}` : '';
     const customImage = item.customImage ? `\n   🖼️ [Foto Personalizada Inclusa no Pedido]` : '';
     const productImage = item.image ? `\n   🖼️ [Ver Produto: ${item.image}]` : '';
     
-    message += `${item.quantity}x ${item.name}${colorText} - ${formatPrice(item.price * item.quantity)}${fileText}${customText}${customMusic}${customImage}${productImage}\n`;
+    message += `${item.quantity}x ${item.name}${colorText}${sizeText} - ${formatPrice(item.price * item.quantity)}${fileText}${customText}${customMusic}${customImage}${productImage}\n`;
   });
   
   message += `\n*SUBTOTAL:* ${formatPrice(subtotal)}\n`;
