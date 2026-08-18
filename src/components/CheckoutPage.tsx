@@ -43,48 +43,91 @@ export function CheckoutPage({
   });
   
   const [birthDate, setBirthDate] = useState('');
-  const [landline, setLandline] = useState('');
   
-  const [cepLoading, setCepLoading] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: boolean}>({});
   
   const [paymentMethod, setPaymentMethod] = useState('pix');
-  const [selectedShipping, setSelectedShipping] = useState<number>(15.90);
   const [agreed, setAgreed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [cepLoading, setCepLoading] = useState(false);
+  const [calculatingShipping, setCalculatingShipping] = useState(false);
+  const [shippingOptions, setShippingOptions] = useState<any[]>([]);
+  const [selectedShipping, setSelectedShipping] = useState<any>(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
   const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/\D/g, '');
-    const maskedValue = maskCEP(e.target.value);
+    const rawValue = e.target.value;
+    const masked = maskCEP(rawValue);
     
-    setFormData(prev => ({...prev, cep: maskedValue}));
-    if (errors.cep) setErrors({...errors, cep: false});
+    setFormData(prev => ({ ...prev, cep: masked }));
+    if (errors.cep) setErrors(prev => ({ ...prev, cep: false }));
 
-    if (rawValue.length === 8) {
+    if (masked.length === 9) {
+      const cepClean = masked.replace('-', '');
       setCepLoading(true);
+      
       try {
-        const res = await fetch(`https://viacep.com.br/ws/${rawValue}/json/`);
-        const data = await res.json();
+        const response = await fetch(`https://viacep.com.br/ws/${cepClean}/json/`);
+        const data = await response.json();
+        
         if (!data.erro) {
           setFormData(prev => ({
             ...prev,
-            rua: data.logradouro,
-            bairro: data.bairro,
-            cidade: data.localidade,
-            estado: data.uf
+            rua: data.logradouro || '',
+            bairro: data.bairro || '',
+            cidade: data.localidade || '',
+            estado: data.uf || ''
           }));
+          
+          setCalculatingShipping(true);
+          // Simulate shipping options calculation based on settings
+          setTimeout(async () => {
+            const { doc, getDoc } = await import('firebase/firestore');
+            const { db } = await import('../lib/firebase');
+            try {
+              const snap = await getDoc(doc(db, 'settings', 'general'));
+              let options = [
+                { id: 'pac', name: 'Correios PAC', days: 7, price: 15.90 },
+                { id: 'sedex', name: 'Correios Sedex', days: 3, price: 29.90 }
+              ];
+              if (snap.exists() && snap.data()?.shipping) {
+                const s = snap.data().shipping;
+                if (s.options && Array.isArray(s.options)) {
+                  options = s.options.map((opt: any, idx: number) => ({
+                    id: `custom-${idx}`,
+                    name: opt.name || 'Frete',
+                    days: opt.days || 5,
+                    price: opt.price || 0
+                  }));
+                }
+              }
+              setShippingOptions(options);
+              if (options.length > 0) {
+                setSelectedShipping(options[0]);
+              }
+            } catch (err) {
+               console.error("Error fetching shipping:", err);
+            }
+            setCalculatingShipping(false);
+          }, 1000);
+          
         } else {
-          setErrors(prev => ({...prev, cep: true}));
+          setErrors(prev => ({ ...prev, cep: true }));
+          toast.error('CEP não encontrado');
         }
       } catch (err) {
-        setErrors(prev => ({...prev, cep: true}));
+        console.error('Erro ao buscar CEP:', err);
+        toast.error('Não foi possível verificar o CEP');
       } finally {
         setCepLoading(false);
       }
+    } else {
+      setShippingOptions([]);
+      setSelectedShipping(null);
     }
   };
 
@@ -158,12 +201,15 @@ export function CheckoutPage({
     if (!validateEmail(formData.email)) newErrors.email = true;
     
     if (formData.celular.replace(/\D/g, '').length < 10) newErrors.celular = true;
-    if (formData.cep.replace(/\D/g, '').length !== 8) newErrors.cep = true;
     if (birthDate && birthDate.replace(/\D/g, '').length !== 8) newErrors.birthDate = true;
     
+    if (formData.cep.replace(/\D/g, '').length !== 8) newErrors.cep = true;
+    if (!formData.numero.trim()) newErrors.numero = true;
+    if (!formData.cpf || formData.cpf.replace(/\D/g, '').length !== 11) newErrors.cpf = true;
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      toast.error('Por favor, corrija os campos destacados em vermelho (e-mail, etc).');
+      toast.error('Por favor, corrija os campos destacados em vermelho (e-mail, celular, etc).');
       return;
     }
     
@@ -175,30 +221,28 @@ export function CheckoutPage({
     setIsSubmitting(true);
     
     const formElement = e.target as HTMLFormElement;
-    const tipo = ((formElement.elements.namedItem('tipo') as RadioNodeList)[0] as HTMLInputElement).checked ? 'Pessoa Física' : 'Pessoa Jurídica';
+    const tipo = ((formElement.elements.namedItem('tipo') as RadioNodeList)?.[0] as HTMLInputElement)?.checked ? 'Pessoa Física' : 'Pessoa Jurídica';
     const genderSelect = formElement.querySelector('select');
     const gender = genderSelect && genderSelect.value !== '- Selecione -' ? genderSelect.value : '';
 
     try {
       await onComplete({
         email: formData.email,
-        type: tipo,
+        type: tipo || 'Pessoa Física',
         name: formData.nome,
         cpf: formData.cpf,
         gender: gender,
         birthDate: birthDate,
         phone: formData.celular,
-        landline: landline,
-        address: `${formData.rua ? formData.rua + ', ' : ''}${formData.numero ? formData.numero + ' - ' : ''}${formData.complemento ? formData.complemento + ' - ' : ''}${formData.bairro ? formData.bairro + ', ' : ''}${formData.cidade ? formData.cidade + ' - ' : ''}CEP: ${formData.cep}`,
+        cep: formData.cep,
         street: formData.rua,
         number: formData.numero,
         complement: formData.complemento,
         neighborhood: formData.bairro,
         city: formData.cidade,
         state: formData.estado,
-        zipCode: formData.cep,
         paymentMethod: paymentMethod,
-        shippingCost: selectedShipping,
+        shippingOption: selectedShipping,
         coupon: appliedCoupon ? appliedCoupon.code : undefined,
         couponDiscount: cartTotal - cartTotalWithDiscount
       });
@@ -235,13 +279,12 @@ export function CheckoutPage({
             setErrors={setErrors}
             birthDate={birthDate} 
             setBirthDate={setBirthDate}
-            landline={landline} 
-            setLandline={setLandline}
             handleCepChange={handleCepChange}
             cepLoading={cepLoading}
             selectedShipping={selectedShipping}
             setSelectedShipping={setSelectedShipping}
-            cartTotal={cartTotalWithDiscount}
+            shippingOptions={shippingOptions}
+            calculatingShipping={calculatingShipping}
           />
         </div>
 
@@ -291,9 +334,15 @@ export function CheckoutPage({
                   <span>- R$ {(cartTotal - cartTotalWithDiscount).toFixed(2).replace('.', ',')}</span>
                 </div>
               )}
+              {selectedShipping && (
+                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <span>Frete ({selectedShipping.name})</span>
+                  <span>{selectedShipping.price === 0 ? 'Grátis' : `R$ ${selectedShipping.price.toFixed(2).replace('.', ',')}`}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-gray-800 text-lg mt-2">
-                <span>Total Produtos</span>
-                <span>R$ {cartTotalWithDiscount.toFixed(2).replace('.', ',')}</span>
+                <span>Total</span>
+                <span>R$ {(cartTotalWithDiscount + (selectedShipping?.price || 0)).toFixed(2).replace('.', ',')}</span>
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 {
-  "name": "Inkys - Catálogo",
-  "description": "Catálogo de produtos com carrinho de compras e checkout pelo WhatsApp.",
+  "name": "Livros Digital",
+  "description": "Loja e catálogo de livros digitais e infoprodutos com carrinho de compras e checkout.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

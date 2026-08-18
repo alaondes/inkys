@@ -9,19 +9,21 @@ export interface CheckoutData {
   gender: string;
   birthDate: string;
   phone: string;
-  landline: string;
-  address: string;
+  paymentMethod: string;
+  coupon?: string;
+  couponDiscount?: number;
+  cep?: string;
   street?: string;
   number?: string;
   complement?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
+  shippingOption?: any;
+  shippingCost?: number;
+  address?: string;
   zipCode?: string;
-  paymentMethod: string;
-  shippingCost: number;
-  coupon?: string;
-  couponDiscount?: number;
+  landline?: string;
 }
 
 export const generateWhatsAppLink = (cart: CartItem[], checkoutData: CheckoutData, phoneNumber: string, orderId?: string) => {
@@ -29,9 +31,9 @@ export const generateWhatsAppLink = (cart: CartItem[], checkoutData: CheckoutDat
   const discountAmount = checkoutData.couponDiscount || 0;
   const subtotalAfterCoupon = Math.max(0, subtotal - discountAmount);
   
+  const shippingCost = checkoutData.shippingOption?.price || 0;
   const pixDiscount = 0.10;
-  const subtotalWithPix = checkoutData.paymentMethod === 'pix' ? subtotalAfterCoupon * (1 - pixDiscount) : subtotalAfterCoupon;
-  const finalTotal = subtotalWithPix + checkoutData.shippingCost;
+  const finalTotal = checkoutData.paymentMethod === 'pix' ? (subtotalAfterCoupon + shippingCost) * (1 - pixDiscount) : (subtotalAfterCoupon + shippingCost);
   
   let message = `Olá! Gostaria de finalizar meu pedido.\n\n`;
   if (orderId) {
@@ -40,26 +42,18 @@ export const generateWhatsAppLink = (cart: CartItem[], checkoutData: CheckoutDat
   
   message += `*PEDIDO:*\n`;
   cart.forEach(item => {
-    const colorText = item.selectedColor ? ` (Cor: ${item.selectedColor})` : '';
-    const sizeText = item.selectedSize ? ` (Tamanho: ${item.selectedSize})` : '';
-    const fileText = item.fileUrl ? `\n   📎 [Ver Arte: ${item.fileUrl}]` : (item.file ? `\n   📎 [A arte "${item.file.name}" será enviada a seguir no chat]` : '');
-    const customText = item.customText ? `\n   💬 Texto: "${item.customText}"` : '';
-    const customMusic = item.customMusic ? `\n   🎵 Música: ${item.customMusic}` : '';
-    const customImage = item.customImage ? `\n   🖼️ [Foto Personalizada Inclusa no Pedido]` : '';
-    const productImage = item.image ? `\n   🖼️ [Ver Produto: ${item.image}]` : '';
-    
-    message += `${item.quantity}x ${item.name}${colorText}${sizeText} - ${formatPrice(item.price * item.quantity)}${fileText}${customText}${customMusic}${customImage}${productImage}\n`;
+    message += `${item.quantity}x ${item.name} - ${formatPrice(item.price * item.quantity)}\n`;
   });
   
   message += `\n*SUBTOTAL:* ${formatPrice(subtotal)}\n`;
   if (checkoutData.coupon && checkoutData.couponDiscount) {
     message += `*CUPOM (${checkoutData.coupon}):* -${formatPrice(checkoutData.couponDiscount)}\n`;
   }
-  if (checkoutData.paymentMethod === 'pix') { 
-    message += `*DESCONTO PIX (10%):* -${formatPrice(subtotalAfterCoupon * pixDiscount)}\n`;
+  if (checkoutData.shippingOption) {
+    message += `*FRETE (${checkoutData.shippingOption.name}):* ${checkoutData.shippingOption.price === 0 ? 'Grátis' : formatPrice(checkoutData.shippingOption.price)}\n`;
   }
-  if (checkoutData.shippingCost > 0) {
-    message += `*FRETE:* ${formatPrice(checkoutData.shippingCost)}\n`;
+  if (checkoutData.paymentMethod === 'pix') { 
+    message += `*DESCONTO PIX (10%):* -${formatPrice((subtotalAfterCoupon + shippingCost) * pixDiscount)}\n`;
   }
   message += `*TOTAL:* ${formatPrice(finalTotal)}\n\n`;
   
@@ -70,11 +64,14 @@ export const generateWhatsAppLink = (cart: CartItem[], checkoutData: CheckoutDat
   message += `CPF: ${checkoutData.cpf}\n`;
   if (checkoutData.gender) message += `Sexo: ${checkoutData.gender}\n`;
   if (checkoutData.birthDate) message += `Data de Nasc.: ${checkoutData.birthDate}\n`;
-  message += `Celular: ${checkoutData.phone}\n`;
-  if (checkoutData.landline) message += `Fixo: ${checkoutData.landline}\n\n`;
+  message += `Celular: ${checkoutData.phone}\n\n`;
   
   message += `*ENTREGA:*\n`;
-  message += `Endereço: ${checkoutData.address}\n\n`;
+  message += `CEP: ${checkoutData.cep}\n`;
+  message += `Endereço: ${checkoutData.street}, ${checkoutData.number}\n`;
+  if (checkoutData.complement) message += `Complemento: ${checkoutData.complement}\n`;
+  message += `Bairro: ${checkoutData.neighborhood}\n`;
+  message += `Cidade/UF: ${checkoutData.city}/${checkoutData.state}\n\n`;
   
   message += `*PAGAMENTO:*\n`;
   message += `Forma de Pagamento: ${checkoutData.paymentMethod === 'pix' ? 'PIX' : checkoutData.paymentMethod === 'boleto' ? 'Boleto' : 'Cartão de Crédito'}\n`;

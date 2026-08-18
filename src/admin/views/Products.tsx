@@ -1156,8 +1156,8 @@ export function Products() {
                   })()}
 
                   {/* Sugestão de Precificação Fixa */}
-                  {formData.costPrice !== undefined && formData.costPrice > 0 && (() => {
-                    const calc = calculateSuggestedPrice(formData.costPrice, settings.pricingRules, formData.packagingCost);
+                  {(() => {
+                    const calc = calculateSuggestedPrice(formData.costPrice || 0, settings?.pricingRules, formData.packagingCost);
                     const isCurrentPriceEqual = Math.abs((formData.price || 0) - calc.suggestedPrice) < 0.05;
                     return (
                       <div className="col-span-2 bg-gradient-to-r from-blue-50 via-slate-50 to-emerald-50 border border-blue-200/80 rounded-2xl p-4 shadow-sm space-y-3">
@@ -1363,7 +1363,7 @@ export function Products() {
                         </button>
                       </div>
                     )}
-                  </div>\n
+                  </div>
 
                   <div className="space-y-2 col-span-2">
                     <div className="flex justify-between items-center">
@@ -1447,7 +1447,7 @@ export function Products() {
                     <label className="text-[10px] uppercase font-bold text-gray-500">Observação do Produto (Opcional)</label>
                     <input 
                       type="text" 
-                      placeholder="Ex: Prazo de produção: 5 dias úteis" 
+                      placeholder="Ex: O link de acesso será enviado após o pagamento" 
                       value={formData.observation || ''}
                       onChange={e => setFormData({...formData, observation: e.target.value})}
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
