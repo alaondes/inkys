@@ -3,6 +3,7 @@ import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'fireb
 import { db } from '../../lib/firebase';
 import { Plus, Trash2, Edit2 } from 'lucide-react';
 import { formatPrice } from '../../data/products';
+import toast from 'react-hot-toast';
 
 export function Coupons() {
   const [coupons, setCoupons] = useState<any[]>([]);
@@ -18,26 +19,34 @@ export function Coupons() {
   }, []);
 
   const handleSave = async () => {
+    const loadToast = toast.loading('Salvando cupom...');
     try {
       const dataToSave = {
-        code: formData.code.toUpperCase(),
+        code: formData.code.toUpperCase().trim(),
         type: formData.type,
         value: formData.value,
         active: formData.active,
         minPurchase: formData.minPurchase
       };
 
+      if (!dataToSave.code) {
+        toast.error('O código do cupom é obrigatório.', { id: loadToast });
+        return;
+      }
+
       if (editingId) {
-        updateDoc(doc(db, 'coupons', editingId), dataToSave).catch(e => console.warn(e));
+        await updateDoc(doc(db, 'coupons', editingId), dataToSave);
+        toast.success('Cupom atualizado com sucesso!', { id: loadToast });
       } else {
-        addDoc(collection(db, 'coupons'), dataToSave).catch(e => console.warn(e));
+        await addDoc(collection(db, 'coupons'), dataToSave);
+        toast.success('Cupom criado com sucesso!', { id: loadToast });
       }
       setIsModalOpen(false);
       setEditingId(null);
       setFormData({ code: '', type: 'percentage', value: 0, active: true, minPurchase: 0 });
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert('Erro ao salvar cupom');
+      toast.error('Erro ao salvar cupom: ' + (e.message || 'Erro desconhecido'), { id: loadToast });
     }
   };
 
@@ -48,8 +57,15 @@ export function Coupons() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Tem certeza?')) {
-      deleteDoc(doc(db, 'coupons', id)).catch(e => console.warn(e));
+    if (confirm('Tem certeza de que deseja excluir este cupom?')) {
+      const loadToast = toast.loading('Excluindo cupom...');
+      try {
+        await deleteDoc(doc(db, 'coupons', id));
+        toast.success('Cupom excluído com sucesso!', { id: loadToast });
+      } catch (e: any) {
+        console.error(e);
+        toast.error('Erro ao excluir cupom: ' + (e.message || 'Erro desconhecido'), { id: loadToast });
+      }
     }
   };
 

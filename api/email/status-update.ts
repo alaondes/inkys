@@ -105,8 +105,14 @@ export default async function handler(req: any, res: any) {
     });
 
     res.json({ success: true });
-  } catch (error) {
-    console.error("Error sending status update email:", error);
-    res.status(500).json({ error: "Failed to send email" });
+  } catch (error: any) {
+    const isAuthError = error?.code === 'EAUTH' || error?.message?.includes('535') || error?.message?.includes('Username and Password not accepted');
+    if (isAuthError) {
+      console.warn("SMTP Authentication warning: GMAIL_USER or GMAIL_PASS credentials are not accepted by Google SMTP. E-mail was skipped. Generate a Google App Password to resolve this.");
+      res.json({ success: false, warning: "SMTP authentication failed. Verify GMAIL_USER and GMAIL_PASS." });
+    } else {
+      console.error("Error sending status update email:", error);
+      res.status(500).json({ error: "Failed to send email" });
+    }
   }
 }

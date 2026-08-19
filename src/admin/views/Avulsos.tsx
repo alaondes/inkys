@@ -517,8 +517,8 @@ export function Avulsos() {
                   })()}
 
                   {/* Sugestão de Precificação Fixa */}
-                  {formData.costPrice !== undefined && formData.costPrice > 0 && (() => {
-                    const calc = calculateSuggestedPrice(formData.costPrice, settings.pricingRules, formData.packagingCost);
+                  {(() => {
+                    const calc = calculateSuggestedPrice(formData.costPrice || 0, settings.pricingRules, formData.packagingCost);
                     const isCurrentPriceEqual = Math.abs((formData.price || 0) - calc.suggestedPrice) < 0.05;
                     return (
                       <div className="col-span-2 bg-gradient-to-r from-blue-50 via-slate-50 to-emerald-50 border border-blue-200/80 rounded-2xl p-4 shadow-sm space-y-3">

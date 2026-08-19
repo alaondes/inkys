@@ -174,7 +174,11 @@ export function DadosCliente({
               <label className="block text-xs font-bold text-gray-700 mb-2">Forma de entrega</label>
               <div className="space-y-2">
                 {shippingOptions.map((option) => (
-                  <label key={option.id} className={`flex items-center justify-between p-3 border rounded cursor-pointer transition-colors ${selectedShipping?.id === option.id ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'border-gray-200 hover:border-gray-300'}`}>
+                  <label 
+                    key={option.id} 
+                    onClick={() => setSelectedShipping(option)}
+                    className={`flex items-center justify-between p-3 border rounded cursor-pointer transition-colors ${selectedShipping?.id === option.id ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'border-gray-200 hover:border-gray-300'}`}
+                  >
                     <div className="flex items-center gap-3">
                       <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selectedShipping?.id === option.id ? 'border-[var(--color-primary)]' : 'border-gray-300'}`}>
                         {selectedShipping?.id === option.id && <div className="w-2 h-2 rounded-full bg-[var(--color-primary)]"></div>}

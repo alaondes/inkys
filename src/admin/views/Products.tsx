@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft, Tags, CheckCircle, Loader2, Barcode, Calculator, Sparkles, TrendingUp, DollarSign, Info, PieChart, Receipt, Package, Building2, LayoutGrid, List, Image as ImageIcon } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft, Tags, CheckCircle, Loader2, Barcode, Calculator, Sparkles, TrendingUp, DollarSign, Info, PieChart, Receipt, Package, Building2, LayoutGrid, List, Image as ImageIcon, RefreshCw, Lock } from 'lucide-react';
 import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import { formatPrice, Product } from '../../data/products';
 import { useProducts } from '../../context/ProductContext';
 import { useSettings } from '../../context/SettingsContext';
-import { calculateSuggestedPrice, calculateActualProductProfitability } from '../../lib/pricingUtils';
+import { calculateSuggestedPrice, calculateActualProductProfitability, calculateSuggestedPriceFromProfitVal } from '../../lib/pricingUtils';
 import { toast } from 'react-hot-toast';
 
 const maskBRLCurrency = (val: string): string => {
@@ -46,6 +46,7 @@ export function Products() {
   const [initialCategory, setInitialCategory] = useState('');
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [isRecalculating, setIsRecalculating] = useState(false);
   
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
@@ -217,6 +218,159 @@ export function Products() {
         if (err.message) errorMsg += ` Detalhes: ${err.message}`;
       }
       toast.error(errorMsg, { id: loadToast });
+    }
+  };
+
+  const handleRecalculateSingleProductPrice = async (product: Product) => {
+    if (!product.costPrice || product.costPrice <= 0) {
+      toast.error("Este produto não possui preço de custo cadastrado.");
+      return;
+    }
+
+    const loadToast = toast.loading(`Recalculando preço para: ${product.name}...`);
+    try {
+      const rules: any = settings.pricingRules || {};
+      
+      // Calculate effective fixed cost pct with safeguard:
+      let effectiveFixedCostPct = 0;
+      if (rules.estimatedMonthlyRevenue && rules.estimatedMonthlyRevenue > 100) {
+        const rent = rules.rentCostMonthly || 0;
+        const utilities = rules.utilitiesCostMonthly || 0;
+        const salaries = rules.salariesCostMonthly || 0;
+        const marketing = rules.marketingCostMonthly || 0;
+        const software = rules.softwareAccountingCostMonthly || 0;
+        const other = rules.otherFixedCostsMonthly || 0;
+        const totalFixed = rent + utilities + salaries + marketing + software + other;
+        effectiveFixedCostPct = Math.min(80, (totalFixed / rules.estimatedMonthlyRevenue) * 100);
+      }
+
+      const taxRatePct = rules.taxRatePct || 0;
+      const gatewayFeePct = rules.gatewayFeePct || 0;
+      const commissionPct = rules.commissionPct || 0;
+      const defaultPackagingCost = rules.defaultPackagingCost !== undefined ? rules.defaultPackagingCost : 2.00;
+      const defaultProfitPct = rules.desiredProfitPct !== undefined ? rules.desiredProfitPct : 20;
+
+      const costPrice = Number(product.costPrice) || 0;
+      const customPackaging = product.selectedPackagingId === 'none' ? 0 : (
+        product.selectedPackagingId === 'default' || !product.selectedPackagingId ? (
+          product.packagingCost !== undefined ? Number(product.packagingCost) : defaultPackagingCost
+        ) : (
+          (settings.packagingModels || []).find((m: any) => m.id === product.selectedPackagingId)?.cost ?? (
+            product.packagingCost !== undefined ? Number(product.packagingCost) : defaultPackagingCost
+          )
+        )
+      );
+
+      const profitVal = product.desiredProfit !== undefined ? Number(product.desiredProfit) : undefined;
+      const desiredProfitPct = defaultProfitPct;
+
+      let newPrice = 0;
+      if (profitVal !== undefined && profitVal > 0) {
+        const sumPct = Math.min(99, Math.max(0, taxRatePct + gatewayFeePct + commissionPct + effectiveFixedCostPct));
+        const divisor = Math.max(0.01, 1 - (sumPct / 100));
+        newPrice = (costPrice + customPackaging + profitVal) / divisor;
+      } else {
+        const sumPct = Math.min(99, Math.max(0, taxRatePct + gatewayFeePct + commissionPct + effectiveFixedCostPct + desiredProfitPct));
+        const divisor = Math.max(0.01, 1 - (sumPct / 100));
+        newPrice = (costPrice + customPackaging) / divisor;
+      }
+
+      const roundedPrice = Math.round(newPrice * 100) / 100;
+      
+      const updatedProduct = {
+        ...product,
+        price: roundedPrice
+      };
+
+      await updateProduct(updatedProduct);
+      setLocalProducts(prev => prev.map(p => p.id === product.id ? updatedProduct : p));
+      
+      toast.success(`Preço recalculado com sucesso: R$ ${roundedPrice.toFixed(2).replace('.', ',')}`, { id: loadToast });
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao recalcular o preço deste produto.', { id: loadToast });
+    }
+  };
+
+  const handleRecalculatePrices = async () => {
+    if (!window.confirm("Deseja realmente recalcular o preço de todos os produtos cadastrados? Os preços serão corrigidos com base nas regras financeiras atuais (sem a taxa de rateio de custos fixos, caso o faturamento mensal seja muito baixo). Isso atualizará todos os preços incorretos automaticamente.")) {
+      return;
+    }
+    
+    setIsRecalculating(true);
+    const loadToast = toast.loading('Recalculando preços de todos os produtos...');
+    
+    try {
+      const rules: any = settings.pricingRules || {};
+      
+      // Calculate effective fixed cost pct with safeguard:
+      let effectiveFixedCostPct = 0;
+      if (rules.estimatedMonthlyRevenue && rules.estimatedMonthlyRevenue > 100) {
+        const rent = rules.rentCostMonthly || 0;
+        const utilities = rules.utilitiesCostMonthly || 0;
+        const salaries = rules.salariesCostMonthly || 0;
+        const marketing = rules.marketingCostMonthly || 0;
+        const software = rules.softwareAccountingCostMonthly || 0;
+        const other = rules.otherFixedCostsMonthly || 0;
+        const totalFixed = rent + utilities + salaries + marketing + software + other;
+        effectiveFixedCostPct = (totalFixed / rules.estimatedMonthlyRevenue) * 100;
+      }
+
+      const taxRatePct = rules.taxRatePct || 0;
+      const gatewayFeePct = rules.gatewayFeePct || 0;
+      const commissionPct = rules.commissionPct || 0;
+      const defaultPackagingCost = rules.defaultPackagingCost !== undefined ? rules.defaultPackagingCost : 2.00;
+      const defaultProfitPct = rules.desiredProfitPct !== undefined ? rules.desiredProfitPct : 20;
+
+      let count = 0;
+      for (const productObj of products) {
+        const product = productObj as any;
+        const costPrice = Number(product.costPrice) || 0;
+        
+        const customPackaging = product.selectedPackagingId === 'none' ? 0 : (
+          product.selectedPackagingId === 'default' || !product.selectedPackagingId ? (
+            product.packagingCost !== undefined ? Number(product.packagingCost) : (product.customPackaging !== undefined ? Number(product.customPackaging) : defaultPackagingCost)
+          ) : (
+            (settings.packagingModels || []).find((m: any) => m.id === product.selectedPackagingId)?.cost ?? (
+              product.packagingCost !== undefined ? Number(product.packagingCost) : (product.customPackaging !== undefined ? Number(product.customPackaging) : defaultPackagingCost)
+            )
+          )
+        );
+        
+        const profitVal = product.profitVal !== undefined ? Number(product.profitVal) : undefined;
+        const desiredProfitPct = product.desiredProfitPct !== undefined ? Number(product.desiredProfitPct) : defaultProfitPct;
+        
+        let newPrice = 0;
+        
+        if (profitVal !== undefined && profitVal > 0) {
+          // Calculate from profit value
+          const sumPct = Math.min(99, Math.max(0, taxRatePct + gatewayFeePct + commissionPct + effectiveFixedCostPct));
+          const divisor = Math.max(0.01, 1 - (sumPct / 100));
+          newPrice = (costPrice + customPackaging + profitVal) / divisor;
+        } else {
+          // Calculate from percentage
+          const sumPct = Math.min(99, Math.max(0, taxRatePct + gatewayFeePct + commissionPct + effectiveFixedCostPct + desiredProfitPct));
+          const divisor = Math.max(0.01, 1 - (sumPct / 100));
+          newPrice = (costPrice + customPackaging) / divisor;
+        }
+        
+        const roundedPrice = Math.round(newPrice * 100) / 100;
+        
+        if (product.price !== roundedPrice) {
+          await updateProduct({
+            ...product,
+            price: roundedPrice
+          });
+          count++;
+        }
+      }
+      
+      toast.success(`Preços recalculados com sucesso! ${count} produtos foram atualizados no banco de dados.`, { id: loadToast });
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erro ao recalcular os preços dos produtos.', { id: loadToast });
+    } finally {
+      setIsRecalculating(false);
     }
   };
 
@@ -392,6 +546,13 @@ export function Products() {
   };
 
   const [formData, setFormData] = useState<Partial<Product>>(currentProductEmptyTemplate);
+  const [modalActiveTab, setModalActiveTab] = React.useState<'geral' | 'precificacao' | 'estoque'>('geral');
+
+  const isPrecedingFieldsFilled = !!(
+    formData.name?.trim() && 
+    formData.category && 
+    ((formData.costPrice !== undefined && formData.costPrice > 0) || (formData.selectedMaterialIds && formData.selectedMaterialIds.length > 0))
+  );
 
   const generateNextSku = (categoryName: string) => {
     if (!categoryName) return '';
@@ -447,14 +608,27 @@ export function Products() {
   // Update formData when modal opens
   React.useEffect(() => {
     if (isModalOpen) {
+      setModalActiveTab('geral');
       if (editingProduct) {
-        setFormData({ ...editingProduct, colors: editingProduct.colors ? [...editingProduct.colors] : [] });
+        const pkgId = (editingProduct as any).selectedPackagingId || (editingProduct.packagingCost === 0 ? 'none' : 'default');
+        setFormData({ 
+          ...editingProduct, 
+          selectedPackagingId: pkgId,
+          colors: editingProduct.colors ? [...editingProduct.colors] : [] 
+        });
       } else {
         const autoSku = generateNextSku(initialCategory);
-        setFormData({ ...currentProductEmptyTemplate, category: initialCategory, sku: autoSku });
+        const defaultPkg = settings?.pricingRules?.defaultPackagingCost ?? 2.00;
+        setFormData({ 
+          ...currentProductEmptyTemplate, 
+          category: initialCategory, 
+          sku: autoSku,
+          selectedPackagingId: 'default',
+          packagingCost: defaultPkg
+        });
       }
     }
-  }, [isModalOpen, editingProduct, initialCategory]);
+  }, [isModalOpen, editingProduct, initialCategory, settings]);
 
   const handleAddColor = () => {
     const currentColors = formData.colors || [];
@@ -590,7 +764,7 @@ export function Products() {
       let updatedCount = 0;
       const updatedProducts = localProducts.map(p => {
         if (p.costPrice !== undefined && p.costPrice > 0) {
-          const calc = calculateSuggestedPrice(p.costPrice, settings?.pricingRules, p.packagingCost);
+          const calc = calculateSuggestedPrice(p.costPrice, settings?.pricingRules, p.packagingCost, undefined, p.desiredProfit);
           if (calc.suggestedPrice > 0) {
             updatedCount++;
             return {
@@ -972,6 +1146,14 @@ export function Products() {
                   >
                     <PieChart size={15} />
                   </button>
+                  <button 
+                    type="button"
+                    onClick={() => handleRecalculateSingleProductPrice(product)}
+                    className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl transition-all"
+                    title="Recalcular Preço Sugerido"
+                  >
+                    <RefreshCw size={15} />
+                  </button>
                   {confirmDeleteId === product.id ? (
                     <button type="button" onClick={() => handleDeleteConfirmed(product.id)} className="px-3 py-2 bg-rose-600 text-white rounded-xl text-xs font-black uppercase">Sim</button>
                   ) : (
@@ -1002,550 +1184,910 @@ export function Products() {
             
             <form onSubmit={handleSave} className="flex-1 flex flex-col min-h-0 text-gray-900">
               <div className="flex-1 overflow-y-auto pr-1 space-y-4 pb-4">
+                {/* Tabs Selector */}
+                <div className="flex border-b border-gray-100 mb-4 pb-1 overflow-x-auto shrink-0 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setModalActiveTab('geral')}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${
+                      modalActiveTab === 'geral'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                        : 'bg-gray-50 text-gray-500 border-gray-200 hover:text-gray-800'
+                    }`}
+                  >
+                    📋 Cadastro Geral
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalActiveTab('precificacao')}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${
+                      modalActiveTab === 'precificacao'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                        : 'bg-gray-50 text-gray-500 border-gray-200 hover:text-gray-800'
+                    }`}
+                  >
+                    💰 Precificação & Custos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalActiveTab('estoque')}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${
+                      modalActiveTab === 'estoque'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                        : 'bg-gray-50 text-gray-500 border-gray-200 hover:text-gray-800'
+                    }`}
+                  >
+                    📦 Estoque & Vitrine
+                  </button>
+                </div>
+
+                {/* Tab Content */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1 col-span-2">
-                    <label className="text-[10px] uppercase font-bold text-gray-500">Nome do Produto</label>
-                    <input required type="text" value={formData.name || ""} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
-                  </div>
-                  
-                  <div className="space-y-1 col-span-2 md:col-span-1">
-                    <label className="text-[10px] uppercase font-bold text-gray-500">Código / SKU</label>
-                    <input type="text" value={formData.sku || ""} onChange={e => setFormData({...formData, sku: e.target.value})} placeholder="Ex: CAN-001" className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
-                  </div>
+                  {modalActiveTab === 'geral' && (
+                    <>
+                      <div className="space-y-1 col-span-2">
+                        <label className="text-[10px] uppercase font-bold text-gray-500">Nome do Produto</label>
+                        <input required type="text" value={formData.name || ""} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
+                      </div>
+                      
+                      <div className="space-y-1 col-span-2 md:col-span-1">
+                        <label className="text-[10px] uppercase font-bold text-gray-500">Código / SKU</label>
+                        <input type="text" value={formData.sku || ""} onChange={e => setFormData({...formData, sku: e.target.value})} placeholder="Ex: CAN-001" className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" />
+                      </div>
 
-                  <div className="space-y-1 col-span-2 md:col-span-1">
-                    <label className="text-[10px] uppercase font-bold text-gray-500">Categoria</label>
-                    <select 
-                      value={formData.category || ""} 
-                      onChange={e => {
-                        const newCat = e.target.value;
-                        const updates: Partial<Product> = { category: newCat };
-                        if (!editingProduct) {
-                          const previousAutoSku = generateNextSku(formData.category || "");
-                          if (!formData.sku || formData.sku === previousAutoSku) {
-                            updates.sku = generateNextSku(newCat);
-                          }
-                        }
-                        setFormData({...formData, ...updates});
-                      }} 
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
-                    >
-                      <option value="">Selecione uma categoria...</option>
-                      {settings.categories?.map((cat, idx) => (
-                        <option key={idx} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
+                      <div className="space-y-1 col-span-2 md:col-span-1">
+                        <label className="text-[10px] uppercase font-bold text-gray-500">Categoria</label>
+                        <select 
+                          value={formData.category || ""} 
+                          onChange={e => {
+                            const newCat = e.target.value;
+                            const updates: Partial<Product> = { category: newCat };
+                            if (!editingProduct) {
+                              const previousAutoSku = generateNextSku(formData.category || "");
+                              if (!formData.sku || formData.sku === previousAutoSku) {
+                                updates.sku = generateNextSku(newCat);
+                              }
+                            }
+                            setFormData({...formData, ...updates});
+                          }} 
+                          className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
+                        >
+                          <option value="">Selecione uma categoria...</option>
+                          {settings.categories?.map((cat, idx) => (
+                            <option key={idx} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                  <div className="space-y-1 col-span-2 sm:col-span-1">
-                    <label className="text-[10px] uppercase font-bold text-gray-500">Preço Venda (R$)</label>
-                    <input 
-                      required 
-                      type="text" 
-                      value={formData.price !== undefined ? maskBRLCurrency(Math.round(formData.price * 100).toString()) : ''} 
-                      onChange={e => {
-                        const numericValue = parseBRLCurrency(e.target.value);
-                        setFormData({...formData, price: numericValue});
-                      }} 
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-bold" 
-                      placeholder="Ex: 36,90"
-                    />
-                  </div>
+                      <div className="space-y-1 col-span-2">
+                        <label className="text-[10px] uppercase font-bold text-gray-500">Observação do Produto (Opcional)</label>
+                        <input 
+                          type="text" 
+                          placeholder="Ex: O link de acesso será enviado após o pagamento" 
+                          value={formData.observation || ''}
+                          onChange={e => setFormData({...formData, observation: e.target.value})}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
+                        />
+                      </div>
 
-                  <div className="space-y-1 col-span-2 sm:col-span-1">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] uppercase font-bold text-red-600 flex items-center gap-1">
-                        <span>Valor Promocional (R$)</span>
-                      </label>
-                      <span className="text-[9px] text-gray-400 font-semibold lowercase">(Preço De / riscado)</span>
-                    </div>
-                    <input 
-                      type="text" 
-                      value={formData.compareAtPrice !== undefined && formData.compareAtPrice > 0 ? maskBRLCurrency(Math.round(formData.compareAtPrice * 100).toString()) : ''} 
-                      onChange={e => {
-                        const raw = e.target.value;
-                        if (raw === '') {
-                          setFormData({...formData, compareAtPrice: undefined});
-                        } else {
-                          const numericValue = parseBRLCurrency(raw);
-                          setFormData({...formData, compareAtPrice: numericValue});
-                        }
-                      }} 
-                      className="w-full bg-red-50/40 border border-red-200/80 rounded-lg p-3 text-sm focus:border-red-500 outline-none font-semibold" 
-                      placeholder="Ex: 49,90 (Opcional)"
-                    />
-                  </div>
-
-                  <div className="space-y-1 col-span-2 sm:col-span-1">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] uppercase font-bold text-gray-500">Preço de Custo (R$)</label>
-                      <span className="text-[9px] text-gray-400 font-semibold lowercase">(fornecedor)</span>
-                    </div>
-                    <input 
-                      type="text" 
-                      value={formData.costPrice !== undefined && formData.costPrice > 0 ? maskBRLCurrency(Math.round(formData.costPrice * 100).toString()) : ''} 
-                      onChange={e => {
-                        const raw = e.target.value;
-                        if (raw === '') {
-                          setFormData({...formData, costPrice: undefined});
-                        } else {
-                          const numericValue = parseBRLCurrency(raw);
-                          setFormData({...formData, costPrice: numericValue});
-                        }
-                      }} 
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
-                      placeholder="Ex: 12,00 (Opcional)"
-                    />
-                  </div>
-
-                  <div className="space-y-1 col-span-2 sm:col-span-1">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] uppercase font-bold text-gray-500">Custo Embalagem (R$)</label>
-                      <span className="text-[9px] text-gray-400 font-semibold lowercase">
-                        (Padrão: R$ {(settings?.pricingRules?.defaultPackagingCost ?? 2).toFixed(2).replace('.', ',')})
-                      </span>
-                    </div>
-                    <input 
-                      type="text" 
-                      value={formData.packagingCost !== undefined && formData.packagingCost > 0 ? maskBRLCurrency(Math.round(formData.packagingCost * 100).toString()) : ''} 
-                      onChange={e => {
-                        const raw = e.target.value;
-                        if (raw === '') {
-                          setFormData({...formData, packagingCost: undefined});
-                        } else {
-                          const numericValue = parseBRLCurrency(raw);
-                          setFormData({...formData, packagingCost: numericValue});
-                        }
-                      }} 
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
-                      placeholder={`Ex: ${(settings?.pricingRules?.defaultPackagingCost ?? 2.00).toFixed(2).replace('.', ',')} (Opcional)`}
-                    />
-                  </div>
-
-                  {/* Indicador de Oferta / Valor Promocional Ativo */}
-                  {(() => {
-                    const p1 = formData.price || 0;
-                    const p2 = formData.compareAtPrice || 0;
-                    if (p1 > 0 && p2 > 0 && p1 !== p2) {
-                      const original = Math.max(p1, p2);
-                      const promo = Math.min(p1, p2);
-                      const discountPct = Math.round((1 - promo / original) * 100);
-                      const savings = original - promo;
-                      return (
-                        <div className="col-span-2 bg-gradient-to-r from-red-50 via-amber-50 to-orange-50 border border-red-200 rounded-2xl p-3.5 flex items-center justify-between flex-wrap gap-2 text-xs shadow-xs">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
-                              🔥
-                            </div>
-                            <div>
-                              <div className="font-extrabold text-red-950 flex items-center gap-2">
-                                <span>Valor Promocional Ativo</span>
-                                <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                                  {discountPct}% OFF
-                                </span>
-                              </div>
-                              <div className="text-[11px] text-red-800 font-medium mt-0.5">
-                                Preço no site: <strong className="font-black text-red-950">R$ {promo.toFixed(2).replace('.', ',')}</strong> (Preço riscado: <span className="line-through">R$ {original.toFixed(2).replace('.', ',')}</span> - Economia de R$ {savings.toFixed(2).replace('.', ',')})
-                              </div>
-                            </div>
+                      <div className="space-y-1 col-span-2">
+                        <div className="flex justify-between items-end mb-1">
+                          <label className="text-[10px] uppercase font-bold text-gray-500">Descrição</label>
+                          <div className="flex gap-1">
+                            <button type="button" onClick={() => insertFormatting('<strong>', '</strong>')} className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700" title="Negrito"><Bold size={14} /></button>
+                            <button type="button" onClick={() => insertFormatting('<em>', '</em>')} className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700" title="Itálico"><Italic size={14} /></button>
+                            <button type="button" onClick={() => insertFormatting('<p>', '</p>')} className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700" title="Parágrafo"><AlignLeft size={14} /></button>
+                            <button type="button" onClick={() => insertFormatting('<br/>', '')} className="p-1 px-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold" title="Quebra de Linha">BR</button>
                           </div>
                         </div>
-                      );
-                    }
-                    return null;
-                  })()}
+                        <textarea 
+                          ref={descriptionRef}
+                          rows={6} 
+                          value={formData.description || ""} 
+                          onChange={e => setFormData({...formData, description: e.target.value})} 
+                          className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none resize-y" 
+                        />
+                      </div>
 
-                  {/* Sugestão de Precificação Fixa */}
-                  {(() => {
-                    const calc = calculateSuggestedPrice(formData.costPrice || 0, settings?.pricingRules, formData.packagingCost);
-                    const isCurrentPriceEqual = Math.abs((formData.price || 0) - calc.suggestedPrice) < 0.05;
-                    return (
-                      <div className="col-span-2 bg-gradient-to-r from-blue-50 via-slate-50 to-emerald-50 border border-blue-200/80 rounded-2xl p-4 shadow-sm space-y-3">
-                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 bg-blue-600 text-white rounded-lg shadow-sm">
-                              <Calculator size={16} />
-                            </div>
-                            <div>
-                              <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-900 block">
-                                Formação de Preço Inteligente
-                              </span>
-                              <span className="text-[10px] text-gray-500">
-                                Regras ativas: Taxas, Impostos, Custo Fixo & Margem ({calc.sumPct.toFixed(1)}%)
-                              </span>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const suggestedFormatted = Math.round(calc.suggestedPrice * 100) / 100;
-                              setFormData(prev => ({ ...prev, price: suggestedFormatted }));
-                              toast.success(`Preço R$ ${suggestedFormatted.toFixed(2).replace('.', ',')} aplicado!`);
-                            }}
-                            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                              isCurrentPriceEqual 
-                                ? 'bg-emerald-600 text-white cursor-default' 
-                                : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer active:scale-95'
-                            }`}
-                          >
-                            {isCurrentPriceEqual ? (
-                              <>
-                                <CheckCircle size={14} /> Preço Sugerido Aplicado
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles size={14} /> Aplicar Preço Sugerido (R$ {calc.suggestedPrice.toFixed(2).replace('.', ',')})
-                              </>
-                            )}
+                      <div className="col-span-2 space-y-3 pt-4 border-t border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] uppercase font-bold text-gray-500">Tamanhos <span className="text-gray-400 lowercase">(opcional)</span></label>
+                          <button type="button" onClick={handleAddSize} className="flex items-center gap-1 text-[10px] uppercase font-bold text-[var(--color-primary)] hover:brightness-110">
+                            <PlusCircle size={14} /> Adicionar Tamanho
                           </button>
                         </div>
+                        
+                        {formData.sizes && formData.sizes.length > 0 && (
+                          <div className="space-y-2">
+                            {formData.sizes.map((size, index) => (
+                              <div key={index} className="flex items-center gap-3">
+                                <input 
+                                  type="text" 
+                                  value={size} 
+                                  onChange={e => handleUpdateSize(index, e.target.value)}
+                                  className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none uppercase font-bold" 
+                                  placeholder="Tamanho (ex: P, M, G, 42)"
+                                />
+                                <button 
+                                  type="button"
+                                  onClick={() => handleRemoveSize(index)}
+                                  className="p-2.5 text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 rounded-lg transition-colors"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-blue-100/80 text-[11px]">
-                          <div className="bg-white/90 p-2.5 rounded-xl border border-gray-100 shadow-2xs space-y-0.5">
-                            <span className="text-gray-400 block text-[9px] uppercase font-bold">Custo Direto Total:</span>
-                            <span className="font-bold text-gray-900 block">R$ {calc.totalDirectCost.toFixed(2).replace('.', ',')}</span>
-                            <span className="text-[9px] text-gray-400 block">
-                              (Item: R${calc.baseCost.toFixed(2)} + Emb: R${calc.packagingCost.toFixed(2)})
-                            </span>
-                          </div>
-                          <div className="bg-white/90 p-2.5 rounded-xl border border-gray-100 shadow-2xs space-y-0.5">
-                            <span className="text-gray-400 block text-[9px] uppercase font-bold">Impostos & Taxas:</span>
-                            <span className="font-bold text-amber-700 block">R$ {(calc.taxAmount + calc.gatewayFeeAmount + calc.commissionAmount).toFixed(2).replace('.', ',')}</span>
-                            <span className="text-[9px] text-gray-400 block">
-                              (NF: {calc.taxRatePct}% | Maq: {calc.gatewayFeePct}%)
-                            </span>
-                          </div>
-                          <div className="bg-white/90 p-2.5 rounded-xl border border-gray-100 shadow-2xs space-y-0.5">
-                            <span className="text-gray-400 block text-[9px] uppercase font-bold">Rateio Fixos (Aluguel/Luz/Sal):</span>
-                            <span className="font-bold text-purple-700 block">R$ {calc.fixedCostAmount.toFixed(2).replace('.', ',')}</span>
-                            <span className="text-[9px] text-purple-600 block">
-                              ({calc.effectiveFixedCostPct.toFixed(1)}% do preço)
-                            </span>
-                          </div>
-                          <div className="bg-white/90 p-2.5 rounded-xl border border-gray-100 shadow-2xs space-y-0.5">
-                            <span className="text-gray-400 block text-[9px] uppercase font-bold">Lucro Líquido Limpo:</span>
-                            <span className="font-extrabold text-emerald-600 block">R$ {calc.profitAmount.toFixed(2).replace('.', ',')}</span>
-                            <span className="text-[9px] text-emerald-600 font-bold block">
-                              ({calc.profitMarginRealPct.toFixed(1)}% de margem)
-                            </span>
-                          </div>
+                      <div className="col-span-2 space-y-3 pt-4 border-t border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] uppercase font-bold text-gray-500">Variações / Cores <span className="text-gray-400 lowercase">(opcional)</span></label>
+                          <button type="button" onClick={handleAddColor} className="flex items-center gap-1 text-[10px] uppercase font-bold text-[var(--color-primary)] hover:brightness-110">
+                            <PlusCircle size={14} /> Adicionar Cor
+                          </button>
                         </div>
+                        
+                        {formData.colors && formData.colors.length > 0 && (
+                          <div className="space-y-2">
+                            {formData.colors.map((color, index) => (
+                              <div key={index} className="flex items-center gap-3">
+                                <input 
+                                  title="Cor (Hexadecimal)"
+                                  type="color" 
+                                  value={color.hex.startsWith('linear-gradient') ? '#ffffff' : color.hex} 
+                                  onChange={e => handleUpdateColor(index, 'hex', e.target.value)}
+                                  disabled={color.hex.startsWith('linear')}
+                                  className="w-10 h-10 rounded cursor-pointer bg-transparent border-none appearance-none p-0 shrink-0" 
+                                />
+                                <input 
+                                  type="text" 
+                                  value={color.name} 
+                                  onChange={e => handleUpdateColor(index, 'name', e.target.value)} 
+                                  className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" 
+                                  placeholder="Nome da cor"
+                                />
+                                <button type="button" onClick={() => handleRemoveColor(index)} className="p-2 text-red-500 hover:text-red-600 transition-colors shrink-0">
+                                  <MinusCircle size={18} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    );
-                  })()}
+                    </>
+                  )}
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-gray-500">Desconto PIX (%)</label>
-                    <input 
-                      type="number" 
-                      min="0"
-                      max="100"
-                      value={formData.pixDiscount !== undefined ? Math.round(formData.pixDiscount * 100) : ''} 
-                      onChange={e => {
-                        const val = parseInt(e.target.value);
-                        setFormData({...formData, pixDiscount: isNaN(val) ? undefined : val / 100});
-                      }} 
-                      placeholder="Ex: 10"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
-                    />
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-gray-500">Qtd. Parcelas (sem juros)</label>
-                    <input 
-                      type="number" 
-                      min="1"
-                      value={formData.installments || ''} 
-                      onChange={e => {
-                        const val = parseInt(e.target.value);
-                        setFormData({...formData, installments: isNaN(val) ? undefined : val});
-                      }} 
-                      placeholder="Ex: 2"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
-                    />
-                  </div>
+                  {modalActiveTab === 'precificacao' && (
+                    <>
+                      {/* Insumos */}
+                      {settings?.rawMaterials && settings.rawMaterials.length > 0 && (
+                        <div className="col-span-2 bg-purple-50/50 border border-purple-100 rounded-2xl p-4 space-y-3 shadow-2xs">
+                          <div className="flex items-center gap-1.5 text-purple-950">
+                            <Tags size={16} className="text-purple-600" />
+                            <span className="text-xs font-black uppercase tracking-wider">Composição de Custo por Insumos</span>
+                          </div>
+                          <p className="text-[10px] text-purple-800">
+                            Selecione as matérias-primas e insumos para somar no custo deste produto automaticamente:
+                          </p>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                            {settings.rawMaterials.map(mat => {
+                              const isChecked = (formData.selectedMaterialIds || []).includes(mat.id);
+                              return (
+                                <label 
+                                  key={mat.id}
+                                  className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none ${
+                                    isChecked 
+                                      ? 'bg-purple-100/80 border-purple-300 text-purple-950' 
+                                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <input 
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => {
+                                        const currentIds = [...(formData.selectedMaterialIds || [])];
+                                        let newIds: string[] = [];
+                                        if (isChecked) {
+                                          newIds = currentIds.filter(id => id !== mat.id);
+                                        } else {
+                                          newIds = [...currentIds, mat.id];
+                                        }
+                                        
+                                        // Calculate total materials cost
+                                        const newCostSum = settings.rawMaterials!
+                                          .filter(m => newIds.includes(m.id))
+                                          .reduce((sum, m) => sum + m.cost, 0);
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-gray-500">Quantidade em Estoque</label>
-                    <input 
-                      type="number" 
-                      min="0"
-                      value={formData.stock !== undefined ? formData.stock : ''} 
-                      onChange={e => {
-                        const val = parseInt(e.target.value);
-                        setFormData({...formData, stock: isNaN(val) ? undefined : val});
-                      }} 
-                      placeholder="Sem limite (ilimitado)"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
-                    />
-                  </div>
+                                        // Calculate suggested sale price
+                                        const newCost = newCostSum;
+                                        const newPkg = formData.packagingCost || 0;
+                                        const profit = formData.desiredProfit || 0;
+                                        const suggested = calculateSuggestedPriceFromProfitVal(newCost, settings?.pricingRules, newPkg, profit);
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-gray-500">Avaliação (Estrelas)</label>
-                    <input 
-                      type="number" 
-                      min="0"
-                      max="5"
-                      step="0.5"
-                      value={formData.rating || ''} 
-                      onChange={e => {
-                        const val = parseFloat(e.target.value);
-                        setFormData({...formData, rating: isNaN(val) ? undefined : val});
-                      }} 
-                      placeholder="Ex: 5"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
-                    />
-                  </div>
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          selectedMaterialIds: newIds,
+                                          costPrice: newCostSum > 0 ? newCostSum : undefined,
+                                          price: profit > 0 && suggested > 0 ? Math.round(suggested * 100) / 100 : prev.price
+                                        }));
+                                      }}
+                                      className="accent-purple-600"
+                                    />
+                                    <span>{mat.name}</span>
+                                  </div>
+                                  <span className={isChecked ? 'text-purple-700' : 'text-emerald-600'}>
+                                    R$ {mat.cost.toFixed(2).replace('.', ',')}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-gray-500">Qtd. Avaliações</label>
-                    <input 
-                      type="number" 
-                      min="0"
-                      value={formData.reviews || ''} 
-                      onChange={e => {
-                        const val = parseInt(e.target.value);
-                        setFormData({...formData, reviews: isNaN(val) ? undefined : val});
-                      }} 
-                      placeholder="Ex: 15"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
-                    />
-                  </div>
+                          {(formData.selectedMaterialIds || []).length > 0 && (
+                            <div className="text-[11px] font-extrabold text-purple-900 bg-purple-100/50 p-2 rounded-lg flex justify-between items-center">
+                              <span>Total Insumos Selecionados:</span>
+                              <span className="text-xs font-black">
+                                R$ {(formData.costPrice || 0).toFixed(2).replace('.', ',')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
-                  <div className="space-y-1 col-span-2 flex items-center justify-between bg-gray-50 p-4 rounded-xl border border-gray-200">
-                    <div>
-                      <label className="text-[12px] uppercase font-bold text-gray-900 block">Ocultar Produto</label>
-                      <span className="text-[10px] text-gray-500">Produtos ocultos não aparecem na loja para os clientes.</span>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        className="sr-only peer" 
-                        checked={!!formData.hidden}
-                        onChange={e => setFormData({...formData, hidden: e.target.checked})}
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary)]"></div>
-                    </label>
-                  </div>
+                      {/* Preço de Custo */}
+                      <div className="space-y-1 col-span-2 sm:col-span-1">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] uppercase font-bold text-gray-500">Preço de Custo (R$)</label>
+                          <span className="text-[9px] text-gray-400 font-semibold lowercase">(fornecedor)</span>
+                        </div>
+                        <div className="relative">
+                          <input 
+                            type="text" 
+                            disabled={(formData.selectedMaterialIds || []).length > 0}
+                            value={formData.costPrice !== undefined && formData.costPrice > 0 ? maskBRLCurrency(Math.round(formData.costPrice * 100).toString()) : ''} 
+                            onChange={e => {
+                              const raw = e.target.value;
+                              let costVal = undefined;
+                              if (raw !== '') {
+                                costVal = parseBRLCurrency(raw);
+                              }
+                              
+                              const newCost = costVal || 0;
+                              const defaultPkg = settings?.pricingRules?.defaultPackagingCost !== undefined ? settings.pricingRules.defaultPackagingCost : 2.00;
+                              const newPkg = formData.packagingCost !== undefined ? formData.packagingCost : defaultPkg;
+                              const profit = formData.desiredProfit || 0;
+                              const suggested = calculateSuggestedPriceFromProfitVal(newCost, settings?.pricingRules, newPkg, profit);
 
-                  <div className="space-y-2 col-span-2">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] uppercase font-bold text-gray-500">Imagem Principal (Destaque)</label>
-                      <label className="text-[10px] uppercase font-bold bg-[var(--color-primary)] text-white px-3 py-2 rounded-lg hover:brightness-110 cursor-pointer flex items-center gap-1 transition-all">
-                        <PlusCircle size={14} /> Selecionar imagem principal
-                        <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, "main")} />
-                      </label>
-                    </div>
-                    <div className="flex gap-2 mb-2">
-                      <input 
-                        type="text" 
-                        placeholder="Adicionar por URL da imagem principal..." 
-                        value={formData.image || ''}
-                        onChange={e => setFormData({...formData, image: convertGoogleDriveUrl(e.target.value)})}
-                        className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" 
-                      />
-                    </div>
-                    {formData.image && (
-                      <div className="relative group w-20 h-20 rounded border border-gray-200 overflow-hidden bg-white flex items-center justify-center">
-                        <img 
-                          src={convertGoogleDriveUrl(formData.image)} 
-                          alt="Principal" 
-                          className="w-full h-full object-contain" 
-                          referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
-                        />
-                        <button 
-                          type="button" 
-                          onClick={() => setFormData({...formData, image: ''})}
-                          className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2 col-span-2">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] uppercase font-bold text-gray-500">Galeria de Imagens (Carrossel)</label>
-                      <label className="text-[10px] uppercase font-bold bg-[var(--color-primary)] text-white px-3 py-2 rounded-lg hover:brightness-110 cursor-pointer flex items-center gap-1 transition-all">
-                        <PlusCircle size={14} /> Buscar múltiplas imagens
-                        <input type="file" multiple accept="image/*" className="hidden" onChange={e => handleImageUpload(e, "gallery")} />
-                      </label>
-                    </div>
-                    <div className="flex gap-2 mb-2">
-                      <input 
-                        type="text" 
-                        placeholder="Adicionar por URL da imagem..." 
-                        className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" 
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const val = e.currentTarget.value;
-                            if (val) {
-                              const urls = val.split(/\s+/).filter(u => u.trim() !== '');
                               setFormData(prev => ({
                                 ...prev,
-                                gallery: [...(prev.gallery || []), ...urls.map(convertGoogleDriveUrl)]
+                                costPrice: costVal,
+                                price: profit > 0 && suggested > 0 ? Math.round(suggested * 100) / 100 : prev.price
                               }));
-                              e.currentTarget.value = '';
+                            }} 
+                            className={`w-full border rounded-lg p-3 text-sm outline-none font-bold ${
+                              (formData.selectedMaterialIds || []).length > 0 
+                                ? 'bg-purple-50 border-purple-200 text-purple-700 cursor-not-allowed pl-9' 
+                                : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-[var(--color-primary)]'
+                            }`} 
+                            placeholder="Ex: 12,00 (Opcional)"
+                          />
+                          {(formData.selectedMaterialIds || []).length > 0 && (
+                            <span className="absolute left-3 top-3.5 text-purple-500">
+                              <Lock size={14} />
+                            </span>
+                          )}
+                        </div>
+                        {(formData.selectedMaterialIds || []).length > 0 && (
+                          <p className="text-[9px] text-purple-600 font-bold mt-1">Calculado de forma automática pelos insumos</p>
+                        )}
+                      </div>
+
+                      {/* Modelo de Embalagem */}
+                      <div className="space-y-1 col-span-2 sm:col-span-1">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] uppercase font-bold text-gray-500">Modelo de Embalagem</label>
+                          <span className="text-[9px] text-gray-400 font-semibold lowercase">
+                            (Soma no custo)
+                          </span>
+                        </div>
+                        <select 
+                          value={formData.selectedPackagingId || 'default'} 
+                          onChange={e => {
+                            const val = e.target.value;
+                            let costVal = undefined;
+                            
+                            if (val === 'default') {
+                              costVal = settings?.pricingRules?.defaultPackagingCost ?? 2.00;
+                            } else if (val === 'none') {
+                              costVal = 0;
+                            } else {
+                              const selectedModel = settings.packagingModels?.find(m => m.id === val);
+                              costVal = selectedModel ? selectedModel.cost : undefined;
                             }
-                          }
-                        }}
-                      />
-                      <button 
-                        type="button"
-                        onClick={(e) => {
-                          const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                          const val = input.value;
-                          if (val) {
-                            const urls = val.split(/\s+/).filter(u => u.trim() !== '');
+                            
+                            const newCost = formData.costPrice || 0;
+                            const newPkg = costVal !== undefined ? costVal : 0;
+                            const profit = formData.desiredProfit || 0;
+                            const suggested = calculateSuggestedPriceFromProfitVal(newCost, settings?.pricingRules, newPkg, profit);
+
                             setFormData(prev => ({
                               ...prev,
-                              gallery: [...(prev.gallery || []), ...urls.map(convertGoogleDriveUrl)]
+                              selectedPackagingId: val,
+                              packagingCost: costVal,
+                              price: profit > 0 && suggested > 0 ? Math.round(suggested * 100) / 100 : prev.price
                             }));
-                            input.value = '';
-                          }
-                        }}
-                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium transition-colors whitespace-nowrap"
-                      >
-                        Adicionar
-                      </button>
-                    </div>
-                    {formData.gallery && formData.gallery.length > 0 && (
-                      <div className="flex flex-wrap gap-3">
-                        {formData.gallery.map((img, index) => (
-                          <div 
-                            key={index} 
-                            className={`relative group w-16 h-16 rounded border border-gray-200 overflow-hidden cursor-move transition-transform ${draggedGalleryIndex === index ? 'opacity-50 scale-95' : ''}`}
-                            draggable
-                            onDragStart={() => setDraggedGalleryIndex(index)}
-                            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
-                            onDrop={(e) => { e.preventDefault(); handleGalleryDrop(index); }}
-                            onDragEnd={() => setDraggedGalleryIndex(null)}
-                          >
+                          }} 
+                          className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-semibold text-gray-800"
+                        >
+                          <option value="default">Embalagem Padrão (R$ {(settings?.pricingRules?.defaultPackagingCost ?? 2.00).toFixed(2).replace('.', ',')})</option>
+                          <option value="none">Nenhuma Embalagem (R$ 0,00)</option>
+                          {settings.packagingModels?.map(model => (
+                            <option key={model.id} value={model.id}>
+                              {model.name} (R$ {model.cost.toFixed(2).replace('.', ',')})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {isPrecedingFieldsFilled ? (
+                        <>
+                          {/* Dynamic Real Cost Summation Panel */}
+                          {(() => {
+                            const cost = formData.costPrice || 0;
+                            const pkg = formData.packagingCost !== undefined ? formData.packagingCost : (settings?.pricingRules?.defaultPackagingCost ?? 2.00);
+                            const totalDirect = cost + pkg;
+                            
+                            const price = formData.price || 0;
+                            const taxPct = settings.pricingRules?.taxRatePct || 6;
+                            const gatewayPct = settings.pricingRules?.gatewayFeePct || 4;
+                            const commissionPct = settings.pricingRules?.commissionPct || 0;
+                            
+                            let fixedCostPct = settings.pricingRules?.fixedCostPct || 10;
+                            if (settings.pricingRules?.useCalculatedFixedCost) {
+                              const rent = settings.pricingRules.rentCostMonthly || 0;
+                              const util = settings.pricingRules.utilitiesCostMonthly || 0;
+                              const sal = settings.pricingRules.salariesCostMonthly || 0;
+                              const mkt = settings.pricingRules.marketingCostMonthly || 0;
+                              const soft = settings.pricingRules.softwareAccountingCostMonthly || 0;
+                              const other = settings.pricingRules.otherFixedCostsMonthly || 0;
+                              const totalFixed = rent + util + sal + mkt + soft + other;
+                              const rev = Math.max(100, settings.pricingRules.estimatedMonthlyRevenue || 1);
+                              fixedCostPct = Math.min(80, (totalFixed / rev) * 100);
+                            }
+                            
+                            const taxAmount = (price * taxPct) / 100;
+                            const gatewayAmount = (price * gatewayPct) / 100;
+                            const commissionAmount = (price * commissionPct) / 100;
+                            const fixedCostAmount = (price * fixedCostPct) / 100;
+                            
+                            const totalCostReal = totalDirect + taxAmount + gatewayAmount + commissionAmount + fixedCostAmount;
+                            
+                            return (
+                              <div className="col-span-2 bg-purple-50/60 border border-purple-100 rounded-2xl p-4.5 space-y-3.5 shadow-sm">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-2.5 border-b border-purple-100">
+                                  <div>
+                                    <h5 className="text-xs font-black text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
+                                      📊 Custo Real Total do Produto (Soma Tudo)
+                                    </h5>
+                                    <p className="text-[10px] text-purple-700/80 font-semibold">Preço de compra + embalagem + taxas + custos fixos rateados</p>
+                                  </div>
+                                  <span className="text-sm font-black text-purple-950 bg-purple-100/80 px-3 py-1.5 rounded-xl border border-purple-200">
+                                    R$ {totalCostReal.toFixed(2).replace('.', ',')}
+                                  </span>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2 text-[11px] text-purple-900/90">
+                                  <div className="flex items-center justify-between py-1 border-b border-dashed border-purple-100/50">
+                                    <span className="flex items-center gap-1.5 font-bold">
+                                      🛠️ Insumos / Compra (Fornecedor):
+                                    </span>
+                                    <span className="font-extrabold text-purple-950">
+                                      R$ {cost.toFixed(2).replace('.', ',')}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between py-1 border-b border-dashed border-purple-100/50">
+                                    <span className="flex items-center gap-1.5 font-bold">
+                                      📦 Embalagem Selecionada:
+                                    </span>
+                                    <span className="font-extrabold text-purple-950">
+                                      R$ {pkg.toFixed(2).replace('.', ',')}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between py-1 border-b border-dashed border-purple-100/50">
+                                    <span className="flex items-center gap-1.5 font-bold" title="Impostos sobre Nota Fiscal">
+                                      🧾 Impostos ({taxPct}%):
+                                    </span>
+                                    <span className="font-extrabold text-purple-950">
+                                      R$ {taxAmount.toFixed(2).replace('.', ',')}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between py-1 border-b border-dashed border-purple-100/50">
+                                    <span className="flex items-center gap-1.5 font-bold" title="Taxas de Maquininha e Gateway">
+                                      💳 Taxas Cartão/Gateway ({gatewayPct}%):
+                                    </span>
+                                    <span className="font-extrabold text-purple-950">
+                                      R$ {gatewayAmount.toFixed(2).replace('.', ',')}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between py-1 border-b border-dashed border-purple-100/50">
+                                    <span className="flex items-center gap-1.5 font-bold" title="Comissões de Vendedores e Marketplaces">
+                                      👥 Comissões ({commissionPct}%):
+                                    </span>
+                                    <span className="font-extrabold text-purple-950">
+                                      R$ {commissionAmount.toFixed(2).replace('.', ',')}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between py-1 border-b border-dashed border-purple-100/50">
+                                    <span className="flex items-center gap-1.5 font-bold" title="Rateio de Custos Fixos (Aluguel, Água/Luz, Salários, Mkt, ERP, etc)">
+                                      🏠 Custo Fixo Rateado ({fixedCostPct.toFixed(1)}%):
+                                    </span>
+                                    <span className="font-extrabold text-purple-950">
+                                      R$ {fixedCostAmount.toFixed(2).replace('.', ',')}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                <div className="text-[9px] text-purple-600/90 font-semibold italic bg-purple-100/30 p-2 rounded-lg border border-purple-100/40">
+                                  * Este painel soma automaticamente as Despesas Fixas (Aluguel, Água, Luz, Internet, Salários/Pró-labore, Marketing, Sistemas/Contabilidade e Outras) e as taxas variáveis faturadas. Quando você as altera nas configurações, o Custo Real atualiza em todos os produtos instantaneamente.
+                                </div>
+                              </div>
+                            );
+                          })()}
+ 
+                          {/* Lucro Desejado */}
+                          <div className="space-y-1 col-span-2 sm:col-span-1">
+                            <div className="flex justify-between items-center">
+                              <label className="text-[10px] uppercase font-bold text-emerald-700">Lucro Desejado (R$)</label>
+                              <span className="text-[9px] text-emerald-600 font-bold lowercase">
+                                (Valor líquido limpo)
+                              </span>
+                            </div>
+                            <input 
+                              type="text" 
+                              value={formData.desiredProfit !== undefined && formData.desiredProfit > 0 ? maskBRLCurrency(Math.round(formData.desiredProfit * 100).toString()) : ''} 
+                              onChange={e => {
+                                const raw = e.target.value;
+                                let profitVal = undefined;
+                                if (raw !== '') {
+                                  profitVal = parseBRLCurrency(raw);
+                                }
+                                
+                                const newCost = formData.costPrice || 0;
+                                const defaultPkg = settings?.pricingRules?.defaultPackagingCost !== undefined ? settings.pricingRules.defaultPackagingCost : 2.00;
+                                const newPkg = formData.packagingCost !== undefined ? formData.packagingCost : defaultPkg;
+                                const profit = profitVal || 0;
+                                const suggested = calculateSuggestedPriceFromProfitVal(newCost, settings?.pricingRules, newPkg, profit);
+ 
+                                setFormData(prev => ({
+                                  ...prev,
+                                  desiredProfit: profitVal,
+                                  price: profit > 0 && suggested > 0 ? Math.round(suggested * 100) / 100 : prev.price
+                                }));
+                              }} 
+                              className="w-full bg-emerald-50/50 border border-emerald-200 rounded-lg p-3 text-sm focus:border-emerald-500 outline-none font-bold text-emerald-700" 
+                              placeholder="Ex: 10,00"
+                            />
+                          </div>
+ 
+                          {/* Preço de Venda */}
+                          <div className="space-y-1 col-span-2 sm:col-span-1">
+                            <div className="flex justify-between items-center">
+                              <label className="text-[10px] uppercase font-bold text-gray-500">Preço Venda (R$)</label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const rules: any = settings.pricingRules || {};
+                                  
+                                  // Calculate effective fixed cost pct with safeguard:
+                                  let effectiveFixedCostPct = 0;
+                                  if (rules.estimatedMonthlyRevenue && rules.estimatedMonthlyRevenue > 100) {
+                                    const rent = rules.rentCostMonthly || 0;
+                                    const utilities = rules.utilitiesCostMonthly || 0;
+                                    const salaries = rules.salariesCostMonthly || 0;
+                                    const marketing = rules.marketingCostMonthly || 0;
+                                    const software = rules.softwareAccountingCostMonthly || 0;
+                                    const other = rules.otherFixedCostsMonthly || 0;
+                                    const totalFixed = rent + utilities + salaries + marketing + software + other;
+                                    effectiveFixedCostPct = Math.min(80, (totalFixed / rules.estimatedMonthlyRevenue) * 100);
+                                  }
+ 
+                                  const taxRatePct = rules.taxRatePct || 0;
+                                  const gatewayFeePct = rules.gatewayFeePct || 0;
+                                  const commissionPct = rules.commissionPct || 0;
+                                  const defaultPackagingCost = rules.defaultPackagingCost !== undefined ? rules.defaultPackagingCost : 2.00;
+                                  const defaultProfitPct = rules.desiredProfitPct !== undefined ? rules.desiredProfitPct : 20;
+ 
+                                  const costPrice = Number(formData.costPrice) || 0;
+                                  const customPackaging = formData.selectedPackagingId === 'none' ? 0 : (
+                                    formData.selectedPackagingId === 'default' || !formData.selectedPackagingId ? (
+                                      formData.packagingCost !== undefined ? Number(formData.packagingCost) : defaultPackagingCost
+                                    ) : (
+                                      (settings.packagingModels || []).find((m: any) => m.id === formData.selectedPackagingId)?.cost ?? (
+                                        formData.packagingCost !== undefined ? Number(formData.packagingCost) : defaultPackagingCost
+                                      )
+                                    )
+                                  );
+ 
+                                  const profitVal = formData.desiredProfit !== undefined ? Number(formData.desiredProfit) : undefined;
+                                  const desiredProfitPct = defaultProfitPct;
+ 
+                                  let newPrice = 0;
+                                  if (profitVal !== undefined && profitVal > 0) {
+                                    const sumPct = Math.min(99, Math.max(0, taxRatePct + gatewayFeePct + commissionPct + effectiveFixedCostPct));
+                                    const divisor = Math.max(0.01, 1 - (sumPct / 100));
+                                    newPrice = (costPrice + customPackaging + profitVal) / divisor;
+                                  } else {
+                                    const sumPct = Math.min(99, Math.max(0, taxRatePct + gatewayFeePct + commissionPct + effectiveFixedCostPct + desiredProfitPct));
+                                    const divisor = Math.max(0.01, 1 - (sumPct / 100));
+                                    newPrice = (costPrice + customPackaging) / divisor;
+                                  }
+ 
+                                  const roundedPrice = Math.round(newPrice * 100) / 100;
+                                  setFormData({ ...formData, price: roundedPrice });
+                                  toast.success(`Preço sugerido calculado: R$ ${roundedPrice.toFixed(2).replace('.', ',')}`);
+                                }}
+                                className="text-[9px] uppercase font-black text-emerald-600 hover:text-emerald-700 flex items-center gap-0.5"
+                                title="Calcular com base nas regras de precificação"
+                              >
+                                <RefreshCw size={10} /> Sugerir Preço
+                              </button>
+                            </div>
+                            <input 
+                              required 
+                              type="text" 
+                              value={formData.price !== undefined ? maskBRLCurrency(Math.round(formData.price * 100).toString()) : ''} 
+                              onChange={e => {
+                                const numericValue = parseBRLCurrency(e.target.value);
+                                setFormData({...formData, price: numericValue});
+                              }} 
+                              className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none font-bold text-gray-900" 
+                              placeholder="Ex: 36,90"
+                            />
+                          </div>
+ 
+                          {/* Preço Promocional */}
+                          <div className="space-y-1 col-span-2 sm:col-span-1">
+                            <div className="flex justify-between items-center">
+                              <label className="text-[10px] uppercase font-bold text-red-600 flex items-center gap-1">
+                                <span>Valor Promocional (R$)</span>
+                              </label>
+                              <span className="text-[9px] text-gray-400 font-semibold lowercase">(Preço De / riscado)</span>
+                            </div>
+                            <input 
+                              type="text" 
+                              value={formData.compareAtPrice !== undefined && formData.compareAtPrice > 0 ? maskBRLCurrency(Math.round(formData.compareAtPrice * 100).toString()) : ''} 
+                              onChange={e => {
+                                const raw = e.target.value;
+                                if (raw === '') {
+                                  setFormData({...formData, compareAtPrice: undefined});
+                                } else {
+                                  const numericValue = parseBRLCurrency(raw);
+                                  setFormData({...formData, compareAtPrice: numericValue});
+                                }
+                              }} 
+                              className="w-full bg-red-50/40 border border-red-200/80 rounded-lg p-3 text-sm focus:border-red-500 outline-none font-semibold" 
+                              placeholder="Ex: 49,90 (Opcional)"
+                            />
+                          </div>
+ 
+                          {/* Beautiful DRE Real-time Demonstration */}
+                          {(() => {
+                            const price = formData.price || 0;
+                            const cost = formData.costPrice || 0;
+                            const pkg = formData.packagingCost || 0;
+                            const totalDirectCost = cost + pkg;
+ 
+                            const taxPct = settings.pricingRules?.taxRatePct || 6;
+                            const gatewayPct = settings.pricingRules?.gatewayFeePct || 4;
+                            const commissionPct = settings.pricingRules?.commissionPct || 0;
+ 
+                            let fixedCostPct = settings.pricingRules?.fixedCostPct || 10;
+                            if (settings.pricingRules?.useCalculatedFixedCost) {
+                              const rent = settings.pricingRules.rentCostMonthly || 0;
+                              const util = settings.pricingRules.utilitiesCostMonthly || 0;
+                              const sal = settings.pricingRules.salariesCostMonthly || 0;
+                              const mkt = settings.pricingRules.marketingCostMonthly || 0;
+                              const soft = settings.pricingRules.softwareAccountingCostMonthly || 0;
+                              const other = settings.pricingRules.otherFixedCostsMonthly || 0;
+                              const totalFixed = rent + util + sal + mkt + soft + other;
+                              const rev = Math.max(100, settings.pricingRules.estimatedMonthlyRevenue || 1);
+                              fixedCostPct = Math.min(80, (totalFixed / rev) * 100);
+                            }
+ 
+                            const totalVariablePct = taxPct + gatewayPct + commissionPct + fixedCostPct;
+                            const variableCostsVal = (price * totalVariablePct) / 100;
+                            const realProfit = price - totalDirectCost - variableCostsVal;
+                            const realMarginPct = price > 0 ? (realProfit / price) * 100 : 0;
+
+                            const pixFeePct = settings.pricingRules?.pixFeeRatePct ?? 0.99;
+                            const totalVariablePixPct = taxPct + pixFeePct + commissionPct + fixedCostPct;
+                            const variableCostsPixVal = (price * totalVariablePixPct) / 100;
+                            const realProfitPix = price - totalDirectCost - variableCostsPixVal;
+                            const realMarginPixPct = price > 0 ? (realProfitPix / price) * 100 : 0;
+ 
+                            return (
+                              <div className="col-span-2 bg-gradient-to-br from-slate-900 to-slate-950 text-white rounded-2xl p-4 mt-2 space-y-3.5 border border-slate-800 shadow-lg">
+                                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                  <span className="text-xs font-black uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                                    <TrendingUp size={14} /> Demonstrativo do Preço (DRE Real-time)
+                                  </span>
+                                  <span className="text-[10px] text-gray-400 font-bold lowercase">
+                                    Para preço de venda: R$ {price.toFixed(2).replace('.', ',')}
+                                  </span>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
+                                  <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                                    <span className="text-[9px] text-gray-400 uppercase font-bold block mb-0.5">Custos Diretos</span>
+                                    <span className="text-xs font-extrabold text-red-400 block">
+                                      R$ {totalDirectCost.toFixed(2).replace('.', ',')}
+                                    </span>
+                                    <span className="text-[9px] text-gray-500 font-semibold italic block">
+                                      Custo + Embalagem
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                                    <span className="text-[9px] text-gray-400 uppercase font-bold block mb-0.5">Variáveis & Taxas</span>
+                                    <span className="text-[10px] font-extrabold text-amber-400 block leading-tight">
+                                      Card: R$ {variableCostsVal.toFixed(2).replace('.', ',')} ({totalVariablePct.toFixed(1)}%)
+                                    </span>
+                                    <span className="text-[10px] font-extrabold text-emerald-400 block leading-tight">
+                                      PIX: R$ {variableCostsPixVal.toFixed(2).replace('.', ',')} ({totalVariablePixPct.toFixed(1)}%)
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                                    <span className="text-[9px] text-purple-300 uppercase font-black block mb-0.5">Sobra Cartão</span>
+                                    <span className={`text-xs font-black block ${realProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                      R$ {realProfit.toFixed(2).replace('.', ',')}
+                                    </span>
+                                    <span className={`text-[9px] font-bold uppercase block ${realProfit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                      Margem: {realMarginPct.toFixed(1)}%
+                                    </span>
+                                  </div>
+
+                                  <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                                    <span className="text-[9px] text-emerald-300 uppercase font-black block mb-0.5">Sobra PIX</span>
+                                    <span className={`text-xs font-black block ${realProfitPix >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                      R$ {realProfitPix.toFixed(2).replace('.', ',')}
+                                    </span>
+                                    <span className={`text-[9px] font-bold uppercase block ${realProfitPix >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                      Margem: {realMarginPixPct.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </>
+                      ) : (
+                        <div className="col-span-2 bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center space-y-2 shadow-2xs">
+                          <p className="text-xs font-black text-amber-950 uppercase tracking-wide flex items-center justify-center gap-1.5">
+                            ⚠️ Preencha os Dados de Cadastro Primeiro
+                          </p>
+                          <p className="text-[11px] text-amber-800/90 leading-relaxed max-w-sm mx-auto">
+                            O <strong>Preço de Venda</strong> e os <strong>Indicadores DRE</strong> só serão exibidos após você preencher o <strong>Nome do Produto</strong>, <strong>Categoria</strong> (aba Cadastro Geral) e o <strong>Preço de Custo / Insumos</strong>.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {modalActiveTab === 'estoque' && (
+                    <>
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-gray-500">Quantidade em Estoque</label>
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={formData.stock !== undefined ? formData.stock : ''} 
+                          onChange={e => {
+                            const val = parseInt(e.target.value);
+                            setFormData({...formData, stock: isNaN(val) ? undefined : val});
+                          }} 
+                          placeholder="Sem limite (ilimitado)"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-gray-500">Avaliação (Estrelas)</label>
+                        <input 
+                          type="number" 
+                          min="0"
+                          max="5"
+                          step="0.5"
+                          value={formData.rating || ''} 
+                          onChange={e => {
+                            const val = parseFloat(e.target.value);
+                            setFormData({...formData, rating: isNaN(val) ? undefined : val});
+                          }} 
+                          placeholder="Ex: 5"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-gray-500">Qtd. Avaliações</label>
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={formData.reviews || ''} 
+                          onChange={e => {
+                            const val = parseInt(e.target.value);
+                            setFormData({...formData, reviews: isNaN(val) ? undefined : val});
+                          }} 
+                          placeholder="Ex: 15"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
+                        />
+                      </div>
+
+                      <div className="space-y-1 col-span-2 flex items-center justify-between bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <div>
+                          <label className="text-[12px] uppercase font-bold text-gray-900 block">Ocultar Produto</label>
+                          <span className="text-[10px] text-gray-500">Produtos ocultos não aparecem na loja para os clientes.</span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            className="sr-only peer" 
+                            checked={!!formData.hidden}
+                            onChange={e => setFormData({...formData, hidden: e.target.checked})}
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                      </div>
+
+                      <div className="space-y-2 col-span-2">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] uppercase font-bold text-gray-500">Imagem Principal (Destaque)</label>
+                          <label className="text-[10px] uppercase font-bold bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg hover:brightness-110 cursor-pointer flex items-center gap-1 transition-all">
+                            <PlusCircle size={14} /> Selecionar imagem principal
+                            <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, "main")} />
+                          </label>
+                        </div>
+                        <div className="flex gap-2 mb-2">
+                          <input 
+                            type="text" 
+                            placeholder="Adicionar por URL da imagem principal..." 
+                            value={formData.image || ''}
+                            onChange={e => setFormData({...formData, image: convertGoogleDriveUrl(e.target.value)})}
+                            className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" 
+                          />
+                        </div>
+                        {formData.image && (
+                          <div className="relative group w-20 h-20 rounded border border-gray-200 overflow-hidden bg-white flex items-center justify-center">
                             <img 
-                              src={convertGoogleDriveUrl(img || undefined)} 
-                              alt={`Galeria ${index}`} 
-                              className="w-full h-full object-contain pointer-events-none" 
+                              src={convertGoogleDriveUrl(formData.image)} 
+                              alt="Principal" 
+                              className="w-full h-full object-contain" 
                               referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
                             />
                             <button 
                               type="button" 
-                              onClick={() => handleRemoveGalleryImage(index)}
+                              onClick={() => setFormData({...formData, image: ''})}
                               className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                             >
                               <X size={16} />
                             </button>
                           </div>
-                        ))}
+                        )}
                       </div>
-                    )}
-                  </div>
 
-                  <div className="space-y-1 col-span-2">
-                    <label className="text-[10px] uppercase font-bold text-gray-500">Observação do Produto (Opcional)</label>
-                    <input 
-                      type="text" 
-                      placeholder="Ex: O link de acesso será enviado após o pagamento" 
-                      value={formData.observation || ''}
-                      onChange={e => setFormData({...formData, observation: e.target.value})}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none" 
-                    />
-                  </div>
-
-                  <div className="space-y-1 col-span-2">
-                    <div className="flex justify-between items-end mb-1">
-                      <label className="text-[10px] uppercase font-bold text-gray-500">Descrição</label>
-                      <div className="flex gap-1">
-                        <button type="button" onClick={() => insertFormatting('<strong>', '</strong>')} className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700" title="Negrito"><Bold size={14} /></button>
-                        <button type="button" onClick={() => insertFormatting('<em>', '</em>')} className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700" title="Itálico"><Italic size={14} /></button>
-                        <button type="button" onClick={() => insertFormatting('<p>', '</p>')} className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700" title="Parágrafo"><AlignLeft size={14} /></button>
-                        <button type="button" onClick={() => insertFormatting('<br/>', '')} className="p-1 px-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold" title="Quebra de Linha">BR</button>
-                      </div>
-                    </div>
-                    <textarea 
-                      ref={descriptionRef}
-                      rows={6} 
-                      value={formData.description || ""} 
-                      onChange={e => setFormData({...formData, description: e.target.value})} 
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none resize-y" 
-                    />
-                  </div>
-
-                                    <div className="col-span-2 space-y-3 pt-4 border-t border-gray-100">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] uppercase font-bold text-gray-500">Tamanhos <span className="text-gray-400 lowercase">(opcional)</span></label>
-                      <button type="button" onClick={handleAddSize} className="flex items-center gap-1 text-[10px] uppercase font-bold text-[var(--color-primary)] hover:brightness-110">
-                        <PlusCircle size={14} /> Adicionar Tamanho
-                      </button>
-                    </div>
-                    
-                    {formData.sizes && formData.sizes.length > 0 && (
-                      <div className="space-y-2">
-                        {formData.sizes.map((size, index) => (
-                          <div key={index} className="flex items-center gap-3">
-                            <input 
-                              type="text" 
-                              value={size} 
-                              onChange={e => handleUpdateSize(index, e.target.value)}
-                              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm focus:border-[var(--color-primary)] outline-none uppercase font-bold" 
-                              placeholder="Tamanho (ex: P, M, G, 42)"
-                            />
-                            <button 
-                              type="button"
-                              onClick={() => handleRemoveSize(index)}
-                              className="p-2.5 text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <Trash2 size={18} />
-                            </button>
+                      <div className="space-y-2 col-span-2">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] uppercase font-bold text-gray-500">Galeria de Imagens (Carrossel)</label>
+                          <label className="text-[10px] uppercase font-bold bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg hover:brightness-110 cursor-pointer flex items-center gap-1 transition-all">
+                            <PlusCircle size={14} /> Buscar múltiplas imagens
+                            <input type="file" multiple accept="image/*" className="hidden" onChange={e => handleImageUpload(e, "gallery")} />
+                          </label>
+                        </div>
+                        <div className="flex gap-2 mb-2">
+                          <input 
+                            type="text" 
+                            placeholder="Adicionar por URL da imagem..." 
+                            className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" 
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const val = e.currentTarget.value;
+                                if (val) {
+                                  const urls = val.split(/\s+/).filter(u => u.trim() !== '');
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    gallery: [...(prev.gallery || []), ...urls.map(convertGoogleDriveUrl)]
+                                  }));
+                                  e.currentTarget.value = '';
+                                }
+                              }
+                            }}
+                          />
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                              const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                              const val = input.value;
+                              if (val) {
+                                const urls = val.split(/\s+/).filter(u => u.trim() !== '');
+                                setFormData(prev => ({
+                                  ...prev,
+                                  gallery: [...(prev.gallery || []), ...urls.map(convertGoogleDriveUrl)]
+                                }));
+                                input.value = '';
+                              }
+                            }}
+                            className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium transition-colors whitespace-nowrap"
+                          >
+                            Adicionar
+                          </button>
+                        </div>
+                        {formData.gallery && formData.gallery.length > 0 && (
+                          <div className="flex flex-wrap gap-3">
+                            {formData.gallery.map((img, index) => (
+                              <div 
+                                key={index} 
+                                className={`relative group w-16 h-16 rounded border border-gray-200 overflow-hidden cursor-move transition-transform ${draggedGalleryIndex === index ? 'opacity-50 scale-95' : ''}`}
+                                draggable
+                                onDragStart={() => setDraggedGalleryIndex(index)}
+                                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                                onDrop={(e) => { e.preventDefault(); handleGalleryDrop(index); }}
+                                onDragEnd={() => setDraggedGalleryIndex(null)}
+                              >
+                                <img 
+                                  src={convertGoogleDriveUrl(img || undefined)} 
+                                  alt={`Galeria ${index}`} 
+                                  className="w-full h-full object-contain pointer-events-none" 
+                                  referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop' }}
+                                />
+                                <button 
+                                  type="button" 
+                                  onClick={() => handleRemoveGalleryImage(index)}
+                                  className="absolute top-0 right-0 p-0.5 bg-red-600 text-white rounded-bl opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Remover"
+                                >
+                                  <X size={10} />
+                                </button>
+                                <button 
+                                  type="button" 
+                                  onClick={() => setFormData(prev => ({ ...prev, image: img }))}
+                                  className="absolute bottom-0 inset-x-0 bg-blue-600 text-white text-[8px] uppercase font-black py-0.5 text-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  Destaque
+                                </button>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        )}
                       </div>
-                    )}
-                  </div>
-
-                  <div className="col-span-2 space-y-3 pt-4 border-t border-gray-100">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] uppercase font-bold text-gray-500">Variações / Cores <span className="text-gray-400 lowercase">(opcional)</span></label>
-                      <button type="button" onClick={handleAddColor} className="flex items-center gap-1 text-[10px] uppercase font-bold text-[var(--color-primary)] hover:brightness-110">
-                        <PlusCircle size={14} /> Adicionar Cor
-                      </button>
-                    </div>
-                    
-                    {formData.colors && formData.colors.length > 0 && (
-                      <div className="space-y-2">
-                        {formData.colors.map((color, index) => (
-                          <div key={index} className="flex items-center gap-3">
-                            <input 
-                              title="Cor (Hexadecimal)"
-                              type="color" 
-                              value={color.hex.startsWith('linear-gradient') ? '#ffffff' : color.hex} 
-                              onChange={e => handleUpdateColor(index, 'hex', e.target.value)}
-                              disabled={color.hex.startsWith('linear')}
-                              className="w-10 h-10 rounded cursor-pointer bg-transparent border-none appearance-none p-0 shrink-0" 
-                            />
-                            <input 
-                              type="text" 
-                              value={color.name} 
-                              onChange={e => handleUpdateColor(index, 'name', e.target.value)} 
-                              className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:border-[var(--color-primary)] outline-none" 
-                              placeholder="Nome da cor"
-                            />
-                            <button type="button" onClick={() => handleRemoveColor(index)} className="p-2 text-red-500 hover:text-red-600 transition-colors shrink-0">
-                              <MinusCircle size={18} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end gap-3 border-t border-gray-100 shrink-0">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 rounded-lg font-bold text-sm uppercase tracking-wider text-gray-500 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 transition-colors">Cancelar</button>
-                <button type="submit" className="px-6 py-2 rounded-lg font-bold text-sm uppercase tracking-wider bg-[var(--color-primary)] text-white hover:brightness-110 transition-all">Salvar Produto</button>
+              <div className="pt-4 grid grid-cols-2 gap-3 border-t border-gray-100 shrink-0">
+                <button 
+                  type="button" 
+                  onClick={() => setIsModalOpen(false)} 
+                  className="w-full px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider text-gray-500 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 transition-all text-center border border-gray-200"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  className="w-full px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider bg-blue-600 text-white hover:bg-blue-500 transition-all shadow-sm text-center"
+                >
+                  Salvar Produto
+                </button>
               </div>
             </form>
           </div>
@@ -1620,7 +2162,7 @@ export function Products() {
               <button 
                 onClick={handleGenerateSkus}
                 disabled={isSavingOrder}
-                className="w-full bg-[var(--color-primary)] text-white p-3 rounded-xl font-bold uppercase tracking-wider text-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl font-bold uppercase tracking-wider text-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
               >
                 {isSavingOrder ? <Loader2 size={18} className="animate-spin" /> : <Barcode size={18} />}
                 {isSavingOrder ? 'Gerando...' : 'Gerar Códigos'}
@@ -1675,7 +2217,7 @@ export function Products() {
                         input.value = '';
                       }
                     }}
-                    className="bg-[var(--color-primary)] text-white p-2 rounded-lg hover:brightness-110"
+                    className="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-lg hover:brightness-110"
                     title="Adicionar Novo Grupo"
                   >
                     <Plus size={20} />
@@ -1708,7 +2250,7 @@ export function Products() {
                       input.value = '';
                     }
                   }}
-                  className="bg-[var(--color-primary)] text-white p-2 rounded-lg hover:brightness-110"
+                  className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-500"
                 >
                   <Plus size={20} />
                 </button>
@@ -1868,6 +2410,15 @@ export function Products() {
                 )}
               </div>
             </div>
+
+            <div className="mt-6 pt-4 border-t border-gray-100 shrink-0">
+              <button 
+                onClick={() => setIsCategoriesModalOpen(false)}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl font-bold uppercase tracking-wider text-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-sm"
+              >
+                <CheckCircle size={18} /> Concluir
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1897,7 +2448,7 @@ export function Products() {
 
             {/* Analysis Body */}
             {(() => {
-              const prof = calculateActualProductProfitability(profitModalProduct.price, profitModalProduct.costPrice || 0, settings?.pricingRules, profitModalProduct.packagingCost);
+              const prof = calculateActualProductProfitability(profitModalProduct.price, profitModalProduct.costPrice || 0, settings?.pricingRules, profitModalProduct.packagingCost, undefined, profitModalProduct.desiredProfit);
               return (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3 text-center">
@@ -1947,9 +2498,15 @@ export function Products() {
                       </div>
                       <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
                         <span className="text-gray-600 flex items-center gap-1.5 font-medium">
-                          <Receipt size={14} className="text-amber-500" /> Taxas de Cartão/PIX ({settings?.pricingRules?.gatewayFeePct ?? 4}%)
+                          <Receipt size={14} className="text-amber-500" /> Taxas de Cartão/Gateway ({settings?.pricingRules?.gatewayFeePct ?? 4}%)
                         </span>
                         <span className="font-bold text-amber-700">R$ {prof.gatewayFeeAmount.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                        <span className="text-gray-600 flex items-center gap-1.5 font-medium">
+                          <Receipt size={14} className="text-emerald-500" /> Taxa do PIX ({settings?.pricingRules?.pixFeeRatePct ?? 0.99}%)
+                        </span>
+                        <span className="font-bold text-emerald-700">R$ {prof.pixFeeAmount.toFixed(2).replace('.', ',')}</span>
                       </div>
                       {prof.commissionAmount > 0 && (
                         <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
@@ -1968,11 +2525,16 @@ export function Products() {
                     </div>
                   </div>
 
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs text-emerald-950 space-y-1">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs text-emerald-950 space-y-2">
                     <span className="font-extrabold block text-emerald-900">Resultado Financeiro por Unidade:</span>
-                    <p className="text-[11px] text-emerald-800 leading-relaxed">
-                      Ao vender por {formatPrice(prof.sellingPrice)}, você paga o fornecedor, embalagem, impostos, taxas de maquininha e a parcela de aluguel/contas da loja. Sobra <strong className="text-emerald-950 font-extrabold">R$ {prof.netProfit.toFixed(2).replace('.', ',')}</strong> de lucro líquido no seu bolso.
-                    </p>
+                    <div className="text-[11px] text-emerald-800 leading-relaxed space-y-1">
+                      <p>
+                        💳 <strong>Venda em Cartão:</strong> Sobra <strong className="text-emerald-950 font-extrabold">R$ {prof.netProfit.toFixed(2).replace('.', ',')} ({prof.marginPct.toFixed(1)}%)</strong> de lucro líquido.
+                      </p>
+                      <p>
+                        💸 <strong>Venda em PIX:</strong> Sobra <strong className="text-emerald-950 font-extrabold">R$ {prof.netProfitPix.toFixed(2).replace('.', ',')} ({prof.marginPctPix.toFixed(1)}%)</strong> de lucro líquido.
+                      </p>
+                    </div>
                   </div>
                 </div>
               );

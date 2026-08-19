@@ -329,7 +329,6 @@ export function AdminApp() {
                 M
               </div>
             )}
-            <span className="font-bold text-lg hidden lg:block">Moss</span>
           </div>
           
           <button 
@@ -337,13 +336,6 @@ export function AdminApp() {
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             <Menu size={22} />
-          </button>
-
-          <button className="hidden sm:flex items-center gap-2 text-sm font-medium text-white/90 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors">
-            <Plus size={16} /> New
-          </button>
-          <button className="hidden md:flex items-center gap-2 text-sm font-medium text-white/90 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors">
-            Quick Link
           </button>
         </div>
 

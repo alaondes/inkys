@@ -76,6 +76,12 @@ service cloud.firestore {
       allow read: if true;
       allow write: if hasPermission('settings');
     }
+
+    // Collection: settings
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if hasPermission('settings');
+    }
     
     // Collection: documents
     match /documents/{documentId} {

@@ -220,6 +220,10 @@
       "schema": "Settings",
       "description": "Singleton configuration for the store."
     },
+    "/settings/{settingId}": {
+      "schema": "Settings",
+      "description": "General settings configuration for shipping and other options."
+    },
     "/hr_employees/{employeeId}": {
       "schema": "HREmployee",
       "description": "Employees list for HR management."

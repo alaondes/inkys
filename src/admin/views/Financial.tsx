@@ -23,7 +23,8 @@ import {
   Trash2,
   Package,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Tags
 } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
 import { useProducts } from '../../context/ProductContext';
@@ -42,6 +43,7 @@ export function Financial() {
     fixedCostPct: settings.pricingRules?.fixedCostPct ?? 10,
     desiredProfitPct: settings.pricingRules?.desiredProfitPct ?? 20,
     commissionPct: settings.pricingRules?.commissionPct ?? 0,
+    pixFeeRatePct: settings.pricingRules?.pixFeeRatePct ?? 0.99,
     defaultPackagingCost: settings.pricingRules?.defaultPackagingCost ?? 2.00,
     defaultShippingInCost: settings.pricingRules?.defaultShippingInCost ?? 0.00,
     useCalculatedFixedCost: settings.pricingRules?.useCalculatedFixedCost ?? true,
@@ -54,6 +56,20 @@ export function Financial() {
     estimatedMonthlyRevenue: settings.pricingRules?.estimatedMonthlyRevenue ?? 50000,
   });
   const [simCost, setSimCost] = useState<number>(20);
+  const [rawMaterials, setRawMaterials] = useState<{ id: string; name: string; cost: number }[]>(settings.rawMaterials || []);
+  const [packagingModels, setPackagingModels] = useState<{ id: string; name: string; cost: number }[]>(settings.packagingModels || []);
+
+  useEffect(() => {
+    if (settings.rawMaterials) {
+      setRawMaterials(settings.rawMaterials);
+    }
+  }, [settings.rawMaterials]);
+
+  useEffect(() => {
+    if (settings.packagingModels) {
+      setPackagingModels(settings.packagingModels);
+    }
+  }, [settings.packagingModels]);
 
   // Pagamentos State
   const [paymentMethods, setPaymentMethods] = useState(settings.paymentMethods || { pix: true, credit: true, debit: true, boleto: false });
@@ -78,6 +94,7 @@ export function Financial() {
         fixedCostPct: settings.pricingRules.fixedCostPct ?? 10,
         desiredProfitPct: settings.pricingRules.desiredProfitPct ?? 20,
         commissionPct: settings.pricingRules.commissionPct ?? 0,
+        pixFeeRatePct: settings.pricingRules.pixFeeRatePct ?? 0.99,
         defaultPackagingCost: settings.pricingRules.defaultPackagingCost ?? 2.00,
         defaultShippingInCost: settings.pricingRules.defaultShippingInCost ?? 0.00,
         useCalculatedFixedCost: true,
@@ -104,20 +121,65 @@ export function Financial() {
 
   const applyPricingRulesToAllProductsAutomatically = async (rules: PricingRulesConfig) => {
     if (!products || products.length === 0) return 0;
+    
+    // Calculate effective fixed cost pct:
+    let effectiveFixedCostPct = 0;
+    if (rules.estimatedMonthlyRevenue && rules.estimatedMonthlyRevenue > 100) {
+      const rent = rules.rentCostMonthly || 0;
+      const utilities = rules.utilitiesCostMonthly || 0;
+      const salaries = rules.salariesCostMonthly || 0;
+      const marketing = rules.marketingCostMonthly || 0;
+      const software = rules.softwareAccountingCostMonthly || 0;
+      const other = rules.otherFixedCostsMonthly || 0;
+      const totalFixed = rent + utilities + salaries + marketing + software + other;
+      effectiveFixedCostPct = (totalFixed / rules.estimatedMonthlyRevenue) * 100;
+    }
+
+    const taxRatePct = rules.taxRatePct || 0;
+    const gatewayFeePct = rules.gatewayFeePct || 0;
+    const commissionPct = rules.commissionPct || 0;
+    const defaultPackagingCost = rules.defaultPackagingCost !== undefined ? rules.defaultPackagingCost : 2.00;
+    const defaultProfitPct = rules.desiredProfitPct !== undefined ? rules.desiredProfitPct : 20;
+
     let updatedCount = 0;
     const updatedProducts = products.map(p => {
-      if (p.costPrice !== undefined && p.costPrice > 0) {
-        const calc = calculateSuggestedPrice(p.costPrice, rules, p.packagingCost);
-        if (calc.suggestedPrice > 0) {
-          const newPrice = Math.round(calc.suggestedPrice * 100) / 100;
-          if (newPrice !== p.price) {
-            updatedCount++;
-            return {
-              ...p,
-              price: newPrice
-            };
-          }
-        }
+      const product = p as any;
+      const costPrice = Number(product.costPrice) || 0;
+      
+      const customPackaging = product.selectedPackagingId === 'none' ? 0 : (
+        product.selectedPackagingId === 'default' || !product.selectedPackagingId ? (
+          product.packagingCost !== undefined ? Number(product.packagingCost) : (rules.defaultPackagingCost !== undefined ? Number(rules.defaultPackagingCost) : defaultPackagingCost)
+        ) : (
+          (packagingModels || []).find((m: any) => m.id === product.selectedPackagingId)?.cost ?? (
+            product.packagingCost !== undefined ? Number(product.packagingCost) : (rules.defaultPackagingCost !== undefined ? Number(rules.defaultPackagingCost) : defaultPackagingCost)
+          )
+        )
+      );
+      
+      const profitVal = product.desiredProfit !== undefined ? Number(product.desiredProfit) : undefined;
+      const desiredProfitPct = product.desiredProfitPct !== undefined ? Number(product.desiredProfitPct) : defaultProfitPct;
+      
+      let newPrice = 0;
+      
+      if (profitVal !== undefined && profitVal > 0) {
+        // Calculate from profit value
+        const sumPct = Math.min(99, Math.max(0, taxRatePct + gatewayFeePct + commissionPct + effectiveFixedCostPct));
+        const divisor = Math.max(0.01, 1 - (sumPct / 100));
+        newPrice = (costPrice + customPackaging + profitVal) / divisor;
+      } else {
+        // Calculate from percentage
+        const sumPct = Math.min(99, Math.max(0, taxRatePct + gatewayFeePct + commissionPct + effectiveFixedCostPct + desiredProfitPct));
+        const divisor = Math.max(0.01, 1 - (sumPct / 100));
+        newPrice = (costPrice + customPackaging) / divisor;
+      }
+      
+      const roundedPrice = Math.round(newPrice * 100) / 100;
+      if (roundedPrice > 0 && roundedPrice !== product.price) {
+        updatedCount++;
+        return {
+          ...p,
+          price: roundedPrice
+        };
       }
       return p;
     });
@@ -137,7 +199,7 @@ export function Financial() {
     const loadToast = toast.loading('Salvando despesas fixas e recalculando catálogo...');
     try {
       const updatedRules = { ...pricingRules, useCalculatedFixedCost: true };
-      await updateSettings({ pricingRules: updatedRules });
+      await updateSettings({ pricingRules: updatedRules, rawMaterials: rawMaterials, packagingModels: packagingModels });
       const updatedCount = await applyPricingRulesToAllProductsAutomatically(updatedRules);
       
       toast.dismiss(loadToast);
@@ -235,10 +297,6 @@ export function Financial() {
             <span className="text-[10px] text-purple-600 font-extrabold uppercase block">Despesas Fixas Totais</span>
             <span className="text-base font-black text-purple-900">R$ {totalFixedExpenses.toLocaleString('pt-BR')}/mês</span>
           </div>
-          <div className="bg-emerald-50 border border-emerald-100 px-4 py-2.5 rounded-2xl">
-            <span className="text-[10px] text-emerald-600 font-extrabold uppercase block">Taxa de Rateio Custo Fixo</span>
-            <span className="text-base font-black text-emerald-900">{fixedRatePct.toFixed(1)}%</span>
-          </div>
         </div>
       </div>
 
@@ -292,65 +350,232 @@ export function Financial() {
           </div>
 
           <form onSubmit={handleSavePricingRules} className="space-y-8">
-            {/* Bloco 1: Custos Diretos e Insumos por Produto */}
+            {/* Cadastro de Insumos Globais */}
             <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
               <div className="flex items-center gap-2 text-slate-800 pb-2 border-b border-slate-200">
-                <Package className="text-blue-600" size={20} />
+                <Tags className="text-purple-600" size={20} />
                 <div>
-                  <h4 className="font-extrabold text-sm uppercase tracking-wider">1. Custos Diretos e Insumos por Produto</h4>
-                  <p className="text-[11px] text-gray-500">Custos fixos por unidade fabricada ou comprada</p>
+                  <h4 className="font-extrabold text-sm uppercase tracking-wider">Insumos e Matérias-Primas Globais</h4>
+                  <p className="text-[11px] text-gray-500">Cadastre os materiais e insumos que utiliza para produzir ou embalar seus produtos</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-1">
-                <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
-                  <label className="text-[11px] uppercase font-bold text-gray-700 flex items-center justify-between">
-                    <span>Matéria-prima / Fornecedor</span>
-                    <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">Por Produto</span>
-                  </label>
-                  <p className="text-[10px] text-gray-400">Preço de aquisição no cadastro individual de cada produto (R$)</p>
-                  <div className="mt-2 p-2.5 bg-gray-100 rounded-lg text-xs font-bold text-gray-500 flex items-center gap-1.5">
-                    <CheckCircle2 size={14} className="text-emerald-500" />
-                    Definido no cadastro do item
-                  </div>
+              {/* Add form */}
+              <div className="flex flex-col sm:flex-row gap-3 bg-white p-4 rounded-xl border border-gray-200/80">
+                <div className="flex-1 space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Nome do Insumo / Material</label>
+                  <input
+                    type="text"
+                    id="newMaterialName"
+                    placeholder="Ex: Caneca Branca, Adesivo, Caixa de Presente"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm outline-none focus:border-purple-600 font-medium"
+                  />
                 </div>
-
-                <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
-                  <label className="text-[11px] uppercase font-bold text-gray-700">
-                    Embalagens e Etiquetas (R$)
-                  </label>
-                  <p className="text-[10px] text-gray-400">Caixa, saquinho, fitas, etiquetas, brindes por unidade</p>
-                  <div className="relative mt-1">
-                    <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-sm">R$</span>
-                    <input 
-                      type="number" 
-                      step="0.5" 
-                      min="0" 
-                      value={pricingRules.defaultPackagingCost} 
-                      onChange={e => handlePricingRuleChange('defaultPackagingCost', parseFloat(e.target.value) || 0)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pr-3 pl-10 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
-                    />
-                  </div>
+                <div className="w-full sm:w-48 space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Custo Unitário (R$)</label>
+                  <input
+                    type="number"
+                    id="newMaterialCost"
+                    step="0.01"
+                    min="0"
+                    placeholder="0,00"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm outline-none focus:border-purple-600 font-bold"
+                  />
                 </div>
-
-                <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
-                  <label className="text-[11px] uppercase font-bold text-gray-700">
-                    Frete de Entrada (R$)
-                  </label>
-                  <p className="text-[10px] text-gray-400">Frete pago ao fornecedor rateado por unidade do produto</p>
-                  <div className="relative mt-1">
-                    <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-sm">R$</span>
-                    <input 
-                      type="number" 
-                      step="0.5" 
-                      min="0" 
-                      value={pricingRules.defaultShippingInCost} 
-                      onChange={e => handlePricingRuleChange('defaultShippingInCost', parseFloat(e.target.value) || 0)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pr-3 pl-10 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
-                    />
-                  </div>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const nameEl = document.getElementById('newMaterialName') as HTMLInputElement;
+                      const costEl = document.getElementById('newMaterialCost') as HTMLInputElement;
+                      if (!nameEl?.value.trim()) {
+                        toast.error('Insira o nome do insumo.');
+                        return;
+                      }
+                      const costVal = parseFloat(costEl?.value) || 0;
+                      if (costVal <= 0) {
+                        toast.error('Insira um custo válido maior que zero.');
+                        return;
+                      }
+                      const newItem = {
+                        id: Math.random().toString(36).substr(2, 9),
+                        name: nameEl.value.trim(),
+                        cost: costVal
+                      };
+                      const updated = [...rawMaterials, newItem];
+                      setRawMaterials(updated);
+                      
+                      const loadToast = toast.loading('Salvando insumo...');
+                      try {
+                        await updateSettings({ rawMaterials: updated });
+                        toast.dismiss(loadToast);
+                        toast.success('Insumo cadastrado e salvo com sucesso!');
+                        nameEl.value = '';
+                        costEl.value = '';
+                      } catch (error) {
+                        toast.dismiss(loadToast);
+                        toast.error('Erro ao salvar no banco.');
+                      }
+                    }}
+                    className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs px-5 py-3 rounded-lg uppercase tracking-wider transition-all"
+                  >
+                    Adicionar Insumo
+                  </button>
                 </div>
               </div>
+
+              {/* List of raw materials */}
+              {rawMaterials.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {rawMaterials.map(item => (
+                    <div key={item.id} className="bg-white p-3 rounded-xl border border-gray-200 flex items-center justify-between gap-2 shadow-2xs">
+                      <div>
+                        <span className="font-extrabold text-xs text-gray-800 block">{item.name}</span>
+                        <span className="text-[11px] text-emerald-600 font-black">R$ {item.cost.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const updated = rawMaterials.filter(m => m.id !== item.id);
+                          setRawMaterials(updated);
+                          
+                          const loadToast = toast.loading('Removendo insumo...');
+                          try {
+                            await updateSettings({ rawMaterials: updated });
+                            toast.dismiss(loadToast);
+                            toast.success('Insumo removido e salvo com sucesso!');
+                          } catch (error) {
+                            toast.dismiss(loadToast);
+                            toast.error('Erro ao salvar no banco.');
+                          }
+                        }}
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        title="Excluir"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-xs text-gray-400 font-semibold italic bg-white rounded-xl border border-dashed border-gray-200">
+                  Nenhum insumo ou matéria-prima cadastrado ainda.
+                </div>
+              )}
+            </div>
+
+            {/* Cadastro de Modelos de Embalagem */}
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+              <div className="flex items-center gap-2 text-slate-800 pb-2 border-b border-slate-200">
+                <Package className="text-emerald-600" size={20} />
+                <div>
+                  <h4 className="font-extrabold text-sm uppercase tracking-wider">Modelos de Embalagem e Custos</h4>
+                  <p className="text-[11px] text-gray-500">Cadastre os modelos de caixas ou sacolas com seus respectivos custos para selecionar nos produtos</p>
+                </div>
+              </div>
+
+              {/* Add packaging model form */}
+              <div className="flex flex-col sm:flex-row gap-3 bg-white p-4 rounded-xl border border-gray-200/80">
+                <div className="flex-1 space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Nome da Embalagem / Modelo</label>
+                  <input
+                    type="text"
+                    id="newPackagingName"
+                    placeholder="Ex: Caixa Correio P, Sacola Kraft M, Caixa Brinde"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm outline-none focus:border-emerald-600 font-medium"
+                  />
+                </div>
+                <div className="w-full sm:w-48 space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Custo (R$)</label>
+                  <input
+                    type="number"
+                    id="newPackagingCost"
+                    step="0.01"
+                    min="0"
+                    placeholder="0,00"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-sm outline-none focus:border-emerald-600 font-bold"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const nameEl = document.getElementById('newPackagingName') as HTMLInputElement;
+                      const costEl = document.getElementById('newPackagingCost') as HTMLInputElement;
+                      if (!nameEl?.value.trim()) {
+                        toast.error('Insira o nome da embalagem.');
+                        return;
+                      }
+                      const costVal = parseFloat(costEl?.value) || 0;
+                      if (costVal <= 0) {
+                        toast.error('Insira um custo válido maior que zero.');
+                        return;
+                      }
+                      const newItem = {
+                        id: Math.random().toString(36).substr(2, 9),
+                        name: nameEl.value.trim(),
+                        cost: costVal
+                      };
+                      const updated = [...packagingModels, newItem];
+                      setPackagingModels(updated);
+                      
+                      const loadToast = toast.loading('Salvando embalagem...');
+                      try {
+                        await updateSettings({ packagingModels: updated });
+                        toast.dismiss(loadToast);
+                        toast.success('Embalagem cadastrada com sucesso!');
+                        nameEl.value = '';
+                        costEl.value = '';
+                      } catch (error) {
+                        toast.dismiss(loadToast);
+                        toast.error('Erro ao salvar no banco.');
+                      }
+                    }}
+                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-3 rounded-lg uppercase tracking-wider transition-all"
+                  >
+                    Adicionar Embalagem
+                  </button>
+                </div>
+              </div>
+
+              {/* List of packaging models */}
+              {packagingModels.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {packagingModels.map(item => (
+                    <div key={item.id} className="bg-white p-3 rounded-xl border border-gray-200 flex items-center justify-between gap-2 shadow-2xs">
+                      <div>
+                        <span className="font-extrabold text-xs text-gray-800 block">{item.name}</span>
+                        <span className="text-[11px] text-emerald-600 font-black">R$ {item.cost.toFixed(2).replace('.', ',')}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const updated = packagingModels.filter(m => m.id !== item.id);
+                          setPackagingModels(updated);
+                          
+                          const loadToast = toast.loading('Removendo embalagem...');
+                          try {
+                            await updateSettings({ packagingModels: updated });
+                            toast.dismiss(loadToast);
+                            toast.success('Embalagem removida com sucesso!');
+                          } catch (error) {
+                            toast.dismiss(loadToast);
+                            toast.error('Erro ao salvar no banco.');
+                          }
+                        }}
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        title="Excluir"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-xs text-gray-400 font-semibold italic bg-white rounded-xl border border-dashed border-gray-200">
+                  Nenhum modelo de embalagem cadastrado ainda.
+                </div>
+              )}
             </div>
 
             {/* Bloco 2: Custos Variáveis sobre a Venda (%) */}
@@ -363,7 +588,7 @@ export function Financial() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 pt-1">
                 <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
                   <label className="text-[11px] uppercase font-bold text-gray-700">
                     Impostos sobre a Nota Fiscal (%)
@@ -387,7 +612,7 @@ export function Financial() {
                   <label className="text-[11px] uppercase font-bold text-gray-700">
                     Taxas de Maquininha / Gateway (%)
                   </label>
-                  <p className="text-[10px] text-gray-400">Taxa média de cartão de crédito/débito/PIX (ex: 4%)</p>
+                  <p className="text-[10px] text-gray-400">Taxa média de cartão de crédito/débito (ex: 4%)</p>
                   <div className="relative mt-1">
                     <input 
                       type="number" 
@@ -396,6 +621,25 @@ export function Financial() {
                       max="100"
                       value={pricingRules.gatewayFeePct} 
                       onChange={e => handlePricingRuleChange('gatewayFeePct', parseFloat(e.target.value) || 0)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
+                    />
+                    <span className="absolute right-3 top-2.5 text-gray-400 font-bold text-sm">%</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1 bg-white p-3.5 rounded-xl border border-gray-200/80 shadow-2xs">
+                  <label className="text-[11px] uppercase font-bold text-gray-700">
+                    Taxa do PIX (%)
+                  </label>
+                  <p className="text-[10px] text-gray-400">Taxa de intermediação para recebimento via PIX (ex: 0.99%)</p>
+                  <div className="relative mt-1">
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      min="0" 
+                      max="100"
+                      value={pricingRules.pixFeeRatePct ?? 0.99} 
+                      onChange={e => handlePricingRuleChange('pixFeeRatePct', parseFloat(e.target.value) || 0)}
                       className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pl-3 pr-8 text-sm focus:border-purple-600 outline-none font-bold text-gray-900"
                     />
                     <span className="absolute right-3 top-2.5 text-gray-400 font-bold text-sm">%</span>
@@ -552,143 +796,28 @@ export function Financial() {
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* Faturamento Estimado Bar */}
-              <div className="bg-purple-900 text-white rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <span className="text-[11px] text-purple-200 uppercase font-extrabold tracking-wider block">Faturamento Mensal Estimado da Loja (R$)</span>
-                  <p className="text-[10px] text-purple-300">Estimativa do total vendido no mês para rateio proporcional dos custos fixos</p>
-                </div>
-
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="relative w-40">
-                    <span className="absolute left-3 top-2 text-purple-300 font-bold text-xs">R$</span>
+                <div className="space-y-1 bg-purple-50/50 p-3.5 rounded-xl border border-purple-200 shadow-2xs">
+                  <label className="text-[11px] uppercase font-bold text-purple-900 flex items-center gap-1.5">
+                    <TrendingUp size={14} className="text-purple-600" /> Faturamento Mensal Estimado (R$/mês)
+                  </label>
+                  <p className="text-[10px] text-purple-700/80 font-semibold">Faturamento total esperado para rateio das despesas fixas</p>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-2.5 text-purple-600 font-bold text-sm">R$</span>
                     <input
                       type="number"
                       step="1000"
-                      min="1"
+                      min="100"
                       value={pricingRules.estimatedMonthlyRevenue}
-                      onChange={e => handlePricingRuleChange('estimatedMonthlyRevenue', parseFloat(e.target.value) || 1)}
-                      className="w-full bg-purple-950 border border-purple-700 text-white font-extrabold text-sm rounded-lg py-1.5 pl-9 pr-2 focus:border-purple-400 outline-none"
+                      onChange={e => handlePricingRuleChange('estimatedMonthlyRevenue', parseFloat(e.target.value) || 100)}
+                      className="w-full bg-white border border-purple-300 rounded-lg py-2 pr-3 pl-10 text-sm focus:border-purple-600 outline-none font-bold text-purple-950"
                     />
                   </div>
-
-                  <div className="bg-purple-950/80 px-4 py-2 rounded-lg border border-purple-700/60 text-right">
-                    <span className="text-[10px] text-purple-300 block uppercase font-bold">Taxa de Rateio Gerada:</span>
-                    <span className="text-lg font-black text-emerald-400">
-                      {fixedRatePct.toFixed(1)}% <span className="text-[10px] text-purple-300 font-normal">(R$ {totalFixedExpenses.toLocaleString('pt-BR')} /mês)</span>
-                    </span>
-                  </div>
                 </div>
               </div>
+
+
             </div>
-
-            {/* Bloco 4: Margem de Lucro */}
-            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
-              <div className="flex items-center gap-2 text-slate-800 pb-2 border-b border-slate-200">
-                <TrendingUp className="text-emerald-600" size={20} />
-                <div>
-                  <h4 className="font-extrabold text-sm uppercase tracking-wider">4. Margem de Lucro Desejada (%)</h4>
-                  <p className="text-[11px] text-gray-500">Lucro líquido limpo no bolso após pagar todos os custos e impostos</p>
-                </div>
-              </div>
-
-              <div className="max-w-md bg-white p-4 rounded-xl border border-gray-200/80 space-y-2">
-                <label className="text-[11px] uppercase font-bold text-gray-700">
-                  Margem de Lucro Líquido Desejada (%)
-                </label>
-                <p className="text-[10px] text-gray-400">Recomendado entre 15% e 30% dependendo do segmento</p>
-                <div className="relative mt-1">
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    max="100"
-                    value={pricingRules.desiredProfitPct}
-                    onChange={e => handlePricingRuleChange('desiredProfitPct', parseFloat(e.target.value) || 0)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 pl-3 pr-8 text-sm focus:border-emerald-500 outline-none font-black text-emerald-700"
-                  />
-                  <span className="absolute right-3 top-3 text-emerald-600 font-bold text-sm">%</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Simulation Box / DRE Demonstrativo */}
-            {(() => {
-              const simResult = calculateSuggestedPrice(simCost, pricingRules);
-              return (
-                <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md border border-slate-800 space-y-5">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-                    <div>
-                      <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider">
-                        <TrendingUp size={16} /> Simulação de Preço e DRE do Produto
-                      </div>
-                      <h4 className="text-base font-extrabold text-white mt-1">Demonstrativo de Formação de Preço de Venda</h4>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-300 font-medium">Custo Matéria-prima Teste:</span>
-                      <div className="relative w-36">
-                        <span className="absolute left-2.5 top-2 text-slate-400 font-bold text-xs">R$</span>
-                        <input
-                          type="number"
-                          value={simCost}
-                          onChange={e => setSimCost(parseFloat(e.target.value) || 0)}
-                          className="w-full bg-slate-950 border border-slate-700 text-white font-bold text-xs rounded-lg py-1.5 pl-8 pr-2 focus:border-emerald-400 outline-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-                    <div className="bg-slate-950/90 p-4 rounded-xl border border-slate-800 space-y-1.5">
-                      <span className="text-slate-400 font-extrabold uppercase text-[10px] block">Custo Direto do Produto:</span>
-                      <span className="text-xl font-extrabold text-white block">
-                        R$ {simResult.totalDirectCost.toFixed(2).replace('.', ',')}
-                      </span>
-                      <div className="text-[10px] text-slate-400 space-y-0.5 pt-1 border-t border-slate-800">
-                        <div>• Item/Matéria-prima: R$ {simResult.baseCost.toFixed(2)}</div>
-                        <div>• Embalagem/Etiqueta: R$ {simResult.packagingCost.toFixed(2)}</div>
-                        <div>• Frete de Entrada: R$ {simResult.shippingInCost.toFixed(2)}</div>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-950/90 p-4 rounded-xl border border-slate-800 space-y-1.5">
-                      <span className="text-slate-400 font-extrabold uppercase text-[10px] block">Taxas e Rateios Impostos:</span>
-                      <span className="text-xl font-extrabold text-amber-400 block">
-                        {simResult.sumPct.toFixed(1)}% <span className="text-xs text-slate-400 font-normal">das vendas</span>
-                      </span>
-                      <div className="text-[10px] text-slate-400 space-y-0.5 pt-1 border-t border-slate-800">
-                        <div>• Imposto NF: {simResult.taxRatePct}% (R$ {simResult.taxAmount.toFixed(2)})</div>
-                        <div>• Maquininha: {simResult.gatewayFeePct}% (R$ {simResult.gatewayFeeAmount.toFixed(2)})</div>
-                        <div>• Comissão: {simResult.commissionPct}% (R$ {simResult.commissionAmount.toFixed(2)})</div>
-                        <div>• Fixos (Aluguel/Luz/Salários): {simResult.effectiveFixedCostPct.toFixed(1)}% (R$ {simResult.fixedCostAmount.toFixed(2)})</div>
-                      </div>
-                    </div>
-
-                    <div className="bg-emerald-950/50 p-4 rounded-xl border border-emerald-800/80 space-y-1.5">
-                      <span className="text-emerald-400 font-extrabold uppercase text-[10px] block">Preço de Venda Sugerido:</span>
-                      <span className="text-3xl font-black text-emerald-400 block">
-                        R$ {simResult.suggestedPrice.toFixed(2).replace('.', ',')}
-                      </span>
-                      <p className="text-[10px] text-emerald-200 pt-1 border-t border-emerald-900">
-                        Preço final no catálogo cobrindo 100% das despesas e gerando lucro desejado.
-                      </p>
-                    </div>
-
-                    <div className="bg-slate-950/90 p-4 rounded-xl border border-slate-800 space-y-1.5">
-                      <span className="text-slate-400 font-extrabold uppercase text-[10px] block">Lucro Líquido Limpo:</span>
-                      <span className="text-xl font-extrabold text-green-400 block">
-                        R$ {simResult.profitAmount.toFixed(2).replace('.', ',')}
-                      </span>
-                      <span className="text-[10px] text-slate-400 block pt-1 border-t border-slate-800">
-                        Margem Real de {simResult.profitMarginRealPct.toFixed(1)}% limpa sobre o preço de venda.
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
 
             <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-end gap-4">
               <button type="submit" className="flex items-center justify-center gap-2 w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-6 py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all shadow-md">

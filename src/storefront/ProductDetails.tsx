@@ -502,13 +502,6 @@ export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsP
               >
                 {product.stock !== undefined && product.stock <= 0 ? 'Esgotado' : (isPersonalized ? 'Comprar e Personalizar' : 'Comprar')}
               </button>
-              <button 
-                onClick={handleWhatsapp}
-                className="w-full border border-[#5ba324] text-[#5ba324] py-3 rounded text-sm hover:bg-green-50 transition-colors flex items-center justify-center gap-2 font-bold"
-              >
-                Dúvidas pelo whatsapp
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#5ba324]"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></svg>
-              </button>
             </div>
             
             <div className="flex gap-6 justify-center text-sm text-gray-500 border-b border-gray-100 pb-6 mb-6">

@@ -105,6 +105,8 @@ export interface AppSettings {
   footerLogoUrl?: string;
   footerDescription?: string;
   pricingRules?: PricingRulesConfig;
+  rawMaterials?: { id: string; name: string; cost: number }[];
+  packagingModels?: { id: string; name: string; cost: number }[];
   customMenuLabels?: Record<string, string>;
   menuOrder?: Record<string, string[]>;
   posCustomItemLabel?: string;

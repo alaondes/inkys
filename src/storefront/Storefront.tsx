@@ -81,7 +81,7 @@ export function Storefront() {
   const categoryParam = searchParams.get('category');
   const productIdParam = searchParams.get('id');
 
-  const [currentView, setCurrentView] = useState<'home' | 'product' | 'cart' | 'checkout' | 'custom'>(() => {
+  const [currentView, setCurrentView] = useState<'home' | 'product' | 'cart' | 'checkout' | 'custom' | 'order-success'>(() => {
     const params = new URLSearchParams(window.location.search);
     const view = params.get('view');
     if (view === 'custom' || view === 'personalizado' || view === 'personalizados') {
@@ -94,6 +94,15 @@ export function Storefront() {
   });
   
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [completedOrder, setCompletedOrder] = useState<{
+    id: string;
+    total: number;
+    whatsappUrl: string;
+    invoiceUrl?: string;
+    paymentMethod?: string;
+    pixCode?: string;
+    pixQrCodeUrl?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (viewParam === 'product' && productIdParam) {
@@ -224,10 +233,11 @@ export function Storefront() {
       batch.commit().catch(e => console.error('Failed to deduct stock in batch', e));
 
       const subtotal = updatedCart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-      const discount = data.couponDiscount || 0;
+      const discount = Number(data.couponDiscount) || 0;
       const subAfterCoupon = Math.max(0, subtotal - discount);
       const pixDiscount = data.paymentMethod === 'pix' ? subAfterCoupon * 0.10 : 0;
-      const finalTotal = subAfterCoupon - pixDiscount + data.shippingCost;
+      const shippingCost = Number(data.shippingCost ?? data.shippingOption?.price ?? 0);
+      const finalTotal = subAfterCoupon - pixDiscount + shippingCost;
 
       // Clean items and shipping info to prevent Firestore undefined errors
       const cleanItems = updatedCart.map(item => {
@@ -281,8 +291,56 @@ export function Storefront() {
       if (data.landline) cleanShippingInfo.landline = data.landline;
       if (data.coupon) cleanShippingInfo.coupon = data.coupon;
 
+      const { generateSequentialId } = await import('../lib/firestoreUtils');
+      let orderId = "";
+      try {
+        orderId = await generateSequentialId(db, 'Pendente', settings.storeName);
+      } catch (e) {
+        console.warn("Failed to generate sequential ID, using fallback", e);
+        orderId = `WEB-${Date.now().toString().slice(-6)}`;
+      }
+
+      let asaasInvoiceUrl = "";
+      let asaasPaymentId = "";
+      let asaasPixCode = "";
+      let asaasPixQrCodeUrl = "";
+
+      if (data.paymentMethod === 'credit' || data.paymentMethod === 'pix') {
+        try {
+          const asaasResponse = await fetch('/api/asaas/create-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: orderId,
+              total: finalTotal,
+              paymentMethod: data.paymentMethod,
+              customer: {
+                name: data.name,
+                email: data.email,
+                phone: data.phone,
+                cpf: data.cpf
+              }
+            })
+          });
+
+          if (!asaasResponse.ok) {
+            const errData = await asaasResponse.json();
+            throw new Error(errData.error || 'Erro ao gerar pagamento no Asaas');
+          }
+
+          const asaasData = await asaasResponse.json();
+          asaasInvoiceUrl = asaasData.invoiceUrl;
+          asaasPaymentId = asaasData.asaasPaymentId;
+          asaasPixCode = asaasData.pixCode || "";
+          asaasPixQrCodeUrl = asaasData.pixQrCodeUrl || "";
+        } catch (err: any) {
+          console.error("Erro no pagamento Asaas:", err);
+          toast.error("Não foi possível gerar a cobrança no Asaas. Pedido continuará sem pagamento eletrônico: " + err.message);
+        }
+      }
+
       // Create order in Firestore
-      const orderData = {
+      const orderData: any = {
         customer: data.name || '',
         email: data.email || '',
         phone: data.phone || '',
@@ -293,13 +351,9 @@ export function Storefront() {
         shippingInfo: cleanShippingInfo
       };
 
-      const { generateSequentialId } = await import('../lib/firestoreUtils');
-      let orderId = "";
-      try {
-        orderId = await generateSequentialId(db, 'Pendente', settings.storeName);
-      } catch (e) {
-        console.warn("Failed to generate sequential ID, using fallback", e);
-        orderId = `WEB-${Date.now().toString().slice(-6)}`;
+      if (asaasInvoiceUrl) {
+        orderData.asaasInvoiceUrl = asaasInvoiceUrl;
+        orderData.asaasPaymentId = asaasPaymentId;
       }
 
       try {
@@ -334,10 +388,30 @@ export function Storefront() {
         console.warn("Could not save order to db, proceeding with WhatsApp only:", dbError);
         toast.error("Aviso: " + (dbError.message || 'Erro ao registrar no sistema. Contate a loja.'));
       }
-      const url = generateWhatsAppLink(updatedCart, data, settings.whatsappNumber, orderId);
-      window.open(url, '_blank');
+
+      const whatsappUrl = generateWhatsAppLink(updatedCart, data, settings.whatsappNumber, orderId);
+
+      // Open payment link automatically if card
+      if (asaasInvoiceUrl) {
+        try {
+          window.open(asaasInvoiceUrl, '_blank');
+        } catch (popupErr) {
+          console.warn("Pop-up blocked from opening asaas invoice url directly", popupErr);
+        }
+      }
+
+      setCompletedOrder({
+        id: orderId,
+        total: finalTotal,
+        whatsappUrl: whatsappUrl,
+        invoiceUrl: asaasInvoiceUrl || undefined,
+        paymentMethod: data.paymentMethod,
+        pixCode: asaasPixCode || undefined,
+        pixQrCodeUrl: asaasPixQrCodeUrl || undefined
+      });
+
       setCart([]);
-      setCurrentView('home');
+      setCurrentView('order-success');
       window.scrollTo(0, 0);
       toast.success('Pedido finalizado com sucesso!');
     } catch (error) {
@@ -358,6 +432,7 @@ export function Storefront() {
     setSearchParams({});
     setCurrentView('home');
     setSelectedProduct(null);
+    setCompletedOrder(null);
     window.scrollTo(0, 0);
   };
 
@@ -757,6 +832,149 @@ export function Storefront() {
             onComplete={handleWhatsAppRedirect}
             onBack={goHome}
           />
+        ) : currentView === 'order-success' && completedOrder ? (
+          <div className="max-w-md mx-auto px-4 py-16 text-center space-y-6">
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            
+            <div className="space-y-2">
+              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Pedido Realizado!</h1>
+              <p className="text-gray-500 font-medium">Obrigado por comprar conosco.</p>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs text-left space-y-3">
+              <div className="flex justify-between items-center text-sm border-b border-gray-100 pb-2">
+                <span className="text-gray-500 font-medium">Pedido</span>
+                <span className="font-bold text-gray-900">#{completedOrder.id}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500 font-medium">Total</span>
+                <span className="font-extrabold text-gray-900 text-lg">R$ {completedOrder.total.toFixed(2).replace('.', ',')}</span>
+              </div>
+            </div>
+
+            {completedOrder.paymentMethod === 'pix' && (
+              <div className="bg-sky-50 border border-sky-100 rounded-2xl p-6 text-center space-y-4">
+                <div className="flex justify-center items-center gap-2 text-sky-950 font-bold text-base">
+                  <span className="text-[#32bcad] text-lg font-black">pix</span>
+                  <span>Pague para confirmar seu pedido</span>
+                </div>
+                
+                {completedOrder.pixQrCodeUrl ? (
+                  <>
+                    <div className="flex flex-col items-center gap-2 bg-white p-4 rounded-xl border border-sky-100 max-w-[200px] mx-auto shadow-xs">
+                      <img 
+                        src={completedOrder.pixQrCodeUrl} 
+                        alt="QR Code PIX" 
+                        className="w-full h-auto aspect-square"
+                        referrerPolicy="no-referrer"
+                      />
+                      <span className="text-[10px] text-gray-400 font-bold">Aponte a câmera do seu banco</span>
+                    </div>
+
+                    {completedOrder.pixCode && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-sky-950 font-bold">Código PIX Copia e Cola:</p>
+                        <div className="flex gap-2 bg-white border border-sky-200 rounded-xl p-2.5 items-center">
+                          <input 
+                            type="text" 
+                            readOnly 
+                            value={completedOrder.pixCode} 
+                            className="text-xs text-gray-600 bg-transparent outline-none w-full font-mono overflow-ellipsis select-all"
+                          />
+                          <button 
+                            onClick={async () => {
+                              navigator.clipboard.writeText(completedOrder.pixCode || '');
+                              const toast = (await import('react-hot-toast')).default;
+                              toast.success('Código PIX copiado com sucesso!');
+                            }}
+                            className="bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-xs px-3.5 py-2 rounded-lg shrink-0 transition-colors"
+                          >
+                            Copiar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="bg-white border border-amber-200 rounded-xl p-5 text-left space-y-3.5 shadow-xs">
+                    <p className="text-xs text-amber-800 font-bold bg-amber-50 border border-amber-100 rounded-lg p-2.5 leading-relaxed">
+                      ⚠️ **Aviso de Configuração**: A sua conta Asaas ainda não possui uma chave Pix cadastrada para gerar cobranças diretas por QR Code na loja.
+                    </p>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      Não se preocupe! O seu cliente pode pagar via Pix (ou Cartão) clicando no botão abaixo para abrir a página de pagamento seguro do Asaas:
+                    </p>
+                    {completedOrder.invoiceUrl && (
+                      <a 
+                        href={completedOrder.invoiceUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-extrabold py-3 px-6 rounded-xl shadow-sm w-full transition-colors text-sm"
+                      >
+                        Pagar com PIX no Asaas
+                      </a>
+                    )}
+                    <div className="text-[10px] text-gray-400 border-t border-gray-100 pt-2 leading-relaxed">
+                      💡 **Dica para o lojista**: Para que o QR Code e o Pix Copia e Cola apareçam diretamente aqui na loja, basta cadastrar qualquer chave Pix (celular, e-mail, CPF ou chave aleatória) no painel do seu Asaas.
+                    </div>
+                  </div>
+                )}
+
+                {completedOrder.invoiceUrl && completedOrder.pixQrCodeUrl && (
+                  <div className="pt-2 border-t border-sky-100/60">
+                    <a 
+                      href={completedOrder.invoiceUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 text-xs text-sky-700 font-bold hover:underline"
+                    >
+                      Ver comprovante / segunda via no Asaas ↗
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(completedOrder.paymentMethod === 'credit' || (!completedOrder.paymentMethod && completedOrder.invoiceUrl)) && completedOrder.invoiceUrl && (
+              <div className="bg-emerald-50 border border-emerald-100 text-emerald-950 rounded-2xl p-5 text-sm text-center space-y-3">
+                <p className="font-semibold leading-relaxed">
+                  💳 Abrimos a tela de pagamento do cartão de crédito em outra aba.
+                </p>
+                <p className="text-xs text-emerald-800">
+                  Se a página não abriu, clique no botão abaixo para preencher os dados do cartão de forma 100% segura.
+                </p>
+                <a 
+                  href={completedOrder.invoiceUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 px-6 rounded-full shadow-sm w-full transition-colors"
+                >
+                  <CreditCard size={18} />
+                  Pagar Agora com Cartão
+                </a>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3 pt-4">
+              <a 
+                href={completedOrder.whatsappUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 bg-[#25d366] hover:bg-[#20ba5a] text-white font-extrabold py-3.5 px-6 rounded-full shadow-sm w-full transition-colors"
+              >
+                <MessageCircle size={18} />
+                Enviar Detalhes no WhatsApp
+              </a>
+              
+              <button 
+                onClick={goHome}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-full w-full transition-colors"
+              >
+                Voltar ao Início
+              </button>
+            </div>
+          </div>
         ) : currentView === 'product' && selectedProduct ? (
           <ProductDetails 
             product={selectedProduct} 

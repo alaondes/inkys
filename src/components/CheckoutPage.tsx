@@ -243,6 +243,7 @@ export function CheckoutPage({
         state: formData.estado,
         paymentMethod: paymentMethod,
         shippingOption: selectedShipping,
+        shippingCost: selectedShipping?.price || 0,
         coupon: appliedCoupon ? appliedCoupon.code : undefined,
         couponDiscount: cartTotal - cartTotalWithDiscount
       });

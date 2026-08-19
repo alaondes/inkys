@@ -102,16 +102,19 @@ export function Orders({ initialMode }: OrdersProps) {
   const [localTracking, setLocalTracking] = useState('');
   const [localNotes, setLocalNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (selectedOrder) {
       setLocalStatus(selectedOrder.status);
       setLocalTracking(selectedOrder.trackingCode || '');
       setLocalNotes(selectedOrder.notes || '');
+      setConfirmDelete(false);
     } else {
       setLocalStatus('Pendente');
       setLocalTracking('');
       setLocalNotes('');
+      setConfirmDelete(false);
     }
   }, [selectedOrder?.id]);
 
@@ -221,15 +224,14 @@ export function Orders({ initialMode }: OrdersProps) {
 
   const handleDelete = async () => {
     if (!selectedOrder) return;
-    if (window.confirm('Tem certeza que deseja excluir permanentemente este pedido? Esta ação não pode ser desfeita.')) {
-      try {
-        await deleteDoc(doc(db, 'orders', selectedOrder.id));
-        toast.success('Pedido excluído com sucesso!');
-        setSelectedOrder(null);
-      } catch (error) {
-        console.error('Error deleting order:', error);
-        toast.error('Erro ao excluir o pedido');
-      }
+    try {
+      await deleteDoc(doc(db, 'orders', selectedOrder.id));
+      toast.success('Pedido excluído com sucesso!');
+      setSelectedOrder(null);
+      setConfirmDelete(false);
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      toast.error('Erro ao excluir o pedido');
     }
   };
 
@@ -262,7 +264,7 @@ export function Orders({ initialMode }: OrdersProps) {
         };
       }
 
-      await updateDoc(orderRef, updateData).catch(e => console.warn(e));
+      await updateDoc(orderRef, updateData);
       
       // Sincronização automática com a Contabilidade (Receita + Baixa de CPV por m²)
       if (localStatus === 'Pago' || localStatus === 'Enviado') {
@@ -803,13 +805,33 @@ export function Orders({ initialMode }: OrdersProps) {
             <div className="flex justify-between items-center gap-3 pt-4 border-t border-gray-100 shrink-0 mt-4">
               <div className="flex gap-2">
                 {selectedOrder.status === 'Cancelado' && (
-                  <button
-                    onClick={handleDelete}
-                    disabled={isSaving}
-                    className="px-4 py-2 text-sm font-bold uppercase tracking-wider text-red-500 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors flex items-center gap-2"
-                  >
-                    <Trash2 size={16} /> Excluir Pedido
-                  </button>
+                  confirmDelete ? (
+                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded-xl">
+                      <span className="text-xs font-bold text-red-600 animate-pulse">Tem certeza?</span>
+                      <button
+                        onClick={handleDelete}
+                        disabled={isSaving}
+                        className="px-2.5 py-1 text-xs font-black uppercase bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                      >
+                        Sim, Excluir
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(false)}
+                        disabled={isSaving}
+                        className="px-2.5 py-1 text-xs font-bold uppercase bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors"
+                      >
+                        Não
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      disabled={isSaving}
+                      className="px-4 py-2 text-sm font-bold uppercase tracking-wider text-red-500 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors flex items-center gap-2"
+                    >
+                      <Trash2 size={16} /> Excluir Pedido
+                    </button>
+                  )
                 )}
                 {selectedOrder.status === 'Orçamento' && (
                   <button

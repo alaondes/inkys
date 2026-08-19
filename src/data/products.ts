@@ -20,6 +20,9 @@ export interface Product {
   stock?: number;
   order?: number;
   observation?: string;
+  desiredProfit?: number;
+  selectedMaterialIds?: string[];
+  selectedPackagingId?: string;
 }
 
 export const INITIAL_PRODUCTS: Product[] = [

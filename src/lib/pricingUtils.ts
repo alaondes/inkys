@@ -7,6 +7,7 @@ export interface PricingRulesConfig {
   taxRatePct: number;               // Impostos sobre Nota Fiscal (%)
   gatewayFeePct: number;            // Taxas de Maquininha / Gateway (%)
   commissionPct: number;            // Comissões de Vendedores ou Marketplaces (%)
+  pixFeeRatePct?: number;           // Taxa do PIX (%)
   
   // Despesas Fixas e Estruturais
   fixedCostPct: number;             // % Final de Rateio de Custos Fixos
@@ -31,6 +32,7 @@ export const defaultPricingRules: PricingRulesConfig = {
   taxRatePct: 6,
   gatewayFeePct: 4,
   commissionPct: 0,
+  pixFeeRatePct: 0.99,
   fixedCostPct: 10,
   useCalculatedFixedCost: true,
   rentCostMonthly: 1200,
@@ -71,7 +73,7 @@ export interface PricingCalculationResult {
 }
 
 export function calculateEffectiveFixedCostPct(cfg: PricingRulesConfig): number {
-  if (cfg.estimatedMonthlyRevenue && cfg.estimatedMonthlyRevenue > 0) {
+  if (cfg.estimatedMonthlyRevenue && cfg.estimatedMonthlyRevenue > 100) {
     const rent = cfg.rentCostMonthly || 0;
     const utilities = cfg.utilitiesCostMonthly || 0;
     const salaries = cfg.salariesCostMonthly || 0;
@@ -79,18 +81,46 @@ export function calculateEffectiveFixedCostPct(cfg: PricingRulesConfig): number 
     const software = cfg.softwareAccountingCostMonthly || 0;
     const other = cfg.otherFixedCostsMonthly || 0;
     const totalFixed = rent + utilities + salaries + marketing + software + other;
-    return (totalFixed / cfg.estimatedMonthlyRevenue) * 100;
+    return Math.min(80, (totalFixed / cfg.estimatedMonthlyRevenue) * 100);
   }
-  return cfg.fixedCostPct || 0;
+  return 0;
+}
+
+export function calculateSuggestedPriceFromProfitVal(
+  costPrice: number,
+  rules?: Partial<PricingRulesConfig>,
+  customPackaging?: number,
+  profitVal: number = 0
+): number {
+  const cfg: PricingRulesConfig = { ...defaultPricingRules, ...rules };
+  
+  const baseCost = Math.max(0, Number(costPrice) || 0);
+  const packagingCost = customPackaging !== undefined ? Math.max(0, Number(customPackaging) || 0) : (cfg.defaultPackagingCost || 0);
+  const totalDirectCost = baseCost + packagingCost;
+
+  const effectiveFixedCostPct = calculateEffectiveFixedCostPct(cfg);
+
+  const taxRatePct = cfg.taxRatePct || 0;
+  const gatewayFeePct = cfg.gatewayFeePct || 0;
+  const commissionPct = cfg.commissionPct || 0;
+
+  const sumPct = Math.min(99, Math.max(0, taxRatePct + gatewayFeePct + commissionPct + effectiveFixedCostPct));
+  const divisor = Math.max(0.01, 1 - (sumPct / 100));
+
+  return (totalDirectCost + profitVal) / divisor;
 }
 
 export function calculateSuggestedPrice(
   costPrice: number,
   rules?: Partial<PricingRulesConfig>,
   customPackaging?: number,
-  customShippingIn?: number
+  customShippingIn?: number,
+  customDesiredProfit?: number
 ): PricingCalculationResult {
   const cfg: PricingRulesConfig = { ...defaultPricingRules, ...rules };
+  if (customDesiredProfit !== undefined) {
+    cfg.desiredProfitPct = customDesiredProfit;
+  }
   
   const baseCost = Math.max(0, Number(costPrice) || 0);
   const packagingCost = customPackaging !== undefined ? Math.max(0, Number(customPackaging) || 0) : (cfg.defaultPackagingCost || 0);
@@ -159,10 +189,16 @@ export interface ProductProfitabilityAnalysis {
   commissionAmount: number;     // Comissão (R$)
   fixedCostAmount: number;      // Custo Fixo Rateado (R$)
   
+  pixFeeAmount: number;         // Taxa do PIX (R$)
+  
   totalCost: number;            // CUSTO TOTAL ABSOLUTO (Direto + Impostos + Maquininha + Comissão + Custo Fixo)
+  totalCostPix: number;         // Custo Total no PIX
   
   netProfit: number;            // LUCRO LÍQUIDO REAL (R$)
   marginPct: number;            // MARGEM DE LUCRO LÍQUIDA REAL (%)
+  
+  netProfitPix: number;         // LUCRO LÍQUIDO NO PIX (R$)
+  marginPctPix: number;         // MARGEM DE LUCRO NO PIX (%)
   
   isProfitable: boolean;
 }
@@ -172,9 +208,13 @@ export function calculateActualProductProfitability(
   costPrice: number = 0,
   rules?: Partial<PricingRulesConfig>,
   customPackaging?: number,
-  customShippingIn?: number
+  customShippingIn?: number,
+  customDesiredProfit?: number
 ): ProductProfitabilityAnalysis {
   const cfg: PricingRulesConfig = { ...defaultPricingRules, ...rules };
+  if (customDesiredProfit !== undefined) {
+    cfg.desiredProfitPct = customDesiredProfit;
+  }
   const sell = Math.max(0, Number(sellingPrice) || 0);
   const baseCost = Math.max(0, Number(costPrice) || 0);
   
@@ -190,9 +230,17 @@ export function calculateActualProductProfitability(
   const commissionAmount = sell * ((cfg.commissionPct || 0) / 100);
   const fixedCostAmount = sell * (effectiveFixedCostPct / 100);
   
+  const pixFeeRatePct = cfg.pixFeeRatePct !== undefined ? cfg.pixFeeRatePct : 0.99;
+  const pixFeeAmount = sell * (pixFeeRatePct / 100);
+  
   const totalCost = totalDirectCost + taxAmount + gatewayFeeAmount + commissionAmount + fixedCostAmount;
+  const totalCostPix = totalDirectCost + taxAmount + pixFeeAmount + commissionAmount + fixedCostAmount;
+  
   const netProfit = sell - totalCost;
   const marginPct = sell > 0 ? (netProfit / sell) * 100 : 0;
+  
+  const netProfitPix = sell - totalCostPix;
+  const marginPctPix = sell > 0 ? (netProfitPix / sell) * 100 : 0;
   
   return {
     sellingPrice: sell,
@@ -204,9 +252,13 @@ export function calculateActualProductProfitability(
     gatewayFeeAmount,
     commissionAmount,
     fixedCostAmount,
+    pixFeeAmount,
     totalCost,
+    totalCostPix,
     netProfit,
     marginPct,
+    netProfitPix,
+    marginPctPix,
     isProfitable: netProfit > 0
   };
 }
