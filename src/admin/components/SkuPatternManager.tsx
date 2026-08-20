@@ -19,6 +19,7 @@ export function SkuPatternManager({ onClose, products, onProductsUpdated }: SkuP
   const [category, setCategory] = useState('');
   const [prefix, setPrefix] = useState('');
   const [nextNumber, setNextNumber] = useState(1);
+  const [autoApply, setAutoApply] = useState(true);
   const [isApplying, setIsApplying] = useState(false);
   
   const patterns = settings.skuPatterns || [];
@@ -29,22 +30,44 @@ export function SkuPatternManager({ onClose, products, onProductsUpdated }: SkuP
       return;
     }
     
-    let newPatterns = [...patterns];
-    if (editingId) {
-      newPatterns = newPatterns.map(p => p.id === editingId ? { ...p, category, prefix, nextNumber } : p);
-    } else {
-      newPatterns.push({
-        id: Math.random().toString(36).substring(7),
-        category,
-        prefix,
-        nextNumber
-      });
-    }
-    
-    const toastId = toast.loading('Salvando padrão...');
+    const toastId = toast.loading(autoApply ? 'Aplicando padrão e salvando...' : 'Salvando padrão...');
     try {
+      let currentNum = nextNumber;
+      let hasChanges = false;
+      const updatedProducts = [...products];
+
+      if (autoApply) {
+        const batch = writeBatch(db);
+        for (let i = 0; i < updatedProducts.length; i++) {
+          const p = updatedProducts[i];
+          if (p.category === category) {
+              const newSku = `${prefix}${String(currentNum).padStart(3, '0')}`;
+              currentNum++;
+              hasChanges = true;
+              batch.set(doc(db, 'products', String(p.id)), { sku: newSku }, { merge: true });
+              updatedProducts[i] = { ...p, sku: newSku };
+          }
+        }
+        if (hasChanges) {
+          await batch.commit();
+          onProductsUpdated(updatedProducts);
+        }
+      }
+
+      let newPatterns = [...patterns];
+      if (editingId) {
+        newPatterns = newPatterns.map(p => p.id === editingId ? { ...p, category, prefix, nextNumber: currentNum } : p);
+      } else {
+        newPatterns.push({
+          id: Math.random().toString(36).substring(7),
+          category,
+          prefix,
+          nextNumber: currentNum
+        });
+      }
+      
       await updateSettings({ skuPatterns: newPatterns });
-      toast.success('Padrão salvo!', { id: toastId });
+      toast.success(autoApply && hasChanges ? 'Padrão salvo e produtos atualizados!' : 'Padrão salvo!', { id: toastId });
       setEditingId(null);
       setCategory('');
       setPrefix('');
@@ -169,11 +192,25 @@ export function SkuPatternManager({ onClose, products, onProductsUpdated }: SkuP
                 </button>
               </div>
             </div>
-            {prefix && (
-               <p className="text-xs text-blue-800 mt-3 font-medium">
-                 Exemplo do próximo código: <strong className="font-extrabold">{prefix}{String(nextNumber).padStart(3, '0')}</strong>
-               </p>
-            )}
+            <div className="flex flex-col gap-2 mt-3">
+              {prefix && (
+                 <p className="text-xs text-blue-800 font-medium">
+                   Exemplo do próximo código: <strong className="font-extrabold">{prefix}{String(nextNumber).padStart(3, '0')}</strong>
+                 </p>
+              )}
+              <div className="flex items-center gap-2">
+                 <input 
+                   type="checkbox" 
+                   id="auto-apply-pattern" 
+                   checked={autoApply} 
+                   onChange={e => setAutoApply(e.target.checked)} 
+                   className="w-3.5 h-3.5 text-blue-600 rounded"
+                 />
+                 <label htmlFor="auto-apply-pattern" className="text-xs font-bold text-blue-700 cursor-pointer">
+                   Aplicar automaticamente em todos os produtos da categoria ao salvar
+                 </label>
+              </div>
+            </div>
           </div>
 
           {/* List */}
