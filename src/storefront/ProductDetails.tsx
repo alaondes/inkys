@@ -108,7 +108,7 @@ const ProductBannerCarousel = ({ banners }: { banners: any[] }) => {
 export function ProductDetails({ product, onBack, onAddToCart }: ProductDetailsProps) {
   const { settings } = useSettings();
   const { products } = useProducts();
-  const rawImages = [product.image, ...(product.gallery || [])].filter(Boolean);
+  const rawImages = Array.from(new Set([product.image, ...(product.gallery || [])].filter(Boolean)));
   const images = rawImages.length > 0 ? rawImages : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop'];
   
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
