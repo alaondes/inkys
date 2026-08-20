@@ -2149,11 +2149,15 @@ export function Products() {
                                 if (val) {
                                   const urls = val.split(/\s+/).filter(u => u.trim() !== '');
                                   setFormData(prev => {
-                                    const newGallery = [...(prev.gallery || []), ...urls.map(convertGoogleDriveUrl)];
+                                    let newGallery = [...(prev.gallery || []), ...urls.map(convertGoogleDriveUrl)];
+                                    let newImage = prev.image;
+                                    if (!newImage && newGallery.length > 0) {
+                                      newImage = newGallery.shift() || '';
+                                    }
                                     return {
                                       ...prev,
                                       gallery: newGallery,
-                                      image: prev.image || newGallery[0] || ''
+                                      image: newImage
                                     };
                                   });
                                   e.currentTarget.value = '';
@@ -2169,11 +2173,15 @@ export function Products() {
                               if (val) {
                                 const urls = val.split(/\s+/).filter(u => u.trim() !== '');
                                 setFormData(prev => {
-                                  const newGallery = [...(prev.gallery || []), ...urls.map(convertGoogleDriveUrl)];
+                                  let newGallery = [...(prev.gallery || []), ...urls.map(convertGoogleDriveUrl)];
+                                  let newImage = prev.image;
+                                  if (!newImage && newGallery.length > 0) {
+                                    newImage = newGallery.shift() || '';
+                                  }
                                   return {
                                     ...prev,
                                     gallery: newGallery,
-                                    image: prev.image || newGallery[0] || ''
+                                    image: newImage
                                   };
                                 });
                                 input.value = '';
@@ -2189,7 +2197,7 @@ export function Products() {
                             {formData.gallery.map((img, index) => (
                               <div 
                                 key={index} 
-                                className={`relative group w-20 h-20 rounded-lg border overflow-hidden cursor-move transition-all ${draggedGalleryIndex === index ? 'opacity-50 scale-95' : ''} ${formData.image === img ? 'border-blue-500 ring-2 ring-blue-500/50 shadow-sm' : 'border-gray-200'}`}
+                                className={`relative group w-20 h-20 rounded-lg border overflow-hidden cursor-move transition-all ${draggedGalleryIndex === index ? 'opacity-50 scale-95' : ''} border-gray-200`}
                                 draggable
                                 onDragStart={() => setDraggedGalleryIndex(index)}
                                 onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
@@ -2210,20 +2218,21 @@ export function Products() {
                                 >
                                   <X size={12} />
                                 </button>
-                                {formData.image !== img && (
-                                  <button 
-                                    type="button" 
-                                    onClick={() => setFormData(prev => ({ ...prev, image: img }))}
-                                    className="absolute bottom-0 inset-x-0 bg-blue-600/95 text-white text-[9px] uppercase font-black py-1 text-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                  >
-                                    Usar como Capa
-                                  </button>
-                                )}
-                                {formData.image === img && (
-                                  <div className="absolute bottom-0 inset-x-0 bg-blue-600 text-white text-[9px] uppercase font-black py-1 text-center flex justify-center items-center gap-1 z-10">
-                                    Capa
-                                  </div>
-                                )}
+                                <button 
+                                  type="button" 
+                                  onClick={() => setFormData(prev => {
+                                    const newGallery = [...(prev.gallery || [])];
+                                    const oldImage = prev.image;
+                                    newGallery.splice(index, 1);
+                                    if (oldImage) {
+                                      newGallery.splice(index, 0, oldImage);
+                                    }
+                                    return { ...prev, image: img, gallery: newGallery };
+                                  })}
+                                  className="absolute bottom-0 inset-x-0 bg-blue-600/95 text-white text-[9px] uppercase font-black py-1 text-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                >
+                                  Usar como Capa
+                                </button>
                               </div>
                             ))}
                           </div>
