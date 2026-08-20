@@ -570,6 +570,12 @@ export function Products() {
 
   const generateNextSku = (categoryName: string) => {
     if (!categoryName) return '';
+    
+    const pattern = settings.skuPatterns?.find(p => p.category === categoryName);
+    if (pattern) {
+      return `${pattern.prefix}${String(pattern.nextNumber).padStart(3, '0')}`;
+    }
+
     const catProds = localProducts.filter(p => p.category === categoryName && p.sku);
     let prefix = '';
     let maxNumber = 0;
@@ -742,11 +748,35 @@ export function Products() {
           await setProducts(newLocal); // saves all and their orders
           toast.success(`Produto e ${productsToUpdate.length - 1} SKUs atualizados!`, { id: loadToast });
         }
+
+        // Update sku pattern nextNumber if necessary
+        const pattern = settings.skuPatterns?.find(p => p.category === updatedProduct.category);
+        if (pattern) {
+          const generatedSku = `${pattern.prefix}${String(pattern.nextNumber).padStart(3, '0')}`;
+          if (updatedProduct.sku === generatedSku) {
+            const newPatterns = settings.skuPatterns!.map(p => 
+              p.id === pattern.id ? { ...p, nextNumber: p.nextNumber + 1 } : p
+            );
+            updateSettings({ skuPatterns: newPatterns }).catch(console.error);
+          }
+        }
       } else {
         const newProduct = { ...finalFormData, id: Date.now().toString() } as Product;
         await addProduct(newProduct);
         setLocalProducts(prev => [...prev, newProduct]);
         toast.success('Produto criado com sucesso!', { id: loadToast });
+        
+        // Update sku pattern nextNumber if necessary
+        const pattern = settings.skuPatterns?.find(p => p.category === newProduct.category);
+        if (pattern) {
+          const generatedSku = `${pattern.prefix}${String(pattern.nextNumber).padStart(3, '0')}`;
+          if (newProduct.sku === generatedSku) {
+            const newPatterns = settings.skuPatterns!.map(p => 
+              p.id === pattern.id ? { ...p, nextNumber: p.nextNumber + 1 } : p
+            );
+            updateSettings({ skuPatterns: newPatterns }).catch(console.error);
+          }
+        }
       }
       setIsModalOpen(false);
     } catch (err: any) {
@@ -1359,11 +1389,9 @@ export function Products() {
                           onChange={e => {
                             const newCat = e.target.value;
                             const updates: Partial<Product> = { category: newCat };
-                            if (!editingProduct) {
-                              const previousAutoSku = generateNextSku(formData.category || "");
-                              if (!formData.sku || formData.sku === previousAutoSku) {
-                                updates.sku = generateNextSku(newCat);
-                              }
+                            const previousAutoSku = generateNextSku(formData.category || "");
+                            if (!formData.sku || formData.sku === previousAutoSku) {
+                              updates.sku = generateNextSku(newCat);
                             }
                             setFormData({...formData, ...updates});
                           }} 
