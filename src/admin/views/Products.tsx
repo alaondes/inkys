@@ -4,6 +4,7 @@ import { doc, writeBatch } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import { formatPrice, Product } from '../../data/products';
+import { SkuPatternManager } from '../components/SkuPatternManager';
 import { useProducts } from '../../context/ProductContext';
 import { useSettings } from '../../context/SettingsContext';
 import { calculateSuggestedPrice, calculateActualProductProfitability, calculateSuggestedPriceFromProfitVal } from '../../lib/pricingUtils';
@@ -34,7 +35,7 @@ export function Products() {
   const { settings, updateSettings } = useSettings();
   const [search, setSearch] = useState('');
   const [showBanners, setShowBanners] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('Todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
@@ -43,6 +44,7 @@ export function Products() {
   const [skuStartNumber, setSkuStartNumber] = useState(1);
   const [skuCategory, setSkuCategory] = useState('');
   const [overwriteSkus, setOverwriteSkus] = useState(false);
+  const [editedSkus, setEditedSkus] = useState<Record<string, string>>({});
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [profitModalProduct, setProfitModalProduct] = useState<Product | null>(null);
   const [initialCategory, setInitialCategory] = useState('');
@@ -105,38 +107,38 @@ export function Products() {
     }
   };
 
-  const handleGenerateSkus = async () => {
+  const handleSaveBatchSkus = async () => {
     setIsSavingOrder(true);
-    const loadToast = toast.loading('Gerando SKUs...');
+    const loadToast = toast.loading('Salvando SKUs...');
     try {
-      let currentNumber = skuStartNumber;
-      
       const batch = writeBatch(db);
+      const updatedProducts = [...localProducts];
+      let hasChanges = false;
       
-      const updatedProducts = localProducts.map((p) => {
-        if (!skuCategory || p.category === skuCategory) {
-          if (overwriteSkus || !p.sku) {
-            const sku = `${skuPrefix}${String(currentNumber).padStart(3, '0')}`;
-            currentNumber++;
-            
-            const prodRef = doc(db, 'products', p.id);
-            batch.update(prodRef, { sku });
-            
-            return { ...p, sku };
+      for (let i = 0; i < updatedProducts.length; i++) {
+          const p = updatedProducts[i];
+          const newSku = editedSkus[p.id];
+          if (newSku !== undefined && newSku !== (p.sku || '')) {
+              hasChanges = true;
+              batch.set(doc(db, 'products', String(p.id)), { sku: newSku }, { merge: true });
+              updatedProducts[i] = { ...p, sku: newSku };
           }
-        }
-        return p;
-      });
+      }
+      
+      if (!hasChanges) {
+          toast.success('Nenhuma alteração para salvar.', { id: loadToast });
+          setIsSkuModalOpen(false);
+          return;
+      }
       
       await batch.commit();
-      
       setLocalProducts(updatedProducts);
-      // await setProducts(updatedProducts);
-      setHasUnsavedOrder(false);
-      toast.success('SKUs gerados com sucesso!', { id: loadToast });
+      setEditedSkus({});
       setIsSkuModalOpen(false);
-    } catch (err) {
-      toast.error('Erro ao gerar SKUs.', { id: loadToast });
+      toast.success('SKUs salvos com sucesso!', { id: loadToast });
+    } catch (err: any) {
+      console.error('Erro ao salvar SKUs:', err);
+      toast.error('Erro ao salvar SKUs.', { id: loadToast });
     } finally {
       setIsSavingOrder(false);
     }
@@ -1054,7 +1056,7 @@ export function Products() {
         ))}
       </div>
 
-      {/* Bar de Busca */}
+      {/* Bar de Busca & Toggles */}
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="bg-white border border-slate-200/80 px-4 py-2.5 rounded-2xl flex items-center gap-3 w-full sm:max-w-md shadow-2xs focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10 transition-all">
           <Search className="text-slate-400" size={18} />
@@ -1070,6 +1072,25 @@ export function Products() {
               <X size={14} />
             </button>
           )}
+        </div>
+
+        <div className="flex items-center gap-1 bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-2xs">
+          <button 
+            type="button"
+            onClick={() => setViewMode('grid')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+            title="Visualização em Grid"
+          >
+            <LayoutGrid size={16} /> <span className="hidden sm:inline">Grid</span>
+          </button>
+          <button 
+            type="button"
+            onClick={() => setViewMode('list')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'list' ? 'bg-blue-50 text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+            title="Visualização em Lista"
+          >
+            <List size={16} /> <span className="hidden sm:inline">Lista</span>
+          </button>
         </div>
       </div>
 
@@ -1104,8 +1125,9 @@ export function Products() {
         </div>
       )}
 
-      {/* VISUALIZAÇÃO EM GRID (Cards Clean) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {/* VISUALIZAÇÃO EM GRID (Cards Clean) */}
           {filteredProducts.map((product) => {
             const prof = calculateActualProductProfitability(product.price, product.costPrice || 0, settings?.pricingRules, product.packagingCost);
             return (
@@ -1184,6 +1206,89 @@ export function Products() {
             </div>
           )}
         </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-2xs overflow-hidden overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[800px]">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                <th className="p-4">Produto</th>
+                <th className="p-4">SKU</th>
+                <th className="p-4">Categoria</th>
+                <th className="p-4">Preço</th>
+                <th className="p-4">Lucro</th>
+                <th className="p-4">Estoque</th>
+                <th className="p-4 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="text-sm">
+              {filteredProducts.map((product) => {
+                const prof = calculateActualProductProfitability(product.price, product.costPrice || 0, settings?.pricingRules, product.packagingCost);
+                return (
+                  <tr key={product.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                           <img 
+                            src={convertGoogleDriveUrl(product.image || (product.gallery && product.gallery[0]) || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop')} 
+                            alt={product.name} 
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                           />
+                        </div>
+                        <span className="font-extrabold text-slate-900 line-clamp-1">{product.name}</span>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      {product.sku ? <span className="text-[10px] text-slate-500 font-mono bg-slate-100 px-2 py-1 rounded border border-slate-200">{product.sku}</span> : <span className="text-[10px] text-slate-400">S/ SKU</span>}
+                    </td>
+                    <td className="p-4">
+                      <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-full">{product.category || 'Sem categoria'}</span>
+                    </td>
+                    <td className="p-4 font-black text-slate-900">
+                      {formatPrice(product.price)}
+                    </td>
+                    <td className="p-4">
+                      <span className={`text-[10px] font-black px-2 py-1 rounded-full ${prof.netProfit >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                        +R$ {prof.netProfit.toFixed(0)}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      {product.stock !== undefined ? (
+                        <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-full ${product.stock > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                          {product.stock > 0 ? `${product.stock} un.` : 'Esgotado'}
+                        </span>
+                      ) : <span className="text-slate-400">-</span>}
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-1">
+                        <button onClick={() => setProfitModalProduct(product)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors" title="Ver DRE">
+                          <PieChart size={15} />
+                        </button>
+                        <button onClick={() => handleRecalculateSingleProductPrice(product)} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors" title="Recalcular Preço Sugerido">
+                          <RefreshCw size={15} />
+                        </button>
+                        <button onClick={() => handleOpenModal(product)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors" title="Editar">
+                          <Edit2 size={15} />
+                        </button>
+                        {confirmDeleteId === product.id ? (
+                          <button type="button" onClick={() => handleDeleteConfirmed(product.id)} className="px-2 py-1 bg-rose-600 text-white rounded-md text-[10px] font-black uppercase">Sim</button>
+                        ) : (
+                          <button type="button" onClick={() => setConfirmDeleteId(product.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all" title="Excluir">
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {filteredProducts.length === 0 && (
+            <div className="p-8 text-center text-slate-400 text-sm font-medium">Nenhum produto encontrado.</div>
+          )}
+        </div>
+      )}
 
       {/* Modal */}
       {isModalOpen && (
@@ -2107,81 +2212,14 @@ export function Products() {
       )}
       {/* SKU Generator Modal */}
       {isSkuModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-6 relative border border-gray-200 shadow-xl max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100 shrink-0">
-              <h3 className="text-xl font-bold uppercase tracking-wider flex items-center gap-3">
-                <Barcode size={24} className="text-[var(--color-primary)]" /> Gerar SKUs
-              </h3>
-              <button onClick={() => setIsSkuModalOpen(false)} className="text-gray-400 hover:text-gray-900"><X size={24} /></button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto space-y-4">
-              <p className="text-sm text-gray-600 mb-4 font-medium leading-relaxed">
-                Esta ação gerará automaticamente SKUs para {skuCategory ? <strong className="text-gray-900">produtos da categoria selecionada</strong> : <strong className="text-gray-900">todos</strong>} os seus produtos.
-              </p>
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <input 
-                    type="checkbox" 
-                    id="overwrite-skus" 
-                    checked={overwriteSkus} 
-                    onChange={e => setOverwriteSkus(e.target.checked)} 
-                    className="w-4 h-4 text-[var(--color-primary)] border-gray-300 rounded focus:ring-[var(--color-primary)]"
-                  />
-                  <label htmlFor="overwrite-skus" className="text-sm font-medium text-gray-700">Substituir SKUs já existentes</label>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-gray-500">Categoria (Opcional)</label>
-                  <select 
-                    value={skuCategory} 
-                    onChange={e => setSkuCategory(e.target.value)} 
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
-                  >
-                    <option value="">Todas as Categorias</option>
-                    {settings.categories?.map((cat, idx) => (
-                      <option key={idx} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-gray-500">Prefixo do Código</label>
-                  <input 
-                    type="text" 
-                    value={skuPrefix}
-                    onChange={e => setSkuPrefix(e.target.value)}
-                    placeholder="Ex: PROD-" 
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-gray-500">Número Inicial</label>
-                  <input 
-                    type="number" 
-                    min="1"
-                    value={skuStartNumber}
-                    onChange={e => setSkuStartNumber(parseInt(e.target.value) || 1)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm focus:border-[var(--color-primary)] outline-none"
-                  />
-                </div>
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-800 font-medium mt-2">
-                  <span className="font-bold">Exemplo:</span> Seus produtos receberão códigos como: {skuPrefix}{String(skuStartNumber).padStart(3, '0')}, {skuPrefix}{String(skuStartNumber + 1).padStart(3, '0')}...
-                </div>
-              </div>
-            </div>
-            
-            <div className="mt-6 pt-4 border-t border-gray-100">
-              <button 
-                onClick={handleGenerateSkus}
-                disabled={isSavingOrder}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl font-bold uppercase tracking-wider text-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-              >
-                {isSavingOrder ? <Loader2 size={18} className="animate-spin" /> : <Barcode size={18} />}
-                {isSavingOrder ? 'Gerando...' : 'Gerar Códigos'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <SkuPatternManager 
+          onClose={() => setIsSkuModalOpen(false)} 
+          products={localProducts} 
+          onProductsUpdated={(updated) => {
+            setLocalProducts(updated);
+            setHasUnsavedOrder(true);
+          }} 
+        />
       )}
 
       {/* Categories Modal */}

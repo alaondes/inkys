@@ -26,6 +26,13 @@ export interface HeroBanner {
   textAlign?: string;
 }
 
+export interface SkuPattern {
+  id: string;
+  category: string;
+  prefix: string;
+  nextNumber: number;
+}
+
 export interface AppSettings {
   logoUrl: string;
   faviconUrl?: string;
@@ -107,6 +114,7 @@ export interface AppSettings {
   pricingRules?: PricingRulesConfig;
   rawMaterials?: { id: string; name: string; cost: number }[];
   packagingModels?: { id: string; name: string; cost: number }[];
+  skuPatterns?: SkuPattern[];
   customMenuLabels?: Record<string, string>;
   menuOrder?: Record<string, string[]>;
   posCustomItemLabel?: string;
