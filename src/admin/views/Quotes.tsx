@@ -48,6 +48,7 @@ export function Quotes() {
   const [statusFilter, setStatusFilter] = useState<string>('Todos');
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [isConverting, setIsConverting] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Load quotes from Firestore
   useEffect(() => {
@@ -155,11 +156,11 @@ export function Quotes() {
   };
 
   const handleDeleteQuote = async (quoteId: string) => {
-    if (!window.confirm("Tem certeza que deseja excluir este orçamento?")) return;
     try {
       await deleteDoc(doc(db, 'orders', quoteId));
       toast.success("Orçamento excluído.");
       if (selectedQuote?.id === quoteId) setSelectedQuote(null);
+      setConfirmDeleteId(null);
     } catch (err) {
       console.error(err);
       toast.error("Erro ao excluir orçamento.");
@@ -379,13 +380,32 @@ export function Quotes() {
                           <FileText size={15} />
                         </button>
 
-                        <button
-                          onClick={() => handleDeleteQuote(quote.id)}
-                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-colors"
-                          title="Excluir"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        {confirmDeleteId === quote.id ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleDeleteQuote(quote.id)}
+                              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded"
+                              title="Confirmar Exclusão"
+                            >
+                              Sim
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-[10px] font-bold rounded"
+                              title="Cancelar"
+                            >
+                              Não
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(quote.id)}
+                            className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-colors"
+                            title="Excluir"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

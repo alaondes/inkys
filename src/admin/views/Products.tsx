@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Plus, Search, Edit2, Trash2, X, PlusCircle, MinusCircle, ChevronUp, ChevronDown, Bold, Italic, AlignLeft, Tags, CheckCircle, Loader2, Barcode, Calculator, Sparkles, TrendingUp, DollarSign, Info, PieChart, Receipt, Package, Building2, LayoutGrid, List, Image as ImageIcon, RefreshCw, Lock } from 'lucide-react';
+import { doc, writeBatch } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import { convertGoogleDriveUrl } from '../../lib/urlUtils';
 import { formatPrice, Product } from '../../data/products';
 import { useProducts } from '../../context/ProductContext';
@@ -108,18 +110,28 @@ export function Products() {
     const loadToast = toast.loading('Gerando SKUs...');
     try {
       let currentNumber = skuStartNumber;
+      
+      const batch = writeBatch(db);
+      
       const updatedProducts = localProducts.map((p) => {
         if (!skuCategory || p.category === skuCategory) {
           if (overwriteSkus || !p.sku) {
             const sku = `${skuPrefix}${String(currentNumber).padStart(3, '0')}`;
             currentNumber++;
+            
+            const prodRef = doc(db, 'products', p.id);
+            batch.update(prodRef, { sku });
+            
             return { ...p, sku };
           }
         }
         return p;
       });
+      
+      await batch.commit();
+      
       setLocalProducts(updatedProducts);
-      await setProducts(updatedProducts);
+      // await setProducts(updatedProducts);
       setHasUnsavedOrder(false);
       toast.success('SKUs gerados com sucesso!', { id: loadToast });
       setIsSkuModalOpen(false);
