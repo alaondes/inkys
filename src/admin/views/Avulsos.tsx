@@ -1,6 +1,7 @@
 import { useSettings } from '../../context/SettingsContext';
+import { AvulsoSkuManager } from "../components/AvulsoSkuManager";
 import React, { useState, useEffect } from 'react';
-import { Plus, PlusCircle, Search, Edit2, Trash2, X, Image as ImageIcon, CheckCircle, Tags } from 'lucide-react';
+import { Plus, PlusCircle, Search, Edit2, Trash2, X, Image as ImageIcon, CheckCircle, Tags, Barcode } from 'lucide-react';
 import { db } from '../../lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { formatPrice } from '../../data/products';
@@ -55,6 +56,7 @@ export function Avulsos() {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('Todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
+  const [isSkuModalOpen, setIsSkuModalOpen] = useState(false);
   const [editingAvulso, setEditingAvulso] = useState<Avulso | null>(null);
   
   const [formData, setFormData] = useState<Partial<Avulso> & { name: string; price: number; image: string; category: string }>({
@@ -241,6 +243,13 @@ export function Avulsos() {
           <p className="text-sm text-gray-500 mt-1">Gerencie serviços e produtos que aparecem apenas no Orçamento/PDV.</p>
         </div>
         <div className="flex items-center gap-2">
+          <button 
+            type="button"
+            onClick={() => setIsSkuModalOpen(true)}
+            className="px-4 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center gap-2 transition-all shadow-sm"
+          >
+            <Barcode size={15} /> SKUs
+          </button>
           <button 
             type="button"
             onClick={() => setIsCategoriesModalOpen(true)}
@@ -740,6 +749,17 @@ export function Avulsos() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* SKU Generator Modal */}
+      {isSkuModalOpen && (
+        <AvulsoSkuManager 
+          onClose={() => setIsSkuModalOpen(false)} 
+          avulsos={avulsos} 
+          onAvulsosUpdated={(updated) => {
+            // Firestore sync is handled in manager, we don't need to manually update local state unless we want immediate reflection, but real-time listener will do it.
+          }} 
+        />
       )}
 
       {/* Categories Modal */}

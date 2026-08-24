@@ -115,6 +115,7 @@ export interface AppSettings {
   rawMaterials?: { id: string; name: string; cost: number }[];
   packagingModels?: { id: string; name: string; cost: number }[];
   skuPatterns?: SkuPattern[];
+  avulsoSkuPatterns?: SkuPattern[];
   customMenuLabels?: Record<string, string>;
   menuOrder?: Record<string, string[]>;
   posCustomItemLabel?: string;
